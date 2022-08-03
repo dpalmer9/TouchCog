@@ -165,8 +165,8 @@ class Protocol_Menu(Screen):
             from Protocol.TUNL.Menu import Configure_Screen
             self.Protocol_Configure_Screen = Configure_Screen()
         elif protocol == 'TUNLProbe':
-            from Protocol.TUNLProbe.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen
+            from Protocol.TUNLProbe.Menu import ConfigureScreen
+            self.Protocol_Configure_Screen = ConfigureScreen()
 
 # Class App Builder #
 class MenuApp(App):
