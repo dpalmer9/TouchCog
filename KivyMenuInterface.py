@@ -113,9 +113,6 @@ class Protocol_Menu(Screen):
     def __init__(self,**kwargs):
         super(Protocol_Menu,self).__init__(**kwargs)
         self.Protocol_Layout = FloatLayout()
-        
-        #protocol_list = ['Image Continuous Performance Task','Probabilistic Reversal Learning',
-                         #'Paired Associate Learning','Progressive Ratio','Trial-Unique Non-Match to Location']
                          
         protocol_list = self.search_protocols()
         self.Protocol_List = GridLayout(rows=len(protocol_list),cols=1)
@@ -139,7 +136,6 @@ class Protocol_Menu(Screen):
     def set_protocol(self,label,*args):
         self.protocol_constructor(label)
         self.manager.switch_to(self.Protocol_Configure_Screen)
-        #self.manager.current = "configurescreen"
     
     def cancel_protocol(self,*args):
         self.manager.current="mainmenu"
@@ -150,10 +146,7 @@ class Protocol_Menu(Screen):
         task_list = os.listdir(folder)
         return task_list
     def protocol_constructor(self,protocol):
-        if protocol == 'iCPT2':
-            from Protocol.iCPT2.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'iCPT2GStim1':
+        if protocol == 'iCPT2GStim1':
             from Protocol.iCPT2GStim1.Menu import Configure_Screen
             self.Protocol_Configure_Screen = Configure_Screen()
         elif protocol == 'iCPT2GStim2':
@@ -171,22 +164,10 @@ class Protocol_Menu(Screen):
         elif protocol == 'TUNL':
             from Protocol.TUNL.Menu import Configure_Screen
             self.Protocol_Configure_Screen = Configure_Screen()
-            
-        elif protocol == 'iCPT2GStim1V2':
-            from Protocol.iCPT2GStim1V2.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        
-# Default Class #
-#class Configure_Screen(Screen):
-    #def __init__(self,**kwargs):
-        #super(Configure_Screen,self).__init__(**kwargs)
-        
-    
-        
-#class Protocol_Screen(Screen):
-    #def __init__(self,**kwargs):
-        #super(Protocol_Screen,self).__init__(**kwargs)
-    
+        elif protocol == 'TUNLProbe':
+            from Protocol.TUNLProbe.Menu import Configure_Screen
+            self.Protocol_Configure_Screen = Configure_Screen
+
 # Class App Builder #
 class MenuApp(App):
     def build(self):
