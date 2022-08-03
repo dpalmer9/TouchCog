@@ -25,9 +25,9 @@ from functools import partial
 
 ## TextInput(text="Test",id="Test1")
 
-class Configure_Screen(Screen):
+class ConfigureScreen(Screen):
     def __init__(self,**kwargs):
-        super(Configure_Screen,self).__init__(**kwargs)
+        super(ConfigureScreen,self).__init__(**kwargs)
         self.main_layout = FloatLayout()
         
         if sys.platform == 'linux' or sys.platform == 'darwin':
@@ -35,15 +35,14 @@ class Configure_Screen(Screen):
         elif sys.platform == 'win32':
             self.folder_mod = '\\'
             
-        config_path = 'Protocol' + self.folder_mod + 'TUNL' + self.folder_mod + 'Configuration.ini'
+        config_path = 'Protocol' + self.folder_mod + 'TUNLProbe' + self.folder_mod + 'Configuration.ini'
         self.config_file = configparser.ConfigParser()
         self.config_file.read(config_path)
         self.parameters_config = self.config_file['TaskParameters']
-        print(self.parameters_config)
-        num_parameters = len(self.parameters_config)
+        num_parameters = len(self.parameters_config) + 1
         
         self.setting_scrollview = ScrollView()
-        self.setting_gridlayout = GridLayout(cols=2,rows=num_parameters)
+        self.setting_gridlayout = GridLayout(cols=2, rows=num_parameters)
         self.setting_scrollview.add_widget(self.setting_gridlayout)
         
         self.menu_constructor()

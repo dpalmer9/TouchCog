@@ -82,7 +82,7 @@ class ProtocolScreen(Screen):
         self.block_threshold = self.block_length
 
         # Define Language
-        self.language = self.parameters_dict['language']
+        self.language = 'English'
         lang_folder_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Language' + \
                            self.folder_mod + self.language + self.folder_mod
         start_path = lang_folder_path + 'Start.txt'
@@ -116,25 +116,25 @@ class ProtocolScreen(Screen):
         stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
         if stim_feedback_correct_color != '':
             color_text = '[color=%s]' % stim_feedback_correct_color
-            self.stim_feedback_correct_str = color_text + self.stim_feedback_correct + '[/color]'
+            self.stim_feedback_correct_str = color_text + self.stim_feedback_correct_str + '[/color]'
 
         self.stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
         stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
         if stim_feedback_incorrect_color != '':
             color_text = '[color=%s]' % stim_feedback_incorrect_color
-            self.stim_feedback_incorrect_str = color_text + self.stim_feedback_incorrect + '[/color]'
+            self.stim_feedback_incorrect_str = color_text + self.stim_feedback_incorrect_str + '[/color]'
 
         self.hold_feedback_wait_str = feedback_lang_config['Hold']['wait']
         hold_feedback_wait_color = feedback_lang_config['Hold']['wait_colour']
         if hold_feedback_wait_color != '':
             color_text = '[color=%s]' % hold_feedback_wait_color
-            self.hold_feedback_wait_str = color_text + self.hold_feedback_wait + '[/color]'
+            self.hold_feedback_wait_str = color_text + self.hold_feedback_wait_str + '[/color]'
 
         self.hold_feedback_return_str = feedback_lang_config['Hold']['return']
         hold_feedback_return_color = feedback_lang_config['Hold']['return_colour']
         if hold_feedback_return_color != '':
             color_text = '[color=%s]' % hold_feedback_return_color
-            self.hold_feedback_return_str = color_text + self.hold_feedback_return + '[/color]'
+            self.hold_feedback_return_str = color_text + self.hold_feedback_return_str + '[/color]'
 
         # Define Variables - Boolean
         self.stimulus_on_screen = False
@@ -193,7 +193,7 @@ class ProtocolScreen(Screen):
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
-        self.y_dim_hint = [0.925, 0.825, 0.725, 0.625, 0.525, 0.425, 0.325, 0.225]
+        self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
         self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
         self.mask_image_path = self.image_folder + self.mask_image + '.png'
         self.background_grid_list = [Image() for _ in range(64)]
@@ -314,7 +314,7 @@ class ProtocolScreen(Screen):
             x = random.randint(0, 7)
             y = random.randint(0, 7)
             coord = [x, y]
-            while coord in (self.trial_coord or target_list):
+            while (coord is self.trial_coord) or (coord in target_list):
                 x = random.randint(0, 7)
                 y = random.randint(0, 7)
                 coord = [x, y]
