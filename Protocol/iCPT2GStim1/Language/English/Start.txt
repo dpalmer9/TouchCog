@@ -1,0 +1,3 @@
+During the experiment, hold your finger on the white square before responding .
+To make a response, press on one of the images on the centre of the screen.
+You will receive feedback following touching an image.
