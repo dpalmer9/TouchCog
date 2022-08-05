@@ -18,6 +18,7 @@ from kivy.uix.screenmanager import Screen
 class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
         super(ImageButton, self).__init__(**kwargs)
+        self.coord = None
 
 
 def generate_sample_choice_pos():
@@ -37,6 +38,41 @@ def generate_sample_choice_pos():
 
     trial_coord = {'Sample': sample_pair, 'Choice': novel_pair}
     return trial_coord
+
+
+def generate_trial_pos_sep(sep_level):
+    base_move = 1
+    main_move = base_move + sep_level
+    sample_xpos = random.randint(0, 7)
+    sample_ypos = random.randint(0, 7)
+    sample_coord = [sample_xpos,sample_ypos]
+
+    horz_move = [[(sample_xpos-main_move), sample_ypos],
+                 [(sample_xpos+main_move), sample_ypos]]
+    vert_move = [[sample_xpos, (sample_ypos - main_move)],
+                 [sample_xpos, (sample_ypos + main_move)]]
+
+    move_list = horz_move + vert_move
+
+    for move in horz_move:
+        for i in range(1, (main_move+1)):
+            new_moves = [[move[0], move[1] - i], [move[0], move[1] + i]]
+            move_list = move_list + new_moves
+    for move in vert_move:
+        for i in range(1, (main_move+1)):
+            new_moves = [[move[0] - i, move[1]], [move[0] + i, move[1]]]
+            move_list = move_list + new_moves
+    final_list = list()
+    for move in move_list:
+        if (move[0] < 0) or (move[0] > 7) or (move[1] < 0) or (move[1] > 7):
+            continue
+        else:
+            final_list.append(move)
+
+    novel_index = random.randint(0,len(final_list))
+    novel_coord = final_list[novel_index]
+
+    return sample_coord, novel_coord
 
 
 class ProtocolScreen(Screen):
@@ -226,6 +262,7 @@ class ProtocolScreen(Screen):
         for coord in self.distractor_target_list:
             index = 0
             image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+            image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
@@ -236,6 +273,7 @@ class ProtocolScreen(Screen):
 
         for coord in self.distractor_ignore_list:
             image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+            image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             self.distractor_ignore_button_list.append(image)
@@ -330,6 +368,8 @@ class ProtocolScreen(Screen):
                 coord = [x, y]
             distractor_list.append(coord)
         return target_list, distractor_list
+
+    # Radiating Function
 
     def generate_output_files(self):
         folder_path = 'Data' + self.folder_mod + self.participant_id
@@ -550,15 +590,14 @@ class ProtocolScreen(Screen):
 
     # Distractor pressed during Choice
     def distractor_target_press(self, instance, *args):
-        self.protocol_floatlayout.remove_widget(instance)
-        self.distractor_press_count += 1
+        touch_coord = instance.coord
+        distract_index = random.randint(0,len(self.distractor_ignore_list))
 
-        if self.distractor_press_count >= self.num_target_distractors:
-            self.choice_presentation()
-            self.distractor_press_count = 0
-            return
-        else:
-            return
+        self.protocol_floatlayout.remove_widget(instance)
+        self.protocol_floatlayout.remove_widget(self.distractor_ignore_button_list[distract_index])
+        self.distractor_target_list.remove(touch_coord)
+        del self.distractor_ignore_list[distract_index]
+        self.distractor_press_count += 1
 
             # Data Saving Function
 
