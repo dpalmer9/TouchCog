@@ -53,21 +53,21 @@ def generate_trial_pos_sep(sep_level):
                  [sample_xpos, (sample_ypos + main_move)]]
 
     move_list = horz_move + vert_move
-
-    for move in horz_move:
-        for i in range(1, (main_move+1)):
-            new_moves = [[move[0], move[1] - i], [move[0], move[1] + i]]
-            move_list = move_list + new_moves
-    for move in vert_move:
-        for i in range(1, (main_move+1)):
-            new_moves = [[move[0] - i, move[1]], [move[0] + i, move[1]]]
-            move_list = move_list + new_moves
     final_list = list()
-    for move in move_list:
-        if (move[0] < 0) or (move[0] > 7) or (move[1] < 0) or (move[1] > 7):
-            continue
-        else:
-            final_list.append(move)
+    while len(final_list) <= 0:
+        for move in horz_move:
+            for i in range(1, (main_move+1)):
+                new_moves = [[move[0], move[1] - i], [move[0], move[1] + i]]
+                move_list = move_list + new_moves
+        for move in vert_move:
+            for i in range(1, (main_move+1)):
+                new_moves = [[move[0] - i, move[1]], [move[0] + i, move[1]]]
+                move_list = move_list + new_moves
+        for move in move_list:
+            if (move[0] < 0) or (move[0] > 7) or (move[1] < 0) or (move[1] > 7):
+                continue
+            else:
+                final_list.append(move)
 
     novel_index = random.randint(0,(len(final_list) - 1))
     novel_coord = final_list[novel_index]
@@ -125,6 +125,7 @@ class ProtocolScreen(Screen):
         self.current_space_trial_index = 0
         self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
         self.current_delay = self.space_probe_delay_length
+        self.current_space_trial_index += 1
 
         self.delay_probe_block_length = int(self.parameters_dict['delay_probe_block_length'])
         self.delay_probe_target_count = int(self.parameters_dict['delay_probe_target_count'])
@@ -252,7 +253,9 @@ class ProtocolScreen(Screen):
 
         # Define Variables - Coordinates
         self.trial_coord = generate_trial_pos_sep(self.current_sep)
-        self.distractor_target_list, self.distractor_ignore_list = self.generate_distractor_pos(3, 3)
+        self.distractor_target_list, self.distractor_ignore_list = \
+            self.generate_distractor_pos(self.space_probe_distract_target_count,
+                                         self.space_probe_distract_distractor_count)
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
@@ -381,6 +384,7 @@ class ProtocolScreen(Screen):
         self.current_space_trial_index = 0
         self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
         self.current_delay = self.space_probe_delay_length
+        self.current_space_trial_index += 1
 
         self.delay_probe_block_length = int(self.parameters_dict['delay_probe_block_length'])
         self.delay_probe_target_count = int(self.parameters_dict['delay_probe_target_count'])
@@ -400,7 +404,159 @@ class ProtocolScreen(Screen):
         self.block_trial_break = float(self.parameters_dict['block_trial_break'])
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
-        self.block_threshold = self.block_min_rest_duration
+        self.block_threshold = self.block_trial_break
+
+        # Define Language
+        self.language = self.parameters_dict['language']
+        lang_folder_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Language' + \
+                           self.folder_mod + self.language + self.folder_mod
+        start_path = lang_folder_path + 'Start.txt'
+        start_open = open(start_path, 'r', encoding="utf-8")
+        self.start_label_str = start_open.read()
+        start_open.close()
+
+        break_path = lang_folder_path + 'Break.txt'
+        break_open = open(break_path, 'r', encoding="utf-8")
+        self.break_label_str = break_open.read()
+        break_open.close()
+
+        end_path = lang_folder_path + 'End.txt'
+        end_open = open(end_path, 'r', encoding="utf-8")
+        self.end_label_str = end_open.read()
+        end_open.close()
+
+        button_lang_path = lang_folder_path + 'Button.ini'
+        button_lang_config = configparser.ConfigParser()
+        button_lang_config.read(button_lang_path, encoding="utf-8")
+
+        self.start_button_label_str = button_lang_config['Button']['start']
+        self.continue_button_label_str = button_lang_config['Button']['continue']
+        self.return_button_label_str = button_lang_config['Button']['return']
+
+        feedback_lang_path = lang_folder_path + 'Feedback.ini'
+        feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
+        feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
+
+        self.stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
+        stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
+        if stim_feedback_correct_color != '':
+            color_text = '[color=%s]' % stim_feedback_correct_color
+            self.stim_feedback_correct_str = color_text + self.stim_feedback_correct_str + '[/color]'
+
+        self.stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
+        stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
+        if stim_feedback_incorrect_color != '':
+            color_text = '[color=%s]' % stim_feedback_incorrect_color
+            self.stim_feedback_incorrect_str = color_text + self.stim_feedback_incorrect_str + '[/color]'
+
+        self.hold_feedback_wait_str = feedback_lang_config['Hold']['wait']
+        hold_feedback_wait_color = feedback_lang_config['Hold']['wait_colour']
+        if hold_feedback_wait_color != '':
+            color_text = '[color=%s]' % hold_feedback_wait_color
+            self.hold_feedback_wait_str = color_text + self.hold_feedback_wait_str + '[/color]'
+
+        self.hold_feedback_return_str = feedback_lang_config['Hold']['return']
+        hold_feedback_return_color = feedback_lang_config['Hold']['return_colour']
+        if hold_feedback_return_color != '':
+            color_text = '[color=%s]' % hold_feedback_return_color
+            self.hold_feedback_return_str = color_text + self.hold_feedback_return_str + '[/color]'
+
+        # Define Variables - Coordinates
+        self.trial_coord = generate_trial_pos_sep(self.current_sep)
+        self.distractor_target_list, self.distractor_ignore_list = \
+            self.generate_distractor_pos(self.space_probe_distract_target_count,
+                                         self.space_probe_distract_distractor_count)
+
+        # Define Widgets - Images
+        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
+        self.hold_button = ImageButton(source=self.hold_button_image_path, allow_stretch=True)
+        self.hold_button.size_hint = ((0.075 * self.screen_ratio), 0.075)
+        self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.001}
+
+        self.x_dim_hint = np.linspace(0.3, 0.7, 8)
+        self.x_dim_hint = self.x_dim_hint.tolist()
+        self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
+        self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
+        self.mask_image_path = self.image_folder + self.mask_image + '.png'
+        self.background_grid_list = [Image() for _ in range(64)]
+        x_pos = 0
+        y_pos = 0
+        for cell in self.background_grid_list:
+            cell.size_hint = ((.08 * self.screen_ratio), .08)
+            if x_pos > 7:
+                x_pos = 0
+                y_pos = y_pos + 1
+            cell.pos_hint = {"center_x": self.x_dim_hint[x_pos], "center_y": self.y_dim_hint[y_pos]}
+            cell.source = self.mask_image_path
+            x_pos = x_pos + 1
+
+        self.sample_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.sample_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
+        self.sample_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Sample'][0]],
+                                             "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
+        self.sample_image_button.bind(on_press=self.sample_pressed)
+
+        self.novel_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.novel_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
+        self.novel_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Choice'][0]],
+                                            "center_y": self.y_dim_hint[self.trial_coord['Choice'][1]]}
+        self.novel_image_button.bind(on_press=self.novel_pressed)
+
+        self.distractor_target_button_list = list()
+        self.distractor_target_image_path = self.image_folder + self.distractor_target_image + '.png'
+
+        for coord in self.distractor_target_list:
+            index = 0
+            image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+            image.coord = coord
+            image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+            image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+            image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+            self.distractor_target_button_list.append(image)
+
+        self.distractor_ignore_button_list = list()
+        self.distractor_ignore_image_path = self.image_folder + self.distractor_ignore_image + '.png'
+
+        for coord in self.distractor_ignore_list:
+            image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+            image.coord = coord
+            image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+            image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+            self.distractor_ignore_button_list.append(image)
+
+        # Define Widgets - Text
+        self.instruction_label = Label(text=self.start_label_str, font_size='35sp')
+        self.instruction_label.size_hint = (0.6, 0.4)
+        self.instruction_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.block_label = Label(text=self.break_label_str, font_size='50sp')
+        self.block_label.size_hint = (0.5, 0.3)
+        self.block_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.end_label = Label(text=self.end_label_str)
+        self.end_label.size_hint = (0.6, 0.4)
+        self.end_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.feedback_string = ''
+        self.feedback_label = Label(text=self.feedback_string, font_size='40sp', markup=True)
+        self.feedback_label.size_hint = (0.7, 0.4)
+        self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.98}
+
+        # Define Widgets - Button
+        self.start_button = Button(text=self.start_button_label_str)
+        self.start_button.size_hint = (0.1, 0.1)
+        self.start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.start_button.bind(on_press=self.start_protocol)
+
+        self.continue_button = Button(text=self.continue_button_label_str)
+        self.continue_button.size_hint = (0.1, 0.1)
+        self.continue_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.continue_button.bind(on_press=self.block_end)
+
+        self.return_button = Button(text=self.return_button_label_str)
+        self.return_button.size_hint = (0.1, 0.1)
+        self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.return_button.bind(on_press=self.return_to_main)
 
         self.present_instructions()
 
@@ -411,7 +567,7 @@ class ProtocolScreen(Screen):
             x = random.randint(0, 7)
             y = random.randint(0, 7)
             coord = [x, y]
-            while (coord is self.trial_coord.values()) or (coord in target_list):
+            while (coord in self.trial_coord.values()) or (coord in target_list):
                 x = random.randint(0, 7)
                 y = random.randint(0, 7)
                 coord = [x, y]
@@ -441,8 +597,8 @@ class ProtocolScreen(Screen):
             file_index += 1
             temp_filename = self.participant_id + '_TUNLProbe_' + str(file_index) + '.csv'
             self.data_output_path = folder_path + self.folder_mod + temp_filename
-        data_cols = 'TrialNo,Current Block,Sample_X,Sample_Y,Novel_X,Novel_Y,Num_Distractors,Correction Trial,' \
-                    'Correct,Sample Latency,Distractor Delay Latency,True Delay Length, Choice Latency'
+        data_cols = 'TrialNo,Current Block,Probe Type,Separation,Delay,Sample_X,Sample_Y,' \
+                    'Novel_X,Novel_Y,Num_Distractors,Correction Trial,Correct,Sample Latency,Choice Latency'
         data_file = open(self.data_output_path, "w+")
         data_file.write(data_cols)
         data_file.close()
@@ -631,13 +787,39 @@ class ProtocolScreen(Screen):
             self.feedback_string = self.stim_feedback_incorrect_str
             self.feedback_label.text = self.feedback_string
             self.current_correct = 0
-            #self.write_summary_file()
+            self.write_summary_file()
 
             self.current_correction = 1
             self.protocol_floatlayout.add_widget(self.feedback_label)
             self.feedback_on_screen = True
             self.hold_button.bind(on_press=self.iti)
             self.sample_completed = False
+            if self.current_probe == 'Spatial':
+                self.distractor_target_list, self.distractor_ignore_list = \
+                    self.generate_distractor_pos(self.space_probe_distract_target_count,
+                                                 self.space_probe_distract_distractor_count)
+            elif self.current_probe == 'Delay':
+                self.distractor_target_list, self.distractor_ignore_list = \
+                    self.generate_distractor_pos(self.delay_probe_target_count,
+                                                 self.delay_probe_distractor_count)
+            self.distractor_target_button_list = list()
+            for coord in self.distractor_target_list:
+                index = 0
+                image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+                image.coord = coord
+                image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+                image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+                image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+                self.distractor_target_button_list.append(image)
+
+            self.distractor_ignore_button_list = list()
+            for coord in self.distractor_ignore_list:
+                image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+                image.coord = coord
+                image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+                image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+                self.distractor_ignore_button_list.append(image)
+
             return
 
     # Novel Stimuli Pressed during Choice
@@ -650,7 +832,7 @@ class ProtocolScreen(Screen):
         self.feedback_string = self.stim_feedback_correct_str
         self.feedback_label.text = self.feedback_string
         self.current_correct = 1
-        #self.write_summary_file()
+        self.write_summary_file()
 
         self.current_correction = 0
         self.trial_contingency()
@@ -664,34 +846,38 @@ class ProtocolScreen(Screen):
     def distractor_target_press(self, instance, *args):
         touch_coord = instance.coord
         distract_index = random.randint(0, (len(self.distractor_ignore_list) - 1))
+        old_coord = [touch_coord,self.distractor_ignore_list[distract_index]]
 
         self.protocol_floatlayout.remove_widget(instance)
         self.protocol_floatlayout.remove_widget(self.distractor_ignore_button_list[distract_index])
+        del self.distractor_target_button_list[self.distractor_target_list.index(touch_coord)]
+        del self.distractor_ignore_button_list[distract_index]
         self.distractor_target_list.remove(touch_coord)
         del self.distractor_ignore_list[distract_index]
 
-        new_target_x = random.randint(0,7)
+        new_target_x = random.randint(0, 7)
         new_target_y = random.randint(0, 7)
         new_distract_x = random.randint(0, 7)
         new_distract_y = random.randint(0, 7)
-        new_target = [new_target_x,new_target_y]
-        new_distract = [new_distract_x,new_distract_y]
+        new_target = [new_target_x, new_target_y]
+        new_distract = [new_distract_x, new_distract_y]
         target_new = False
         distract_new = False
 
         while target_new is False:
             if (new_target in self.trial_coord.values()) or (new_target in self.distractor_target_list) or \
-                    (new_target in self.distractor_ignore_list):
+                    (new_target in self.distractor_ignore_list) or (new_target in old_coord):
                 new_target_x = random.randint(0, 7)
                 new_target_y = random.randint(0, 7)
                 new_target = [new_target_x, new_target_y]
             else:
                 target_new = True
+
         self.distractor_target_list.append(new_target)
 
         while distract_new is False:
             if (new_distract in self.trial_coord.values()) or (new_distract in self.distractor_target_list) or \
-                    (new_distract in self.distractor_ignore_list):
+                    (new_distract in self.distractor_ignore_list) or (new_target in old_coord):
                 new_distract_x = random.randint(0, 7)
                 new_distract_y = random.randint(0, 7)
                 new_distract = [new_distract_x, new_distract_y]
@@ -699,11 +885,12 @@ class ProtocolScreen(Screen):
                 distract_new = True
         self.distractor_ignore_list.append(new_distract)
 
+        index = 0
         image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
         image.coord = new_target
         image.size_hint = ((0.08 * self.screen_ratio), 0.08)
         image.pos_hint = {"center_x": self.x_dim_hint[new_target[0]], "center_y": self.y_dim_hint[new_target[1]]}
-        image.bind(on_press=lambda instance: self.distractor_target_press(instance))
+        image.bind(on_press=lambda instance: self.distractor_target_press(instance,index))
         self.distractor_target_button_list.append(image)
         self.protocol_floatlayout.add_widget(self.distractor_target_button_list[len(self.distractor_target_button_list) - 1])
 
@@ -720,13 +907,21 @@ class ProtocolScreen(Screen):
     # Data Saving Function
 
     def write_summary_file(self):
-        data_file = open(self.file_path, "a")
+        samp_x = self.trial_coord['Sample'][0]
+        samp_y = self.trial_coord['Sample'][1]
+        novel_x = self.trial_coord['Choice'][0]
+        novel_y = self.trial_coord['Choice'][1]
+        if self.current_probe == 'Spatial':
+            num_distractors = self.space_probe_distract_target_count
+        elif self.current_probe == 'Delay':
+            num_distractors = self.delay_probe_target_count
+        data_file = open(self.data_output_path, "a")
         data_file.write("\n")
-        data_file.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" % (
-            self.current_trial, self.current_block, (self.sample_xpos + 1), (self.sample_ypos + 1),
-            (self.novel_xpos + 1),
-            (self.novel_ypos + 1), self.num_target_distractors, self.current_correction, self.current_correct,
-            self.sample_lat, self.delay_length, self.sample_press_to_choice, self.choice_lat))
+        data_file.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" % (
+            self.current_trial, self.current_block, self.current_probe, self.current_sep, self.current_delay,
+            (samp_x + 1), (samp_y + 1),(novel_x + 1),(novel_y + 1),
+            num_distractors, self.current_correction, self.current_correct,
+            self.sample_lat, self.choice_lat))
         data_file.close()
         return
 
@@ -734,9 +929,38 @@ class ProtocolScreen(Screen):
     def trial_contingency(self):
         self.current_trial += 1
 
+        if self.current_trial > self.block_threshold:
+            self.current_trial -= 1
+            self.feedback_start = time.time()
+            self.protocol_floatlayout.remove_widget(self.hold_button)
+            self.block_threshold += self.block_trial_break
+            Clock.schedule_interval(self.block_contingency, 0.1)
+            return
+
+        if self.current_trial > self.session_trial_max:
+            Clock.unschedule(self.clock_monitor)
+            self.protocol_end()
+            return
+
         # Define Variables - Coordinates
-        self.trial_coord = generate_trial_pos_sep(self.current_sep)
-        self.distractor_target_list, self.distractor_ignore_list = self.generate_distractor_pos(3, 3)
+
+        if self.current_probe == 'Spatial':
+            self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
+            self.trial_coord = generate_trial_pos_sep(self.current_sep)
+            self.current_delay = self.space_probe_delay_length
+            self.distractor_target_list, self.distractor_ignore_list = \
+                self.generate_distractor_pos(self.space_probe_distract_target_count,
+                                             self.space_probe_distract_distractor_count)
+            self.current_space_trial_index += 1
+        elif self.current_probe == 'Delay':
+            self.current_sep = self.delay_probe_sep
+            self.trial_coord = generate_trial_pos_sep(self.current_sep)
+            self.current_delay = self.delay_probe_trial_list[self.current_delay_trial_index]
+            self.distractor_target_list, self.distractor_ignore_list = \
+                self.generate_distractor_pos(self.delay_probe_target_count,
+                                             self.delay_probe_distractor_count)
+            self.current_delay_trial_index += 1
+
 
         self.sample_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Sample'][0]],
                                              "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
@@ -761,32 +985,8 @@ class ProtocolScreen(Screen):
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             self.distractor_ignore_button_list.append(image)
 
-        if self.current_probe == 'Spatial':
-            self.current_space_trial_index += 1
-            self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
-            self.current_delay = self.space_probe_delay_length
-        elif self.current_probe == 'Delay' and self.current_delay_trial_index > 0:
-            self.current_delay_trial_index += 1
-            self.current_sep = self.delay_probe_sep
-            self.current_delay = self.delay_probe_trial_list[self.current_delay_trial_index]
-        elif self.current_probe == 'Delay' and self.current_delay_trial_index == 0:
-            self.current_sep = self.delay_probe_sep
-            self.current_delay = self.delay_probe_trial_list[self.current_delay_trial_index]
-
-        if self.current_trial > self.block_threshold:
-            self.feedback_start = time.time()
-            self.protocol_floatlayout.remove_widget(self.hold_button)
-            self.block_threshold += self.block_length
-            Clock.schedule_interval(self.block_contingency, 0.1)
-            return
-
-        if self.current_trial > self.session_trial_max:
-            Clock.unschedule(self.clock_monitor)
-            self.protocol_end()
-            return
-
     # Block Contingency Function
-    def block_contingency(self):
+    def block_contingency(self,*args):
         if self.feedback_on_screen is True:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
@@ -799,12 +999,14 @@ class ProtocolScreen(Screen):
             Clock.unschedule(self.block_contingency)
 
         self.protocol_floatlayout.clear_widgets()
+        self.feedback_string = ''
+        self.feedback_label.text = self.feedback_string
 
-        if self.current_trial > self.space_probe_block_length:
-            self.delay_probe_block_length = self.delay_probe_block_length + self.current_trial
+        if (self.current_trial >= self.space_probe_block_length) and (self.current_probe == 'Spatial'):
+            self.delay_probe_block_length = self.delay_probe_block_length + self.space_probe_block_length
             self.current_probe = 'Delay'
 
-        if self.current_trial > self.delay_probe_block_length:
+        if (self.current_trial >= self.delay_probe_block_length) and (self.current_probe == 'Delay'):
             self.protocol_end()
             return
 
