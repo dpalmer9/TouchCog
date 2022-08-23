@@ -265,7 +265,8 @@ class ProtocolScreen(Screen):
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
-        self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
+        #self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
+        self.y_dim_hint = np.linspace(0.915,0.215,8)
         self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
         self.mask_image_path = self.image_folder + self.mask_image + '.png'
         self.background_grid_list = [Image() for _ in range(64)]
