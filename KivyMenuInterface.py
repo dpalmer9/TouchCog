@@ -14,24 +14,23 @@ config_file.read(config_path)
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']
 fullscreen = int(config_file['Screen']['fullscreen'])
-print([x_dim,y_dim,fullscreen])
     
 if fullscreen == 0:
-    Config.set('graphics','width',str(x_dim))
-    Config.set('graphics','height',str(y_dim))
-    Config.set('graphics','fullscreen','0')
+    Config.set('graphics', 'width',str(x_dim))
+    Config.set('graphics', 'height',str(y_dim))
+    Config.set('graphics', 'fullscreen', '0')
     Config.set('graphics', 'position', 'custom')
     Config.set('graphics', 'top', 0)
     Config.set('graphics', 'left', 0)
-    Config.set('kivy','keyboard_mode','systemandmulti')
+    Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 elif fullscreen == 1:
-    Config.set('graphics','width',str(x_dim))
-    Config.set('graphics','height',str(y_dim))
+    Config.set('graphics', 'width', str(x_dim))
+    Config.set('graphics', 'height', str(y_dim))
     Config.set('graphics', 'position', 'custom')
     Config.set('graphics', 'top', 0)
     Config.set('graphics', 'left', 0)
-    Config.set('graphics','fullscreen','fake')
-    Config.set('kivy','keyboard_mode','systemandmulti')
+    Config.set('graphics', 'fullscreen', True)
+    Config.set('kivy', 'keyboard_mode','systemandmulti')
 
 
 # Imports #
@@ -45,10 +44,10 @@ from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
+from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 #from win32api import GetSystemMetrics
-from kivy.core.window import Window
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
