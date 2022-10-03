@@ -212,6 +212,7 @@ class ProtocolScreen(Screen):
         self.correction_trial = True
         self.sample_completed = False
         self.block_started = False
+        self.correction_trial_enabled = False
 
         # Define Variables - Counter
         self.current_trial = 1
@@ -406,6 +407,12 @@ class ProtocolScreen(Screen):
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
         self.block_threshold = self.block_trial_break
+
+        self.correction_trial_enabled_str = str(self.parameters_dict['correction_trial_enabled'])
+        if self.correction_trial_enabled_str == 'Correction Trials Enabled':
+            self.correction_trial_enabled = True
+        else:
+            self.correction_trial_enabled = False
 
         # Define Language
         self.language = self.parameters_dict['language']
@@ -790,36 +797,42 @@ class ProtocolScreen(Screen):
             self.current_correct = 0
             self.write_summary_file()
 
-            self.current_correction = 1
             self.protocol_floatlayout.add_widget(self.feedback_label)
             self.feedback_on_screen = True
             self.hold_button.bind(on_press=self.iti)
             self.sample_completed = False
-            if self.current_probe == 'Spatial':
-                self.distractor_target_list, self.distractor_ignore_list = \
-                    self.generate_distractor_pos(self.space_probe_distract_target_count,
-                                                 self.space_probe_distract_distractor_count)
-            elif self.current_probe == 'Delay':
-                self.distractor_target_list, self.distractor_ignore_list = \
-                    self.generate_distractor_pos(self.delay_probe_target_count,
-                                                 self.delay_probe_distractor_count)
-            self.distractor_target_button_list = list()
-            for coord in self.distractor_target_list:
-                index = 0
-                image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
-                image.coord = coord
-                image.size_hint = ((0.08 * self.screen_ratio), 0.08)
-                image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
-                image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
-                self.distractor_target_button_list.append(image)
 
-            self.distractor_ignore_button_list = list()
-            for coord in self.distractor_ignore_list:
-                image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
-                image.coord = coord
-                image.size_hint = ((0.08 * self.screen_ratio), 0.08)
-                image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
-                self.distractor_ignore_button_list.append(image)
+            if self.correction_trial_enabled:
+                self.current_correction = 1
+                if self.current_probe == 'Spatial':
+                    self.distractor_target_list, self.distractor_ignore_list = \
+                        self.generate_distractor_pos(self.space_probe_distract_target_count,
+                                                     self.space_probe_distract_distractor_count)
+                elif self.current_probe == 'Delay':
+                    self.distractor_target_list, self.distractor_ignore_list = \
+                        self.generate_distractor_pos(self.delay_probe_target_count,
+                                                     self.delay_probe_distractor_count)
+                self.distractor_target_button_list = list()
+                for coord in self.distractor_target_list:
+                    index = 0
+                    image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+                    image.coord = coord
+                    image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+                    image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+                    image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+                    self.distractor_target_button_list.append(image)
+
+                self.distractor_ignore_button_list = list()
+                for coord in self.distractor_ignore_list:
+                    image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+                    image.coord = coord
+                    image.size_hint = ((0.08 * self.screen_ratio), 0.08)
+                    image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+                    self.distractor_ignore_button_list.append(image)
+            else:
+                self.current_correction = 0
+                self.trial_contingency()
+
 
             return
 

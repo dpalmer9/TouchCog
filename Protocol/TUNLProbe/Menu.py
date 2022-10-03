@@ -39,7 +39,7 @@ class ConfigureScreen(Screen):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(config_path)
         self.parameters_config = self.config_file['TaskParameters']
-        num_parameters = len(self.parameters_config) + 1
+        num_parameters = len(self.parameters_config) + 2
         
         self.setting_scrollview = ScrollView()
         self.setting_gridlayout = GridLayout(cols=2, rows=num_parameters)
@@ -58,6 +58,19 @@ class ConfigureScreen(Screen):
         self.dropdown_main.bind(on_release=self.language_dropdown.open)
         self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.dropdown_main, 'text', x))
         self.setting_gridlayout.add_widget(self.dropdown_main)
+
+        self.setting_gridlayout.add_widget(Label(text='Correction Trials'))
+        self.correction_dropdown = DropDown()
+        self.correction_button = Button(text='Correction Trials Disabled')
+        self.correction_list = ['Correction Trials Enabled', 'Correction Trials Disabled']
+        for correction in self.correction_list:
+            corrections_opt = Button(text=correction, size_hint_y=None, height=100)
+            corrections_opt.bind(on_release=lambda corrections_opt: self.correction_dropdown.select(corrections_opt.text
+                                                                                                    ))
+            self.correction_dropdown.add_widget(corrections_opt)
+        self.correction_button.bind(on_release=self.correction_dropdown.open)
+        self.correction_dropdown.bind(on_select=lambda instance, x: setattr(self.correction_button, 'text', x))
+        self.setting_gridlayout.add_widget(self.correction_button)
         
         self.setting_scrollview.size_hint = (0.85,0.6)
         self.setting_scrollview.pos_hint = {"x": 0.1 ,"y":0.4}
@@ -99,6 +112,8 @@ class ConfigureScreen(Screen):
             parameter_dict['language'] = 'English'
         else:
             parameter_dict['language'] = self.dropdown_main.text
+
+        parameter_dict['correction_trial_enabled'] = self.correction_button.text
         
         self.Protocol_Task_Screen.load_parameters(parameter_dict)
         
