@@ -13,12 +13,19 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
+from kivy.uix.widget import Widget
 
 
 class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
         super(ImageButton, self).__init__(**kwargs)
         self.coord = None
+        self.border = (0, 0, 0, 0)
+        self.allow_stretch = True
+
+class ImageStimulus(Widget):
+    def __init__(self, **kwargs):
+        super(ImageStimulus, self).__init__(**kwargs)
 
 
 def generate_sample_choice_pos():
@@ -54,6 +61,8 @@ def generate_trial_pos_sep(sep_level):
 
     move_list = horz_move + vert_move
     final_list = list()
+    print('first move')
+    print(move_list)
     while len(final_list) <= 0:
         for move in horz_move:
             for i in range(1, (main_move+1)):
@@ -68,6 +77,16 @@ def generate_trial_pos_sep(sep_level):
                 continue
             else:
                 final_list.append(move)
+
+        if len(final_list) <= 0:
+            sample_xpos = random.randint(0, 7)
+            sample_ypos = random.randint(0, 7)
+            sample_coord = [sample_xpos, sample_ypos]
+
+            horz_move = [[(sample_xpos - main_move), sample_ypos],
+                         [(sample_xpos + main_move), sample_ypos]]
+            vert_move = [[sample_xpos, (sample_ypos - main_move)],
+                         [sample_xpos, (sample_ypos + main_move)]]
 
     novel_index = random.randint(0,(len(final_list) - 1))
     novel_coord = final_list[novel_index]
@@ -761,6 +780,7 @@ class ProtocolScreen(Screen):
         self.delay_length = self.choice_start - self.sample_touch_time
         self.protocol_floatlayout.add_widget(self.sample_image_button)
         self.protocol_floatlayout.add_widget(self.novel_image_button)
+        print('choice presented')
 
     # Stimuli Pressed too early
     def premature_response(self, *args):
@@ -847,7 +867,6 @@ class ProtocolScreen(Screen):
         self.feedback_label.text = self.feedback_string
         self.current_correct = 1
         self.write_summary_file()
-
         self.current_correction = 0
         self.trial_contingency()
         self.protocol_floatlayout.add_widget(self.feedback_label)
@@ -955,16 +974,19 @@ class ProtocolScreen(Screen):
             Clock.unschedule(self.clock_monitor)
             self.protocol_end()
             return
-
         # Define Variables - Coordinates
 
         if self.current_probe == 'Spatial':
             self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
+            print('got separation')
+            print(self.current_sep)
             self.trial_coord = generate_trial_pos_sep(self.current_sep)
+            print('got coordinates for samp/nov')
             self.current_delay = self.space_probe_delay_length
             self.distractor_target_list, self.distractor_ignore_list = \
                 self.generate_distractor_pos(self.space_probe_distract_target_count,
                                              self.space_probe_distract_distractor_count)
+            print('got distractors')
             self.current_space_trial_index += 1
         elif self.current_probe == 'Delay':
             self.current_sep = self.delay_probe_sep
@@ -975,12 +997,13 @@ class ProtocolScreen(Screen):
                                              self.delay_probe_distractor_count)
             self.current_delay_trial_index += 1
 
-
+        print('check probe relevant info')
         self.sample_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Sample'][0]],
                                              "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
         self.novel_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Choice'][0]],
                                             "center_y": self.y_dim_hint[self.trial_coord['Choice'][1]]}
 
+        print('set samp and nov')
         self.distractor_target_button_list = list()
         for coord in self.distractor_target_list:
             index = 0
@@ -998,6 +1021,7 @@ class ProtocolScreen(Screen):
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             self.distractor_ignore_button_list.append(image)
+        print('set distractors')
 
     # Block Contingency Function
     def block_contingency(self,*args):
