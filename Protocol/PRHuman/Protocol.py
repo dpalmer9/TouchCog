@@ -223,6 +223,11 @@ class Protocol_Screen(Screen):
         self.return_button.size_hint = (0.1,0.1)
         self.return_button.pos_hint = {'center_x':0.5,'center_y':0.7}
         self.return_button.bind(on_press=self.return_to_main)
+
+        self.quit_button = Button(text='Quit')
+        self.quit_button.size_hint = (0.1, 0.1)
+        self.quit_button.pos_hint = {'center_x': 0.1, 'center_y': 0.7}
+        self.quit_button.bind(on_press=self.protocol_end)
         
     def generate_output_files(self):
         folder_path = 'Data' + self.folder_mod + self.participant_id
@@ -297,10 +302,12 @@ class Protocol_Screen(Screen):
         self.trial_contingency()
         for image_wid in self.background_grid_list:
             self.protocol_floatlayout.add_widget(image_wid)
+        self.protocol_floatlayout.add_widget(self.quit_button)
         self.protocol_floatlayout.add_widget(self.hold_button)
     
     # End Staging #
-    def protocol_end(self):
+    def protocol_end(self, *args):
+        Clock.unschedule(self.clock_monitor)
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_widget(self.end_label)
         self.protocol_floatlayout.add_widget(self.return_button)
@@ -318,6 +325,7 @@ class Protocol_Screen(Screen):
         self.protocol_floatlayout.add_widget(self.hold_button)
         for image_wid in self.background_grid_list:
             self.protocol_floatlayout.add_widget(image_wid)
+        self.protocol_floatlayout.add_widget(self.quit_button)
         self.feedback_label.text = self.feedback_string
         self.protocol_floatlayout.add_widget(self.feedback_label)
         self.feedback_on_screen = True
@@ -437,12 +445,10 @@ class Protocol_Screen(Screen):
             
         
         if self.current_trial > self.session_trial_max:
-            Clock.unschedule(self.clock_monitor)
             self.protocol_end()
             return
         
         if self.stage_index > len(self.stage_list):
-            Clock.unschedule(self.clock_monitor)
             self.protocol_end()
             return
         
