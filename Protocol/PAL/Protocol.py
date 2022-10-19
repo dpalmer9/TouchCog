@@ -94,6 +94,8 @@ class Protocol_Screen(Screen):
             
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
+
+        self.paltype = str(self.parameters_dict['paltype'])
     
     def initialize_parameters(self):
         #ListVariables#
@@ -139,7 +141,7 @@ class Protocol_Screen(Screen):
         
         
     def generate_trial_contingency(self,training=False):
-        if training == False:
+        if not training and self.paltype == 'dPAL':
             if self.trial_configuration == 1:
                 self.correct_location = 0
                 self.incorrect_location = 1
@@ -185,6 +187,55 @@ class Protocol_Screen(Screen):
                 self.incorrect_location = 1
                 self.correct_image = self.l3_correct
                 self.incorrect_image = self.l1_correct
+                self.l3_image = self.correct_image
+                self.l2_image = self.incorrect_image
+                self.l1_image = self.mask_image
+        if not training and self.paltype == 'sPAL':
+            if self.trial_configuration == 1:
+                self.correct_location = 0
+                self.incorrect_location = 1
+                self.correct_image = self.l1_correct
+                self.incorrect_image = self.l1_correct
+                self.l1_image = self.correct_image
+                self.l2_image = self.incorrect_image
+                self.l3_image = self.mask_image
+            elif self.trial_configuration == 2:
+                self.correct_location = 0
+                self.incorrect_location = 2
+                self.correct_image = self.l1_correct
+                self.incorrect_image = self.l1_correct
+                self.l1_image = self.correct_image
+                self.l3_image = self.incorrect_image
+                self.l2_image = self.mask_image
+            elif self.trial_configuration == 3:
+                self.correct_location = 1
+                self.incorrect_location = 0
+                self.correct_image = self.l2_correct
+                self.incorrect_image = self.l2_correct
+                self.l2_image = self.correct_image
+                self.l1_image = self.incorrect_image
+                self.l3_image = self.mask_image
+            elif self.trial_configuration == 4:
+                self.correct_location = 1
+                self.incorrect_location = 2
+                self.correct_image = self.l2_correct
+                self.incorrect_image = self.l2_correct
+                self.l2_image = self.correct_image
+                self.l3_image = self.incorrect_image
+                self.l1_image = self.mask_image
+            elif self.trial_configuration == 5:
+                self.correct_location = 2
+                self.incorrect_location = 0
+                self.correct_image = self.l3_correct
+                self.incorrect_image = self.l3_correct
+                self.l3_image = self.correct_image
+                self.l1_image = self.incorrect_image
+                self.l2_image = self.mask_image
+            elif self.trial_configuration == 6:
+                self.correct_location = 2
+                self.incorrect_location = 1
+                self.correct_image = self.l3_correct
+                self.incorrect_image = self.l3_correct
                 self.l3_image = self.correct_image
                 self.l2_image = self.incorrect_image
                 self.l1_image = self.mask_image
@@ -336,7 +387,7 @@ class Protocol_Screen(Screen):
         metadata_rows = ['participant_id','training_image','test_images',
                          'iti_length', 'block_length','block_count',
                          'location_1_correct','location_2_correct','location_3_correct',
-                         'session_length_max','session_trial_max']
+                         'session_length_max','session_trial_max','paltype']
     
         
         meta_list = list()
@@ -483,7 +534,7 @@ class Protocol_Screen(Screen):
         self.right_chosen = 0
         self.location_chosen = 1
         
-        if self.l1_image == self.correct_image:
+        if self.l1_image == self.correct_image and self.correct_location == 0:
             correct = '1'
             self.current_correct += 1
             self.feedback_string = '[color=008000]CORRECT[/color]'
@@ -520,7 +571,7 @@ class Protocol_Screen(Screen):
         self.right_chosen = 0
         self.location_chosen = 2
         
-        if self.l2_image == self.correct_image:
+        if self.l2_image == self.correct_image and self.correct_location == 1:
             correct = '1'
             self.current_correct += 1
             self.feedback_string = '[color=008000]CORRECT[/color]'
@@ -557,7 +608,7 @@ class Protocol_Screen(Screen):
         self.right_chosen = 1
         self.location_chosen = 3
         
-        if self.l3_image == self.correct_image:
+        if self.l3_image == self.correct_image and self.correct_location == 2:
             correct = '1'
             self.current_correct += 1
             self.feedback_string = '[color=008000]CORRECT[/color]'
