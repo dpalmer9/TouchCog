@@ -440,7 +440,7 @@ class Protocol_Screen(Screen):
             self.stage_index += 1
             self.current_stage = self.stage_list[self.stage_index]
             self.current_pr_step = 0
-            self.current_reward_value = self.reward_list[self.stage_index]
+            self.current_reward = self.reward_list[self.stage_index]
             self.current_pr_threshold = self.baseline_pr_threshold
             
         
