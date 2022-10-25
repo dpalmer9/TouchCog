@@ -224,7 +224,7 @@ class Protocol_Screen(Screen):
         self.return_button.pos_hint = {'center_x':0.5,'center_y':0.7}
         self.return_button.bind(on_press=self.return_to_main)
 
-        self.quit_button = Button(text='Quit')
+        self.quit_button = Button(text='Stop')
         self.quit_button.size_hint = (0.1, 0.1)
         self.quit_button.pos_hint = {'center_x': 0.1, 'center_y': 0.7}
         self.quit_button.bind(on_press=self.protocol_end)
