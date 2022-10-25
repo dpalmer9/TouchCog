@@ -12,6 +12,7 @@ from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.dropdown import DropDown
 from kivy.uix.image import AsyncImage
 #from win32api import GetSystemMetrics
 from kivy.core.window import Window
@@ -39,13 +40,26 @@ class Configure_Screen(Screen):
         self.config_file.read(config_path)
         self.parameters_config = self.config_file['TaskParameters']
         print(self.parameters_config)
-        num_parameters = len(self.parameters_config)
+        num_parameters = len(self.parameters_config) + 1
         
         self.setting_scrollview = ScrollView()
         self.setting_gridlayout = GridLayout(cols=2,rows=num_parameters)
         self.setting_scrollview.add_widget(self.setting_gridlayout)
         
         self.menu_constructor()
+
+        self.setting_gridlayout.add_widget(Label(text='PAL Type'))
+        self.paltype_dropdown = DropDown()
+        self.paltype_button = Button(text='dPAL')
+        self.paltype_list = ['dPAL', 'sPAL']
+        for paltype in self.paltype_list:
+            paltype_opt = Button(text=paltype, size_hint_y=None, height=100)
+            paltype_opt.bind(on_release=lambda paltype_opt: self.paltype_dropdown.select(paltype_opt.text
+                                                                                                    ))
+            self.paltype_dropdown.add_widget(paltype_opt)
+        self.paltype_button.bind(on_release=self.paltype_dropdown.open)
+        self.paltype_dropdown.bind(on_select=lambda instance, x: setattr(self.paltype_button, 'text', x))
+        self.setting_gridlayout.add_widget(self.paltype_button)
         
         self.setting_scrollview.size_hint = (0.85,0.6)
         self.setting_scrollview.pos_hint = {"x": 0.1 ,"y":0.4}
@@ -83,6 +97,7 @@ class Configure_Screen(Screen):
                 value = widget.text
                 parameter_dict[key] = value
         parameter_dict['participant_id'] = self.id_entry.text
+        parameter_dict['paltype'] = self.paltype_button.text
         
         self.Protocol_Task_Screen.import_configuration(parameter_dict)
         
