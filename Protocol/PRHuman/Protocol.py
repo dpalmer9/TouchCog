@@ -105,11 +105,11 @@ class Protocol_Screen(Screen):
         if self.reward_type == 'point':
             self.reward_list = self.reward_value_score
             self.current_reward_value = 0
-            self.feedback_string = 'Reward: %d Points' % (self.current_reward_value)
+            self.feedback_string = 'Reward:\n %d Points' % (self.current_reward_value)
         elif self.reward_type == 'currency':
             self.reward_list = self.reward_value_curr
             self.current_reward_value = 0.00
-            self.feedback_string = 'Reward: $%.2f' % (self.current_reward_value)
+            self.feedback_string = 'Reward:\n $%.2f' % (self.current_reward_value)
             
         self.current_reward = self.reward_list[self.stage_index]
         
@@ -205,7 +205,8 @@ class Protocol_Screen(Screen):
         self.feedback_string = ''
         self.feedback_label = Label(text=self.feedback_string,font_size='40sp', markup=True)
         self.feedback_label.size_hint = (0.7,0.4)
-        self.feedback_label.pos_hint = {'center_x':0.5,'center_y':0.98}
+        self.feedback_label.pos_hint = {'center_x':0.8,'center_y':0.7}
+        self.feedback_label.halign = 'center'
         
         
     def initialize_button_widgets(self):
@@ -342,7 +343,7 @@ class Protocol_Screen(Screen):
             self.start_iti = time.time()
             self.iti_active = True
             
-            if self.feedback_string == 'WAIT FOR IMAGE - PLEASE TRY AGAIN':
+            if self.feedback_string == 'WAIT FOR IMAGE \n PLEASE TRY AGAIN':
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_string = ''
             Clock.schedule_interval(self.iti,0.1)
@@ -369,7 +370,7 @@ class Protocol_Screen(Screen):
             return None
         
         Clock.unschedule(self.iti)
-        self.feedback_string = 'WAIT FOR IMAGE - PLEASE TRY AGAIN'
+        self.feedback_string = 'WAIT FOR IMAGE \n PLEASE TRY AGAIN'
         self.response_lat = 0
         self.iti_active = False
         self.feedback_label.text = self.feedback_string
@@ -430,10 +431,10 @@ class Protocol_Screen(Screen):
             self.current_reward_value += self.current_reward
             self.current_response_count = 0
             if self.reward_type == 'point':
-                self.feedback_string = 'Reward: %d Points' % (self.current_reward_value)
+                self.feedback_string = 'Reward: \n %d Points' % (self.current_reward_value)
             elif self.reward_type == 'currency':
                 self.current_reward_value = 0.00
-                self.feedback_string = 'Reward: $%.2f' % (self.current_reward_value)
+                self.feedback_string = 'Reward: \n $%.2f' % (self.current_reward_value)
             self.feedback_label.text = self.feedback_string
             
         if self.current_pr_step > self.current_pr_threshold_step_max:
