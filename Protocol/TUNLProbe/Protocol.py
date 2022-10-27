@@ -167,7 +167,7 @@ class ProtocolScreen(Screen):
 
         # Define Language
         self.language = 'English'
-        lang_folder_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Language' + \
+        lang_folder_path = 'Protocol' + self.folder_mod + 'TUNLProbe' + self.folder_mod + 'Language' + \
                            self.folder_mod + self.language + self.folder_mod
         start_path = lang_folder_path + 'Start.txt'
         start_open = open(start_path, 'r', encoding="utf-8")
