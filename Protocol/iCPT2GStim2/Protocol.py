@@ -377,6 +377,7 @@ class Protocol_Screen(Screen):
                 self.feedback_label.text = self.feedback_string
                 self.protocol_floatlayout.add_widget(self.feedback_label)
                 self.feedback_on_screen = True
+                self.feedback_start_time = time.time()
             if ((time.time() - self.feedback_start_time) > self.feedback_length) and self.feedback_on_screen == True:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_on_screen = False
@@ -428,6 +429,7 @@ class Protocol_Screen(Screen):
         self.feedback_label.text = self.feedback_string
         if self.feedback_on_screen == False:
             self.protocol_floatlayout.add_widget(self.feedback_label)
+            self.feedback_start_time = time.time()
         self.hold_button.unbind(on_release=self.premature_response)
         self.hold_button.bind(on_press=self.iti)
         
