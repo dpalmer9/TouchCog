@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you wish to cite this project, please do so with the following information."
+authors:
+  - family-names: Palmer
+    given-names: Daniel
+    orcid: https://orcid.org/0000-0002-3419-8647
+title: "TouchCog: Open source human translational touchscreen testing"
+version: 0.0.9
+doi: 
+date-released: 2022-08-03
