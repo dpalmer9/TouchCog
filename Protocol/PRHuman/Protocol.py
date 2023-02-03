@@ -98,9 +98,9 @@ class Protocol_Screen(Screen):
     def initialize_parameters(self):
         #ListVariables#
         self.stage_index = 0
-        self.stage_list = ['Reward x3','Reward x2','Reward x1']
-        self.reward_value_score = [200,100,50]
-        self.reward_value_curr = [2.00,1.00,0.50]
+        self.stage_list = ['Reward x20','Reward x10','Reward x5','Reward x2','Reward x1']
+        self.reward_value_score = [200,100,50,20,10]
+        self.reward_value_curr = [2.00,1.00,0.50,0.25,0.10]
         print(self.reward_type)
         if self.reward_type == 'point':
             self.reward_list = self.reward_value_score
