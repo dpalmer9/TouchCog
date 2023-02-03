@@ -107,6 +107,8 @@ class Main_Menu(Screen):
         self.Menu_Layout.add_widget(exit_button)
 
     def load_protocol_menu(self, *args):
+        self.protocol_window = Protocol_Menu()
+        self.manager.add_widget(Protocol_Menu(name='protocolmenu'))
         self.manager.current = "protocolmenu"
 
     def exit_program(self, *args):
@@ -181,15 +183,8 @@ class Protocol_Menu(Screen):
 # Class App Builder #
 class MenuApp(App):
     def build(self):
-        # from Protocol.iCPT2.Menu import Configure_Screen
-        # from Protocol.iCPT2.Protocol import Protocol_Screen
         self.s_manager = Screen_Manager()
         self.s_manager.add_widget(Main_Menu(name="mainmenu"))
-        self.s_manager.add_widget(Protocol_Menu(name="protocolmenu"))
-
-        # self.s_manager.add_widget(Configure_Screen(name="configurescreen"))
-        # self.s_manager.add_widget(Protocol_Screen(name="protocolscreen"))
-        # self.s_manager.current("mainmenu")
 
         return self.s_manager
 

@@ -358,7 +358,7 @@ class Protocol_Screen(Screen):
         self.protocol_floatlayout.add_widget(self.return_button)
         
     def return_to_main(self):
-        self.manager.current='mainmenu'
+        self.manager.current = 'mainmenu'
     
     # Protocol Staging #
     
