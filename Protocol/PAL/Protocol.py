@@ -641,7 +641,7 @@ class Protocol_Screen(Screen):
             correction = 0
         data_file = open(self.file_path, "a")
         data_file.write("\n")
-        data_file.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" % (self.current_trial,self.current_stage,self.correct_image,self.incorrect_image,self.correct_location,self.incorrect_location,correction,self.location_chosen,correct,self.response_lat))
+        data_file.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" % (self.current_trial,self.current_stage,self.correct_image,self.incorrect_image,(self.correct_location + 1),(self.incorrect_location + 1),correction,self.location_chosen,correct,self.response_lat))
         data_file.close()
         return
     
