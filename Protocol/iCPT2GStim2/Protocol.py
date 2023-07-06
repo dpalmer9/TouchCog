@@ -163,6 +163,9 @@ class Protocol_Screen(Screen):
             self.hold_feedback_return = color_text + self.hold_feedback_return + '[/color]'
     
     def initialize_parameters(self):
+        ## Strings
+        self.protocol_name = 'iCPT2GStim2'
+
         #ListVariables#
         self.stage_list = ['Training','Main','Stimulus Duration Probe','Flanker Probe']
         
@@ -226,9 +229,9 @@ class Protocol_Screen(Screen):
         self.instruction_label = Label(text= self.start_label
                                        , font_size = '35sp')
         self.instruction_label.size_hint = (0.6,0.4)
-        self.instruction_label.pos_hint = {'center_x':0.5,'center_y':0.3}
+        self.instruction_label.pos_hint = {'center_x':0.5, 'center_y':0.3}
         
-        self.block_label = Label(text=self.break_label,font_size='50sp')
+        self.block_label = Label(text=self.break_label, font_size='50sp')
         self.block_label.size_hint = (0.5,0.3)
         self.block_label.pos_hint = {'center_x':0.5,'center_y':0.3}
         
@@ -349,7 +352,7 @@ class Protocol_Screen(Screen):
         self.protocol_floatlayout.add_widget(self.return_button)
         
     def return_to_main(self):
-        self.manager.current='mainmenu'
+        self.manager.current = 'mainmenu'
     
     # Protocol Staging #
     
