@@ -20,8 +20,17 @@ class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
         super(ImageButton, self).__init__(**kwargs)
         self.coord = None
-        self.border = (0, 0, 0, 0)
-        self.allow_stretch = True
+        self.fit_mode = 'scale-down'
+        self.press_x = 0
+        self.press_y = 0
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.press_x = touch.pos[0]
+            self.press_y = touch.pos[1]
+            return super(ImageButton, self).on_touch_down(touch)
+        else:
+            return False
 
 class ImageStimulus(Widget):
     def __init__(self, **kwargs):
@@ -167,7 +176,7 @@ class ProtocolScreen(Screen):
 
         # Define Language
         self.language = 'English'
-        lang_folder_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Language' + \
+        lang_folder_path = 'Protocol' + self.folder_mod + 'TUNLProbe' + self.folder_mod + 'Language' + \
                            self.folder_mod + self.language + self.folder_mod
         start_path = lang_folder_path + 'Start.txt'
         start_open = open(start_path, 'r', encoding="utf-8")
@@ -277,9 +286,10 @@ class ProtocolScreen(Screen):
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button = ImageButton(source=self.hold_button_image_path, allow_stretch=True)
+        self.hold_button = ImageButton(source=self.hold_button_image_path)
         self.hold_button.size_hint = ((0.075 * self.screen_ratio), 0.075)
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.001}
+        self.hold_button.size_hint = (None, None)
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
@@ -299,38 +309,42 @@ class ProtocolScreen(Screen):
             cell.source = self.mask_image_path
             x_pos = x_pos + 1
 
-        self.sample_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.sample_image_button = ImageButton(source=self.stimulus_image_path)
         self.sample_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
         self.sample_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Sample'][0]],
                                              "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
         self.sample_image_button.bind(on_press=self.sample_pressed)
+        self.sample_image_button.size_hint = (None, None)
 
-        self.novel_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.novel_image_button = ImageButton(source=self.stimulus_image_path)
         self.novel_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
         self.novel_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Choice'][0]],
                                             "center_y": self.y_dim_hint[self.trial_coord['Choice'][1]]}
         self.novel_image_button.bind(on_press=self.novel_pressed)
+        self.novel_image_button.size_hint = (None, None)
 
         self.distractor_target_button_list = list()
         self.distractor_target_image_path = self.image_folder + self.distractor_target_image + '.png'
 
         for coord in self.distractor_target_list:
             index = 0
-            image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+            image = ImageButton(source=self.distractor_target_image_path)
             image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+            image.size_hint = (None, None)
             self.distractor_target_button_list.append(image)
 
         self.distractor_ignore_button_list = list()
         self.distractor_ignore_image_path = self.image_folder + self.distractor_ignore_image + '.png'
 
         for coord in self.distractor_ignore_list:
-            image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+            image = ImageButton(source=self.distractor_ignore_image_path)
             image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+            image.size_hint = (None, None)
             self.distractor_ignore_button_list.append(image)
 
         # Define Widgets - Text
@@ -433,7 +447,7 @@ class ProtocolScreen(Screen):
 
         # Define Language
         self.language = self.parameters_dict['language']
-        lang_folder_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Language' + \
+        lang_folder_path = 'Protocol' + self.folder_mod + 'TUNLProbe' + self.folder_mod + 'Language' + \
                            self.folder_mod + self.language + self.folder_mod
         start_path = lang_folder_path + 'Start.txt'
         start_open = open(start_path, 'r', encoding="utf-8")
@@ -494,13 +508,15 @@ class ProtocolScreen(Screen):
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button = ImageButton(source=self.hold_button_image_path, allow_stretch=True)
+        self.hold_button = ImageButton(source=self.hold_button_image_path)
         self.hold_button.size_hint = ((0.075 * self.screen_ratio), 0.075)
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.001}
+        self.hold_button.size_hint = (None, None)
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
-        self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
+        # self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
+        self.y_dim_hint = np.linspace(0.915, 0.215, 8)
         self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
         self.mask_image_path = self.image_folder + self.mask_image + '.png'
         self.background_grid_list = [Image() for _ in range(64)]
@@ -512,41 +528,46 @@ class ProtocolScreen(Screen):
                 x_pos = 0
                 y_pos = y_pos + 1
             cell.pos_hint = {"center_x": self.x_dim_hint[x_pos], "center_y": self.y_dim_hint[y_pos]}
+            cell.size_hint = (None, None)
             cell.source = self.mask_image_path
             x_pos = x_pos + 1
 
-        self.sample_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.sample_image_button = ImageButton(source=self.stimulus_image_path)
         self.sample_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
         self.sample_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Sample'][0]],
                                              "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
         self.sample_image_button.bind(on_press=self.sample_pressed)
+        self.sample_image_button.size_hint = (None, None)
 
-        self.novel_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.novel_image_button = ImageButton(source=self.stimulus_image_path)
         self.novel_image_button.size_hint = ((0.08 * self.screen_ratio), 0.08)
         self.novel_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Choice'][0]],
                                             "center_y": self.y_dim_hint[self.trial_coord['Choice'][1]]}
         self.novel_image_button.bind(on_press=self.novel_pressed)
+        self.novel_image_button.size_hint = (None, None)
 
         self.distractor_target_button_list = list()
         self.distractor_target_image_path = self.image_folder + self.distractor_target_image + '.png'
 
         for coord in self.distractor_target_list:
             index = 0
-            image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+            image = ImageButton(source=self.distractor_target_image_path)
             image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+            image.size_hint = (None, None)
             self.distractor_target_button_list.append(image)
 
         self.distractor_ignore_button_list = list()
         self.distractor_ignore_image_path = self.image_folder + self.distractor_ignore_image + '.png'
 
         for coord in self.distractor_ignore_list:
-            image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
+            image = ImageButton(source=self.distractor_ignore_image_path)
             image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+            image.size_hint = (None, None)
             self.distractor_ignore_button_list.append(image)
 
         # Define Widgets - Text
@@ -832,11 +853,12 @@ class ProtocolScreen(Screen):
                 self.distractor_target_button_list = list()
                 for coord in self.distractor_target_list:
                     index = 0
-                    image = ImageButton(source=self.distractor_target_image_path, allow_stretch=True)
+                    image = ImageButton(source=self.distractor_target_image_path)
                     image.coord = coord
                     image.size_hint = ((0.08 * self.screen_ratio), 0.08)
                     image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
                     image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+                    image.size_hint = (None, None)
                     self.distractor_target_button_list.append(image)
 
                 self.distractor_ignore_button_list = list()
@@ -845,6 +867,7 @@ class ProtocolScreen(Screen):
                     image.coord = coord
                     image.size_hint = ((0.08 * self.screen_ratio), 0.08)
                     image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+                    image.size_hint = (None, None)
                     self.distractor_ignore_button_list.append(image)
             else:
                 self.current_correction = 0
@@ -920,6 +943,7 @@ class ProtocolScreen(Screen):
         image.coord = new_target
         image.size_hint = ((0.08 * self.screen_ratio), 0.08)
         image.pos_hint = {"center_x": self.x_dim_hint[new_target[0]], "center_y": self.y_dim_hint[new_target[1]]}
+        image.size_hint = (None, None)
         image.bind(on_press=lambda instance: self.distractor_target_press(instance,index))
         self.distractor_target_button_list.append(image)
         self.protocol_floatlayout.add_widget(self.distractor_target_button_list[len(self.distractor_target_button_list) - 1])
@@ -928,6 +952,7 @@ class ProtocolScreen(Screen):
         image.coord = new_distract
         image.size_hint = ((0.08 * self.screen_ratio), 0.08)
         image.pos_hint = {"center_x": self.x_dim_hint[new_distract[0]], "center_y": self.y_dim_hint[new_distract[1]]}
+        image.size_hint = (None, None)
         self.distractor_ignore_button_list.append(image)
         self.protocol_floatlayout.add_widget(
             self.distractor_ignore_button_list[len(self.distractor_ignore_button_list) - 1])
@@ -1003,6 +1028,7 @@ class ProtocolScreen(Screen):
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
+            image.size_hint = (None, None)
             self.distractor_target_button_list.append(image)
 
         self.distractor_ignore_button_list = list()
@@ -1011,6 +1037,7 @@ class ProtocolScreen(Screen):
             image.coord = coord
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
+            image.size_hint = (None, None)
             self.distractor_ignore_button_list.append(image)
 
     # Block Contingency Function
