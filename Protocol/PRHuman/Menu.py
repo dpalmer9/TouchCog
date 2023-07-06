@@ -12,6 +12,7 @@ from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.dropdown import DropDown
 from kivy.uix.image import AsyncImage
 #from win32api import GetSystemMetrics
 from kivy.core.window import Window
@@ -39,13 +40,25 @@ class Configure_Screen(Screen):
         self.config_file.read(config_path)
         self.parameters_config = self.config_file['TaskParameters']
         print(self.parameters_config)
-        num_parameters = len(self.parameters_config)
+        num_parameters = len(self.parameters_config) + 1
         
         self.setting_scrollview = ScrollView()
         self.setting_gridlayout = GridLayout(cols=2,rows=num_parameters)
         self.setting_scrollview.add_widget(self.setting_gridlayout)
         
         self.menu_constructor()
+
+        self.setting_gridlayout.add_widget(Label(text='Language'))
+        self.language_dropdown = DropDown()
+        self.dropdown_language = Button(text='Select Language')
+        self.language_list = ['English', 'French']
+        for language in self.language_list:
+            lang_button = Button(text=language, size_hint_y=None, height=100)
+            lang_button.bind(on_release=lambda lang_button: self.language_dropdown.select(lang_button.text))
+            self.language_dropdown.add_widget(lang_button)
+        self.dropdown_language.bind(on_release=self.language_dropdown.open)
+        self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.dropdown_language, 'text', x))
+        self.setting_gridlayout.add_widget(self.dropdown_language)
         
         self.setting_scrollview.size_hint = (0.85,0.6)
         self.setting_scrollview.pos_hint = {"x": 0.1 ,"y":0.4}
