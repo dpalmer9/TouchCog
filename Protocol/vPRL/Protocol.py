@@ -26,119 +26,158 @@ from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.screenmanager import ScreenManager, Screen
 from functools import partial
 
-class ImageButton(ButtonBehavior,Image):
-    def __init__(self,**kwargs):
-        super(ImageButton,self).__init__(**kwargs)
+class ImageButton(ButtonBehavior, Image):
+    def __init__(self, **kwargs):
+        super(ImageButton, self).__init__(**kwargs)
+        self.coord = None
+        self.fit_mode = 'fill'
+        self.press_x = 0
+        self.press_y = 0
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.press_x = touch.pos[0]
+            self.press_y = touch.pos[1]
+            return super(ImageButton, self).on_touch_down(touch)
+        else:
+            return False
 
 class Protocol_Screen(Screen):
-    def __init__(self,**kwargs):
+    def __init__(self,screen_resolution,**kwargs):
         super(Protocol_Screen,self).__init__(**kwargs)
         self.protocol_floatlayout = FloatLayout()
         self.add_widget(self.protocol_floatlayout)
-        width  = self.protocol_floatlayout.width
-        height = self.protocol_floatlayout.height
-       
-        self.screen_ratio = width/height
+        width = screen_resolution[0]
+        height = screen_resolution[1]
+        self.size = screen_resolution
+        self.protocol_floatlayout.size = screen_resolution
+
+        if width > height:
+            self.width_adjust = height / width
+            self.height_adjust = 1
+        elif height < width:
+            self.width_adjust = 1
+            self.height_adjust = width / height
+        else:
+            self.width_adjust = 1
+            self.height_adjust = 1
         
         if sys.platform == 'linux' or sys.platform == 'darwin':
             self.folder_mod = '/'
         elif sys.platform == 'win32':
             self.folder_mod = '\\'
-    
-        self.initialize_text_widgets()
-        self.initialize_button_widgets()
-        
-        self.present_instructions()
-        
-    # Initialization Functions #
-        
-    def import_configuration(self,parameter_dict):
-        self.parameters_dict = parameter_dict
-        self.load_configuration_file()
-        self.initialize_parameters()
-        self.initialize_image_widgets()
-        
-        self.generate_output_files()
-        self.metadata_output_generation()
-        
-    def load_configuration_file(self):
+
+        # Define Variables - Folder Path
+        self.image_folder = 'Protocol' + self.folder_mod + 'vPRL' + self.folder_mod + 'Image' + self.folder_mod
+        self.data_output_path = None
+
+        # Define Variables - Config
         config_path = 'Protocol' + self.folder_mod + 'vPRL' + self.folder_mod + 'Configuration.ini'
         config_file = configparser.ConfigParser()
         config_file.read(config_path)
-        
-        if len(self.parameters_dict) == 0:
-            self.parameters_dict = config_file['TaskParameters']
-            self.participant_id = 'Default'
-        else:
-            self.participant_id = self.parameters_dict['participant_id']
-        
+        self.parameters_dict = config_file['TaskParameters']
+        self.participant_id = 'Default'
         self.session_max_length = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = int(self.parameters_dict['session_trial_max'])
-        
         self.iti_length = float(self.parameters_dict['iti_length'])
         self.feedback_length = float(self.parameters_dict['feedback_length'])
-        
         self.training_image = self.parameters_dict['training_image']
-        self.training_images = ['grey',self.training_image]
+        self.training_images = ['grey', self.training_image]
         self.test_images = self.parameters_dict['test_images']
         self.test_images = self.test_images.split(',')
-        
         self.image_probability = float(self.parameters_dict['image_probability'])
         self.decimal_values = len(str(self.image_probability - int(self.image_probability))[2:])
-        self.reward_distribution_list_size = 10**(self.decimal_values)
+        self.reward_distribution_list_size = 10 ** self.decimal_values
         self.reward_distribution_count = int(self.reward_distribution_list_size * self.image_probability)
-        self.reward_distribution = ([0] * (self.reward_distribution_list_size - self.reward_distribution_count)) + ([1] * (self.reward_distribution_count))
+        self.reward_distribution = ([0] * (self.reward_distribution_list_size - self.reward_distribution_count)) + (
+                    [1] * self.reward_distribution_count)
         random.shuffle(self.reward_distribution)
         self.reward_index = 0
         self.reward_contingency = 1
-        
         self.reversal_threshold = int(self.parameters_dict['reversal_threshold'])
         self.maximum_reversals = int(self.parameters_dict['maximum_reversals'])
-        
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-        
-            
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
-    
-    def initialize_parameters(self):
-        #ListVariables#
-        self.stage_list = ['Training','Test']
-        
-        #Boolean#
+
+        # Define Language
+        self.language = 'English'
+        lang_folder_path = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Language' + \
+                           self.folder_mod + self.language + self.folder_mod
+        start_path = lang_folder_path + 'Start.txt'
+        start_open = open(start_path, 'r', encoding="utf-8")
+        self.start_label_str = start_open.read()
+        start_open.close()
+        break_path = lang_folder_path + 'Break.txt'
+        break_open = open(break_path, 'r', encoding="utf-8")
+        self.break_label_str = break_open.read()
+        break_open.close()
+        end_path = lang_folder_path + 'End.txt'
+        end_open = open(end_path, 'r', encoding="utf-8")
+        self.end_label_str = end_open.read()
+        end_open.close()
+        button_lang_path = lang_folder_path + 'Button.ini'
+        button_lang_config = configparser.ConfigParser()
+        button_lang_config.read(button_lang_path, encoding="utf-8")
+        self.start_button_label_str = button_lang_config['Button']['start']
+        self.continue_button_label_str = button_lang_config['Button']['continue']
+        self.return_button_label_str = button_lang_config['Button']['return']
+        feedback_lang_path = lang_folder_path + 'Feedback.ini'
+        feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
+        feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
+        self.stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
+        stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
+        if stim_feedback_correct_color != '':
+            color_text = '[color=%s]' % stim_feedback_correct_color
+            self.stim_feedback_correct_str = color_text + self.stim_feedback_correct_str + '[/color]'
+        self.stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
+        stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
+        if stim_feedback_incorrect_color != '':
+            color_text = '[color=%s]' % stim_feedback_incorrect_color
+            self.stim_feedback_incorrect_str = color_text + self.stim_feedback_incorrect_str + '[/color]'
+        self.hold_feedback_wait_str = feedback_lang_config['Hold']['wait']
+        hold_feedback_wait_color = feedback_lang_config['Hold']['wait_colour']
+        if hold_feedback_wait_color != '':
+            color_text = '[color=%s]' % hold_feedback_wait_color
+            self.hold_feedback_wait_str = color_text + self.hold_feedback_wait_str + '[/color]'
+        self.hold_feedback_return_str = feedback_lang_config['Hold']['return']
+        hold_feedback_return_color = feedback_lang_config['Hold']['return_colour']
+        if hold_feedback_return_color != '':
+            color_text = '[color=%s]' % hold_feedback_return_color
+            self.hold_feedback_return_str = color_text + self.hold_feedback_return_str + '[/color]'
+
+        # Define Variables - List
+        self.stage_list = ['Training', 'Test']
+
+        # Define Variables - Boolean
         self.stimulus_on_screen = False
         self.iti_active = False
         self.feedback_on_screen = False
         self.hold_active = True
         self.block_started = False
-        
-        #ActiveVariables - Count#
-        
+
+        # Define Variables - Count
         self.current_trial = 1
         self.current_correct = 0
         self.current_reversal = 0
         self.stage_index = 0
         self.current_score = 0
-        
-        #ActiveVariables - String#
+
+        # Define Variables - String
         self.correct_image = 'snowflake'
         self.incorrect_image = 'grey'
         self.current_stage = self.stage_list[self.stage_index]
         self.feedback_string = ''
-    
-        
-        #TimeVariables#
+
+        # Define Variables - Time
         self.start_iti = 0
         self.start_time = 0
         self.current_time = 0
         self.start_stimulus = 0
         self.response_lat = 0
-        
-        #FolderPath#
-        self.image_folder = 'Protocol' + self.folder_mod + 'vPRL' + self.folder_mod + 'Image' + self.folder_mod
-        
-        #Random#
-        self.left_stimulus_index = random.randint(0,1)
+
+        # Define Variables - Trial Configuration
+        self.left_stimulus_index = random.randint(0, 1)
         if self.left_stimulus_index == 0:
             self.right_stimulus_index = 1
         else:
@@ -147,76 +186,242 @@ class Protocol_Screen(Screen):
         self.right_stimulus_image = self.training_images[self.right_stimulus_index]
         self.left_chosen = 0
         self.right_chosen = 1
-        
-        
-        
-        
-    def initialize_image_widgets(self):
-        
+
+        # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button = ImageButton(source=self.hold_button_image_path,allow_stretch=True)
-        #self.hold_button.size_hint_y = 0.2
-        #self.hold_button.width = self.hold_button.height
-        self.hold_button.size_hint = ((0.2* self.screen_ratio),0.2)
-        self.hold_button.pos_hint = {"center_x":0.5,"center_y":0.1}
-        
-        
+        self.hold_button = ImageButton(source=self.hold_button_image_path)
+        self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.1}
+
         self.left_stimulus_image_path = self.image_folder + self.left_stimulus_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path,allow_stretch=True)
-        self.left_stimulus.size_hint = ((0.4* self.screen_ratio),0.4)
-        #self.left_stimulus.size_hint_y = 0.3
-        #self.left_stimulus.width = self.left_stimulus.height
-        self.left_stimulus.pos_hint = {"center_x":0.3,"center_y":0.6}
-        self.left_stimulus.border = [0,0,0,0]
-        self.left_stimulus.bind(on_press = self.left_stimulus_pressed)
-        
+        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus.pos_hint = {"center_x": 0.3, "center_y": 0.6}
+        self.left_stimulus.bind(on_press=self.left_stimulus_pressed)
+
         self.right_stimulus_image_path = self.image_folder + self.right_stimulus_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path,allow_stretch=True)
-        self.right_stimulus.size_hint = ((0.4* self.screen_ratio),0.4)
-        self.right_stimulus.width = self.right_stimulus.height
-        self.right_stimulus.pos_hint = {"center_x":0.7,"center_y":0.6}
-        self.right_stimulus.border = [0,0,0,0]
-        self.right_stimulus.bind(on_press = self.right_stimulus_pressed)
-        
-    def initialize_text_widgets(self):
-        self.instruction_label = Label(text= 'During the experiment, hold your finger on the white square before responding .\nTo make a response, press on one of the images on the centre of the screen.\nYou will receive feedback following touching an image.'
-                                       , font_size = '35sp')
-        self.instruction_label.size_hint = (0.6,0.4)
-        self.instruction_label.pos_hint = {'center_x':0.5,'center_y':0.3}
-        
-        self.block_label = Label(text='PRESS BUTTON TO CONTINUE WHEN READY',font_size='50sp')
-        self.block_label.size_hint = (0.5,0.3)
-        self.block_label.pos_hint = {'center_x':0.5,'center_y':0.3}
-        
-        self.end_label = Label(text= 'Thank you for your participation. Please press Return to end experiment.', font_size='50sp')
-        self.end_label.size_hint = (0.6,0.4)
-        self.end_label.pos_hint = {'center_x':0.5,'center_y':0.3}
-        
+        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus.pos_hint = {"center_x": 0.7, "center_y": 0.6}
+        self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
+
+        # Define Widgets - Text
+        self.instruction_label = Label(
+            text= self.start_label_str, font_size='35sp')
+        self.instruction_label.size_hint = (0.6, 0.4)
+        self.instruction_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.block_label = Label(text= self.break_label_str, font_size='50sp')
+        self.block_label.size_hint = (0.5, 0.3)
+        self.block_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.end_label = Label(text= self.end_label_str, font_size='50sp')
+        self.end_label.size_hint = (0.6, 0.4)
+        self.end_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
         self.feedback_string = ''
-        self.feedback_label = Label(text=self.feedback_string,font_size='50sp', markup=True)
-        self.feedback_label.size_hint = (0.7,0.4)
-        self.feedback_label.pos_hint = {'center_x':0.5,'center_y':0.5}
-        
+        self.feedback_label = Label(text=self.feedback_string, font_size='50sp', markup=True)
+        self.feedback_label.size_hint = (0.7, 0.4)
+        self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
         self.score_string = 'Your Points:\n%s' % (0)
-        self.score_label = Label(text=self.score_string,font_size='50sp',markup=True,halign='center')
-        self.score_label.size_hint = (0.8,0.2)
-        self.score_label.pos_hint = {'center_x':0.5,'center_y':0.9}
-        
-    def initialize_button_widgets(self):
-        self.start_button = Button(text='Start')
-        self.start_button.size_hint = (0.1,0.1)
-        self.start_button.pos_hint = {'center_x':0.5,'center_y':0.7}
+        self.score_label = Label(text=self.score_string, font_size='50sp', markup=True, halign='center')
+        self.score_label.size_hint = (0.8, 0.2)
+        self.score_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
+
+        # Define Widgets - Buttons
+        self.start_button = Button(text= self.start_button_label_str)
+        self.start_button.size_hint = (0.1, 0.1)
+        self.start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
         self.start_button.bind(on_press=self.start_protocol)
-        
-        self.continue_button = Button(text='Continue')
-        self.continue_button.size_hint = (0.1,0.1)
-        self.continue_button.pos_hint = {'center_x':0.5,'center_y':0.7}
+
+        self.continue_button = Button(text= self.continue_button_label_str)
+        self.continue_button.size_hint = (0.1, 0.1)
+        self.continue_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
         self.continue_button.bind(on_press=self.block_end)
-        
-        self.return_button = Button(text='Return')
-        self.return_button.size_hint = (0.1,0.1)
-        self.return_button.pos_hint = {'center_x':0.5,'center_y':0.7}
+
+        self.return_button = Button(text= self.return_button_label_str)
+        self.return_button.size_hint = (0.1, 0.1)
+        self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
         self.return_button.bind(on_press=self.return_to_main)
+        
+    # Initialization Functions #
+        
+    def load_parameters(self,parameter_dict):
+        self.parameters_dict = parameter_dict
+
+        if len(self.parameters_dict) == 0:
+            self.parameters_dict = config_file['TaskParameters']
+        else:
+            self.participant_id = self.parameters_dict['participant_id']
+
+        # Define Variables - Config
+        config_path = 'Protocol' + self.folder_mod + 'vPRL' + self.folder_mod + 'Configuration.ini'
+        config_file = configparser.ConfigParser()
+        config_file.read(config_path)
+        self.session_max_length = float(self.parameters_dict['session_length_max'])
+        self.session_trial_max = int(self.parameters_dict['session_trial_max'])
+        self.iti_length = float(self.parameters_dict['iti_length'])
+        self.feedback_length = float(self.parameters_dict['feedback_length'])
+        self.training_image = self.parameters_dict['training_image']
+        self.training_images = ['grey', self.training_image]
+        self.test_images = self.parameters_dict['test_images']
+        self.test_images = self.test_images.split(',')
+        self.image_probability = float(self.parameters_dict['image_probability'])
+        self.decimal_values = len(str(self.image_probability - int(self.image_probability))[2:])
+        self.reward_distribution_list_size = 10 ** self.decimal_values
+        self.reward_distribution_count = int(self.reward_distribution_list_size * self.image_probability)
+        self.reward_distribution = ([0] * (self.reward_distribution_list_size - self.reward_distribution_count)) + (
+                [1] * self.reward_distribution_count)
+        random.shuffle(self.reward_distribution)
+        self.reward_index = 0
+        self.reward_contingency = 1
+        self.reversal_threshold = int(self.parameters_dict['reversal_threshold'])
+        self.maximum_reversals = int(self.parameters_dict['maximum_reversals'])
+        self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
+        self.hold_image = config_file['Hold']['hold_image']
+        self.mask_image = config_file['Mask']['mask_image']
+
+        # Define Language
+        self.language = self.parameters_dict['language']
+        lang_folder_path = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Language' + \
+                           self.folder_mod + self.language + self.folder_mod
+        start_path = lang_folder_path + 'Start.txt'
+        start_open = open(start_path, 'r', encoding="utf-8")
+        self.start_label_str = start_open.read()
+        start_open.close()
+        break_path = lang_folder_path + 'Break.txt'
+        break_open = open(break_path, 'r', encoding="utf-8")
+        self.break_label_str = break_open.read()
+        break_open.close()
+        end_path = lang_folder_path + 'End.txt'
+        end_open = open(end_path, 'r', encoding="utf-8")
+        self.end_label_str = end_open.read()
+        end_open.close()
+        button_lang_path = lang_folder_path + 'Button.ini'
+        button_lang_config = configparser.ConfigParser()
+        button_lang_config.read(button_lang_path, encoding="utf-8")
+        self.start_button_label_str = button_lang_config['Button']['start']
+        self.continue_button_label_str = button_lang_config['Button']['continue']
+        self.return_button_label_str = button_lang_config['Button']['return']
+        feedback_lang_path = lang_folder_path + 'Feedback.ini'
+        feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
+        feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
+        self.stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
+        stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
+        if stim_feedback_correct_color != '':
+            color_text = '[color=%s]' % stim_feedback_correct_color
+            self.stim_feedback_correct_str = color_text + self.stim_feedback_correct_str + '[/color]'
+        self.stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
+        stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
+        if stim_feedback_incorrect_color != '':
+            color_text = '[color=%s]' % stim_feedback_incorrect_color
+            self.stim_feedback_incorrect_str = color_text + self.stim_feedback_incorrect_str + '[/color]'
+        self.hold_feedback_wait_str = feedback_lang_config['Hold']['wait']
+        hold_feedback_wait_color = feedback_lang_config['Hold']['wait_colour']
+        if hold_feedback_wait_color != '':
+            color_text = '[color=%s]' % hold_feedback_wait_color
+            self.hold_feedback_wait_str = color_text + self.hold_feedback_wait_str + '[/color]'
+        self.hold_feedback_return_str = feedback_lang_config['Hold']['return']
+        hold_feedback_return_color = feedback_lang_config['Hold']['return_colour']
+        if hold_feedback_return_color != '':
+            color_text = '[color=%s]' % hold_feedback_return_color
+            self.hold_feedback_return_str = color_text + self.hold_feedback_return_str + '[/color]'
+
+        # Define Variables - List
+        self.stage_list = ['Training', 'Test']
+
+        # Define Variables - Boolean
+        self.stimulus_on_screen = False
+        self.iti_active = False
+        self.feedback_on_screen = False
+        self.hold_active = True
+        self.block_started = False
+
+        # Define Variables - Count
+        self.current_trial = 1
+        self.current_correct = 0
+        self.current_reversal = 0
+        self.stage_index = 0
+        self.current_score = 0
+
+        # Define Variables - String
+        self.correct_image = 'snowflake'
+        self.incorrect_image = 'grey'
+        self.current_stage = self.stage_list[self.stage_index]
+        self.feedback_string = ''
+
+        # Define Variables - Time
+        self.start_iti = 0
+        self.start_time = 0
+        self.current_time = 0
+        self.start_stimulus = 0
+        self.response_lat = 0
+
+        # Define Variables - Trial Configuration
+        self.left_stimulus_index = random.randint(0, 1)
+        if self.left_stimulus_index == 0:
+            self.right_stimulus_index = 1
+        else:
+            self.right_stimulus_index = 0
+        self.left_stimulus_image = self.training_images[self.left_stimulus_index]
+        self.right_stimulus_image = self.training_images[self.right_stimulus_index]
+        self.left_chosen = 0
+        self.right_chosen = 1
+
+        # Define Widgets - Images
+        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
+        self.hold_button = ImageButton(source=self.hold_button_image_path)
+        self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.1}
+
+        self.left_stimulus_image_path = self.image_folder + self.left_stimulus_image + '.png'
+        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus.pos_hint = {"center_x": 0.3, "center_y": 0.6}
+        self.left_stimulus.bind(on_press=self.left_stimulus_pressed)
+
+        self.right_stimulus_image_path = self.image_folder + self.right_stimulus_image + '.png'
+        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus.pos_hint = {"center_x": 0.7, "center_y": 0.6}
+        self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
+
+        # Define Widgets - Text
+        self.instruction_label = Label(
+            text=self.start_label_str, font_size='35sp')
+        self.instruction_label.size_hint = (0.6, 0.4)
+        self.instruction_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.block_label = Label(text=self.break_label_str, font_size='50sp')
+        self.block_label.size_hint = (0.5, 0.3)
+        self.block_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.end_label = Label(text=self.end_label_str, font_size='50sp')
+        self.end_label.size_hint = (0.6, 0.4)
+        self.end_label.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+
+        self.feedback_string = ''
+        self.feedback_label = Label(text=self.feedback_string, font_size='50sp', markup=True)
+        self.feedback_label.size_hint = (0.7, 0.4)
+        self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
+        self.score_string = 'Your Points:\n%s' % (0)
+        self.score_label = Label(text=self.score_string, font_size='50sp', markup=True, halign='center')
+        self.score_label.size_hint = (0.8, 0.2)
+        self.score_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
+
+        # Define Widgets - Buttons
+        self.start_button = Button(text=self.start_button_label_str)
+        self.start_button.size_hint = (0.1, 0.1)
+        self.start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.start_button.bind(on_press=self.start_protocol)
+
+        self.continue_button = Button(text=self.continue_button_label_str)
+        self.continue_button.size_hint = (0.1, 0.1)
+        self.continue_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.continue_button.bind(on_press=self.block_end)
+
+        self.return_button = Button(text=self.return_button_label_str)
+        self.return_button.size_hint = (0.1, 0.1)
+        self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
+        self.return_button.bind(on_press=self.return_to_main)
+
+        self.present_instructions()
         
     def generate_output_files(self):
         folder_path = 'Data' + self.folder_mod + self.participant_id
@@ -272,6 +477,8 @@ class Protocol_Screen(Screen):
     
     # Instructions Staging #
     def present_instructions(self):
+        self.generate_output_files()
+        self.metadata_output_generation()
         self.protocol_floatlayout.add_widget(self.instruction_label)
         self.protocol_floatlayout.add_widget(self.start_button)
         
@@ -311,6 +518,7 @@ class Protocol_Screen(Screen):
         self.start_clock()
         
         self.protocol_floatlayout.add_widget(self.hold_button)
+        self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
         self.hold_button.size_hint_y = 0.2
         self.hold_button.width = self.hold_button.height
         self.hold_button.pos_hint = {"center_x":0.5,"center_y":0.1}
@@ -346,18 +554,9 @@ class Protocol_Screen(Screen):
                 
     def stimulus_presentation(self,*args):
         self.protocol_floatlayout.add_widget(self.left_stimulus)
-       # self.left_stimulus.size_hint_y = 0.4
-        #self.left_stimulus.width = self.left_stimulus.height
-        #self.left_stimulus.pos_hint = {"center_x":0.3,"center_y":0.6}
-        #self.left_stimulus.size = (50,50)
-        #self.left_stimulus.pos = (200,200)
+        self.left_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
         self.protocol_floatlayout.add_widget(self.right_stimulus)
-        #self.right_stimulus.size_hint_y = 0.4
-        #self.right_stimulus.width = self.right_stimulus.height
-        #self.right_stimulus.pos_hint = {"center_x":0.7,"center_y":0.6}
-        #self.right_stimulus.size = (50,50)
-        #self.right_stimulus.pos = (600,200)
-
+        self.right_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
             
         self.start_stimulus = time.time()
         

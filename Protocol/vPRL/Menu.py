@@ -12,6 +12,7 @@ from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.dropdown import DropDown
 from kivy.uix.image import AsyncImage
 #from win32api import GetSystemMetrics
 from kivy.core.window import Window
@@ -83,7 +84,7 @@ class Configure_Screen(Screen):
         
     def start_protocol(self,*args):
         from Protocol.vPRL.Protocol import Protocol_Screen
-        self.Protocol_Task_Screen = Protocol_Screen()
+        self.Protocol_Task_Screen = Protocol_Screen(screen_resolution=self.size)
         
         key = ''
         value = ''
@@ -95,15 +96,17 @@ class Configure_Screen(Screen):
                 value = widget.text
                 parameter_dict[key] = value
         parameter_dict['participant_id'] = self.id_entry.text
+        if self.dropdown_language.text == 'Select Language':
+            parameter_dict['language'] = 'English'
+        else:
+            parameter_dict['language'] = self.dropdown_language.text
         
-        self.Protocol_Task_Screen.import_configuration(parameter_dict)
+        self.Protocol_Task_Screen.load_parameters(parameter_dict)
         
         self.manager.switch_to(self.Protocol_Task_Screen)
         
     def menu_constructor(self):
         for parameter in self.parameters_config:
-            #label_widget_list.append(Label(text=parameter))
-            #text_entry_list.append(TextInput(text=parameters_config[parameter]))
             self.setting_gridlayout.add_widget(Label(text=parameter))
             self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
             
