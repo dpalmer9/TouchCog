@@ -96,7 +96,7 @@ class ConfigureScreen(Screen):
         
     def start_protocol(self,*args):
         from Protocol.TUNLProbe.Protocol import ProtocolScreen
-        self.Protocol_Task_Screen = ProtocolScreen()
+        self.Protocol_Task_Screen = ProtocolScreen(screen_resolution=self.size)
         
         key = ''
         value = ''
