@@ -84,7 +84,7 @@ class Configure_Screen(Screen):
         
     def start_protocol(self,*args):
         from Protocol.iCPT2GStim1.Protocol import Protocol_Screen
-        self.Protocol_Task_Screen = Protocol_Screen()
+        self.Protocol_Task_Screen = Protocol_Screen(screen_resolution=self.size)
         
         key = ''
         value = ''
@@ -101,15 +101,12 @@ class Configure_Screen(Screen):
         else:
             parameter_dict['language'] = self.dropdown_main.text
         
-        self.Protocol_Task_Screen.import_configuration(parameter_dict)
-        self.Protocol_Task_Screen.display_instructions()
+        self.Protocol_Task_Screen.load_parameters(parameter_dict)
         
         self.manager.switch_to(self.Protocol_Task_Screen)
         
     def menu_constructor(self):
         for parameter in self.parameters_config:
-            #label_widget_list.append(Label(text=parameter))
-            #text_entry_list.append(TextInput(text=parameters_config[parameter]))
             self.setting_gridlayout.add_widget(Label(text=parameter))
             self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
             
