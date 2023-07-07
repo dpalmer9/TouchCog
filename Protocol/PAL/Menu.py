@@ -29,7 +29,7 @@ class Configure_Screen(Screen):
     def __init__(self,**kwargs):
         super(Configure_Screen,self).__init__(**kwargs)
         self.main_layout = FloatLayout()
-        
+        self.main_layout.size_hint = (1,1)
         if sys.platform == 'linux' or sys.platform == 'darwin':
             self.folder_mod = '/'
         elif sys.platform == 'win32':
@@ -97,7 +97,8 @@ class Configure_Screen(Screen):
         
     def start_protocol(self,*args):
         from Protocol.PAL.Protocol import Protocol_Screen
-        self.Protocol_Task_Screen = Protocol_Screen()
+        self.Protocol_Task_Screen = Protocol_Screen(screen_resolution=self.size)
+        self.Protocol_Task_Screen.size = self.size
         
         key = ''
         value = ''
@@ -108,17 +109,19 @@ class Configure_Screen(Screen):
             elif isinstance(widget,TextInput):
                 value = widget.text
                 parameter_dict[key] = value
+        if self.dropdown_language.text == 'Select Language':
+            parameter_dict['language'] = 'English'
+        else:
+            parameter_dict['language'] = self.dropdown_language.text
         parameter_dict['participant_id'] = self.id_entry.text
         parameter_dict['paltype'] = self.paltype_button.text
         
-        self.Protocol_Task_Screen.import_configuration(parameter_dict)
+        self.Protocol_Task_Screen.load_parameters(parameter_dict)
         
         self.manager.switch_to(self.Protocol_Task_Screen)
         
     def menu_constructor(self):
         for parameter in self.parameters_config:
-            #label_widget_list.append(Label(text=parameter))
-            #text_entry_list.append(TextInput(text=parameters_config[parameter]))
             self.setting_gridlayout.add_widget(Label(text=parameter))
             self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
             
