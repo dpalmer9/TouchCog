@@ -98,7 +98,6 @@ class Configure_Screen(Screen):
     def start_protocol(self,*args):
         from Protocol.PAL.Protocol import Protocol_Screen
         self.Protocol_Task_Screen = Protocol_Screen(screen_resolution=self.size)
-        self.Protocol_Task_Screen.size = self.size
         
         key = ''
         value = ''

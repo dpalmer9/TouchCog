@@ -42,13 +42,6 @@ class ImageButton(ButtonBehavior, Image):
         else:
             return False
 
-class ImageButton2(Button):
-    def __init__(self, **kwargs):
-        super(ImageButton2, self).__init__(**kwargs)
-
-    def update_size_hint(self,x_hint,y_hint):
-        return
-
 
 class Protocol_Screen(Screen):
     def __init__(self,screen_resolution,**kwargs):
