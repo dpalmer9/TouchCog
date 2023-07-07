@@ -15,6 +15,9 @@ config_file.read(config_path)
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']
 fullscreen = int(config_file['Screen']['fullscreen'])
+virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
+use_mouse = int(config_file['mouse']['use_mouse'])
+Config.set('graphics', 'allow_screensaver', 0)
 
 if fullscreen == 0:
     Config.set('graphics', 'width', str(x_dim))
@@ -23,7 +26,6 @@ if fullscreen == 0:
     Config.set('graphics', 'position', 'custom')
     Config.set('graphics', 'top', 0)
     Config.set('graphics', 'left', 0)
-    Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 elif fullscreen == 1:
     Config.set('graphics', 'width', str(x_dim))
     Config.set('graphics', 'height', str(y_dim))
@@ -31,7 +33,14 @@ elif fullscreen == 1:
     Config.set('graphics', 'top', 0)
     Config.set('graphics', 'left', 0)
     Config.set('graphics', 'fullscreen', True)
-    Config.set('kivy', 'keyboard_mode', 'systemandmulti')
+
+if virtual_keyboard == 0:
+    Config.set('kivy', 'keyboard_mode', 'system')
+elif virtual_keyboard == 1:
+    Config.set('kivy', 'keyboard_mode', 'systemanddock')
+
+if use_mouse == 0:
+    Config.set('graphics','show_cursor', 0)
 
 # Imports #
 import kivy
@@ -40,11 +49,11 @@ import sys
 import os
 import configparser
 from kivy.app import App
+from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 # from win32api import GetSystemMetrics
@@ -56,7 +65,9 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.config import Config
 from functools import partial
 
-Window.borderless = True
+# Window.borderless = True
+Window.size = (int(x_dim), int(y_dim))
+Window.borderless = '0'
 
 
 # from Protocol_Configure import Protocol_Select
@@ -144,6 +155,7 @@ class Protocol_Menu(Screen):
 
     def set_protocol(self, label, *args):
         self.protocol_constructor(label)
+        self.Protocol_Configure_Screen.size = Window.size
         self.manager.switch_to(self.Protocol_Configure_Screen)
 
     def cancel_protocol(self, *args):
