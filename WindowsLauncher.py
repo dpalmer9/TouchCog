@@ -43,8 +43,15 @@ class Windows_Launcher():
         self.x_dim = int(self.config_file['Screen']['x'])
         self.y_dim = int(self.config_file['Screen']['y'])
         self.fullscreen_var = tk.IntVar()
+        self.keyboard_var = tk.IntVar()
+        self.mouse_var = tk.IntVar()
+
         fullscreen_val = int(self.config_file['Screen']['fullscreen'])
         self.fullscreen_var.set(fullscreen_val)
+        keyboard_val = int(self.config_file['keyboard']['virtual_keyboard'])
+        self.keyboard_var.set(keyboard_val)
+        mouse_val = int(self.config_file['mouse']['use_mouse'])
+        self.mouse_var.set(mouse_val)
         
         
         self.configuration_menu_top = tk.Toplevel() 
@@ -70,14 +77,24 @@ class Windows_Launcher():
                                                   variable=self.fullscreen_var)
         self.fullscreen_checkbox.grid(row=3,column=1)
 
+        self.keyboard_checkbox = tk.Checkbutton(self.configuration_menu_top, text='Virtual Keyboard',
+                                                variable=self.keyboard_var)
+        self.keyboard_checkbox.grid(row=4, column=1)
+
+        self.mouse_checkbox = tk.Checkbutton(self.configuration_menu_top, text='Use Mouse',
+                                             variable=self.mouse_var)
+        self.mouse_checkbox.grid(row=5, column=1)
+
         
         self.accept_button = tk.Button(self.configuration_menu_top,text='Accept',command=self.close_configuration)
-        self.accept_button.grid(row=4,column=1)
+        self.accept_button.grid(row=6,column=1)
         
     def close_configuration(self):
         self.config_file['Screen']['x'] = str(self.x_res_field.get())
         self.config_file['Screen']['y'] = str(self.y_res_field.get())
         self.config_file['Screen']['fullscreen'] = str(self.fullscreen_var.get())
+        self.config_file['keyboard']['virtual_keyboard'] = str(self.keyboard_var.get())
+        self.config_file['mouse']['use_mouse'] = str(self.mouse_var.get())
         
         with open(self.config_path,'w') as configfile:
             self.config_file.write(configfile)
