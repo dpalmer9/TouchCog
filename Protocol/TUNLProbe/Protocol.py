@@ -4,6 +4,7 @@ import os
 import configparser
 import time
 import numpy as np
+import pandas as pd
 import random
 import csv
 from kivy.uix.button import Button
@@ -31,6 +32,23 @@ class ImageButton(ButtonBehavior, Image):
             return super(ImageButton, self).on_touch_down(touch)
         else:
             return False
+
+class EventLogger():
+    def __init__(self):
+        self.event_columns = ['Time','Event_Type','Event_Name','Arg1_Name','Arg1_Value',
+                              'Arg2_Name','Arg2_Value','Arg3_Name','Arg3_Value']
+        self.event_dataframe = pd.DataFrame(columns=self.event_columns)
+        self.event_index = 0
+        self.save_path = ''
+
+    def add_event(self,row):
+        self.event_dataframe.loc[self.event_index] = row
+        self.event_index += 1
+        if self.save_path != '':
+            self.event_dataframe.to_csv(self.save_path,index=False)
+
+    def update_path(self,path):
+        self.save_path = path
 
 
 def generate_sample_choice_pos():
@@ -102,7 +120,17 @@ def generate_trial_pos_sep(sep_level):
 class ProtocolScreen(Screen):
     def __init__(self,screen_resolution,**kwargs):
         super(ProtocolScreen, self).__init__(**kwargs)
+
+        self.event_logger = EventLogger()
+        event_log_press = lambda a,b:self.record_touch_event('Touch Press')
+        event_log_release = lambda a,b:self.record_touch_event('Touch Release')
+        event_log_move = lambda a,b:self.record_touch_event('Touch Move')
+
         self.protocol_floatlayout = FloatLayout()
+        self.protocol_floatlayout.bind(on_touch_down=event_log_press)
+        self.protocol_floatlayout.bind(on_touch_up=event_log_release)
+        self.protocol_floatlayout.bind(on_touch_move=event_log_move)
+
         self.add_widget(self.protocol_floatlayout)
         width = screen_resolution[0]
         height = screen_resolution[1]
@@ -407,7 +435,11 @@ class ProtocolScreen(Screen):
         random.shuffle(self.space_probe_trial_list)
         self.current_space_trial_index = 0
         self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
+        self.event_logger.add_event([0, 'Variable Change', 'Current Separation', 'Value', str(self.current_sep),
+                                     '', '', '', ''])
         self.current_delay = self.space_probe_delay_length
+        self.event_logger.add_event([0, 'Variable Change', 'Current Delay', 'Value', str(self.current_delay),
+                                     '', '', '', ''])
         self.current_space_trial_index += 1
 
         self.delay_probe_block_length = int(self.parameters_dict['delay_probe_block_length'])
@@ -493,6 +525,15 @@ class ProtocolScreen(Screen):
 
         # Define Variables - Coordinates
         self.trial_coord = generate_trial_pos_sep(self.current_sep)
+        self.event_logger.add_event(
+            [0, 'Variable Change', 'Current Separation', 'Value', str(self.current_sep),
+             '', '', '', ''])
+        self.event_logger.add_event(
+            [0, 'Variable Change', 'Sample Position', 'X Position', str(self.trial_coord['Sample'][0]),
+             'Y Position', str(self.trial_coord['Sample'][1]), '', ''])
+        self.event_logger.add_event(
+            [0, 'Variable Change', 'Choice Position', 'X Position', str(self.trial_coord['Choice'][0]),
+             'Y Position', str(self.trial_coord['Choice'][1]), '', ''])
         self.distractor_target_list, self.distractor_ignore_list = \
             self.generate_distractor_pos(self.space_probe_distract_target_count,
                                          self.space_probe_distract_distractor_count)
@@ -634,6 +675,10 @@ class ProtocolScreen(Screen):
         data_file.write(data_cols)
         data_file.close()
 
+        event_path = folder_path + self.folder_mod + self.participant_id + '_TUNLProbe_' + str(
+            file_index) + '_Event_Data.csv'
+        self.event_logger.update_path(event_path)
+
     def metadata_output_generation(self):
         folder_path = 'Data' + self.folder_mod + self.participant_id
         metadata_rows = ['participant_id', 'stimulus_image', 'distractor_target_image',
@@ -671,33 +716,66 @@ class ProtocolScreen(Screen):
         self.generate_output_files()
         self.metadata_output_generation()
         self.protocol_floatlayout.add_widget(self.instruction_label)
+        self.event_logger.add_event(
+            [0, 'Stage Change', 'Instruction Presentation', '', '',
+             '', '', '', ''])
+        self.event_logger.add_event(
+            [0, 'Text Displayed', 'Task Instruction', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.start_button)
+        self.event_logger.add_event(
+            [0, 'Button Displayed', 'Task Start Button', '', '',
+             '', '', '', ''])
 
     # Present Block Screen
     def block_screen(self, *args):
         if self.block_started is False:
             self.protocol_floatlayout.add_widget(self.block_label)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Text Displayed', 'Block Instruction', '', '',
+                 '', '', '', ''])
             self.block_start = time.time()
             self.block_started = True
             Clock.schedule_interval(self.block_screen, 0.1)
         if (time.time() - self.block_start) > self.block_min_rest_duration:
             Clock.unschedule(self.block_screen)
             self.protocol_floatlayout.add_widget(self.continue_button)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Button Displayed', 'Continue Button', '', '',
+                 '', '', '', ''])
 
     # Remove Block Screen and Resume Task
     def block_end(self, *args):
         self.block_started = False
         self.protocol_floatlayout.clear_widgets()
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Text Removed', 'Block Instruction', '', '',
+             '', '', '', ''])
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Button Removed', 'Continue Button', '', '',
+             '', '', '', ''])
         self.trial_contingency()
         for image_wid in self.background_grid_list:
             self.protocol_floatlayout.add_widget(image_wid)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Grid Array', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.hold_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+             '', '', '', ''])
 
     # End Experiment
     def protocol_end(self):
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_widget(self.end_label)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Text Displayed', 'End Instruction', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.return_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Button Displayed', 'Return Button', '', '',
+             '', '', '', ''])
 
     # Return to Main Screen
     def return_to_main(self, *args):
@@ -707,14 +785,29 @@ class ProtocolScreen(Screen):
 
     # Create Hold Button and add 8x8 Grid
     def start_protocol(self, *args):
+        self.event_logger.add_event(
+            [0, 'Stage Change', 'Instruction Presentation', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.remove_widget(self.instruction_label)
+        self.event_logger.add_event(
+            [0, 'Text Removed', 'Task Instruction', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.remove_widget(self.start_button)
+        self.event_logger.add_event(
+            [0, 'Button Removed', 'Task Start Button', '', '',
+             '', '', '', ''])
         self.start_clock()
 
         self.protocol_floatlayout.add_widget(self.hold_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+             '', '', '', ''])
         self.hold_button.size_hint = ((0.1 * self.width_adjust), (0.1 * self.height_adjust))
         for image_wid in self.background_grid_list:
             self.protocol_floatlayout.add_widget(image_wid)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Grid Array', '', '',
+             '', '', '', ''])
         self.feedback_label.text = self.feedback_string
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.1}
         self.hold_button.bind(on_press=self.iti)
@@ -726,23 +819,38 @@ class ProtocolScreen(Screen):
             self.hold_button.bind(on_release=self.premature_response)
             self.start_iti = time.time()
             self.iti_active = True
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Stage Change', 'ITI Start', '', '',
+                 '', '', '', ''])
 
             if self.feedback_string == self.hold_feedback_wait_str:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                     '', '', '', ''])
                 self.feedback_string = ''
 
             if self.feedback_on_screen is False:
                 self.feedback_label.text = self.feedback_string
                 self.protocol_floatlayout.add_widget(self.feedback_label)
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                     '', '', '', ''])
                 self.feedback_on_screen = True
             Clock.schedule_interval(self.iti, 0.1)
         if self.iti_active is True:
-            if (time.time() - self.start_iti) > self.feedback_length:
+            if ((time.time() - self.start_iti) > self.feedback_length) and self.feedback_on_screen is True:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                     '', '', '', ''])
                 self.feedback_on_screen = False
             if (time.time() - self.start_iti) > self.iti_length:
                 Clock.unschedule(self.iti)
                 self.iti_active = False
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Stage Change', 'ITI End', '', '',
+                     '', '', '', ''])
                 self.hold_button.unbind(on_release=self.premature_response)
                 self.sample_presentation()
 
@@ -755,23 +863,40 @@ class ProtocolScreen(Screen):
 
     # Display Sample Stimuli
     def sample_presentation(self, *args):
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Display Sample', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.sample_image_button)
         self.sample_image_button.size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Sample Image', 'X Position', self.trial_coord['Sample'][0],
+             'Y Position', self.trial_coord['Sample'][1], 'Image Name', self.stimulus_image])
         self.start_sample = time.time()
         self.stimulus_on_screen = True
 
     # Display Distractor During Delay
     def delay_presentation(self):
-
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Delay Start', '', '',
+             '', '', '', ''])
         self.protocol_floatlayout.remove_widget(self.sample_image_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Sample Image', 'X Position', self.trial_coord['Sample'][0],
+             'Y Position', self.trial_coord['Sample'][1], 'Image Name', self.stimulus_image])
 
         for image in self.distractor_ignore_button_list:
             self.protocol_floatlayout.add_widget(image)
             image.size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Displayed', 'Distractor Ignore Image', 'X Position', image.coord[0],
+                 'Y Position', image.coord[1], 'Image Name', self.distractor_ignore_image])
 
         for image in self.distractor_target_button_list:
             self.protocol_floatlayout.add_widget(image)
             image.size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Displayed', 'Distractor Target Image', 'X Position', image.coord[0],
+                 'Y Position', image.coord[1], 'Image Name', self.distractor_target_image])
 
         Clock.schedule_interval(self.delay_period,0.01)
 
@@ -779,15 +904,30 @@ class ProtocolScreen(Screen):
     def choice_presentation(self, *args):
         for image in self.distractor_ignore_button_list:
             self.protocol_floatlayout.remove_widget(image)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Removed', 'Distractor Ignore Image', 'X Position', image.coord[0],
+                 'Y Position', image.coord[1], 'Image Name', self.distractor_ignore_image])
         for image in self.distractor_target_button_list:
             self.protocol_floatlayout.remove_widget(image)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Removed', 'Distractor Target Image', 'X Position', image.coord[0],
+                 'Y Position', image.coord[1], 'Image Name', self.distractor_target_image])
 
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Display Choice', '', '',
+             '', '', '', ''])
         self.choice_start = time.time()
         self.delay_length = self.choice_start - self.sample_touch_time
         self.protocol_floatlayout.add_widget(self.sample_image_button)
         self.protocol_floatlayout.add_widget(self.novel_image_button)
         self.sample_image_button.size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Sample Image', 'X Position', self.trial_coord['Sample'][0],
+             'Y Position', self.trial_coord['Sample'][1], 'Image Name', self.stimulus_image])
         self.novel_image_button.size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Novel Image', 'X Position', self.trial_coord['Choice'][0],
+             'Y Position', self.trial_coord['Choice'][1], 'Image Name', self.stimulus_image])
 
     # Stimuli Pressed too early
     def premature_response(self, *args):
@@ -796,41 +936,69 @@ class ProtocolScreen(Screen):
             return None
 
         Clock.unschedule(self.iti)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Premature Response', '', '',
+             '', '', '', ''])
         self.feedback_string = self.hold_feedback_wait_str
         self.response_lat = 0
         self.iti_active = False
         self.feedback_label.text = self.feedback_string
         if self.feedback_on_screen is False:
             self.protocol_floatlayout.add_widget(self.feedback_label)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                 '', '', '', ''])
         self.hold_button.unbind(on_release=self.premature_response)
         self.hold_button.bind(on_press=self.iti)
 
     # Sample Stimuli Pressed during Choice
     def sample_pressed(self, *args):
+        print(args)
         if self.sample_completed is False:
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Stage Change', 'Sample Pressed', '', '',
+                 '', '', '', ''])
             self.sample_completed = True
             self.sample_touch_time = time.time()
             self.sample_lat = self.sample_touch_time - self.start_sample
             self.delay_presentation()
             return
         elif self.sample_completed is True:
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Stage Change', 'Incorrect Response', '', '',
+                 '', '', '', ''])
             self.choice_touch_time = time.time()
             self.sample_press_to_choice = self.choice_touch_time - self.sample_touch_time
             self.choice_lat = self.choice_touch_time - self.choice_start
             self.protocol_floatlayout.remove_widget(self.sample_image_button)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Removed', 'Sample Image', 'X Position', self.trial_coord['Sample'][0],
+                 'Y Position', self.trial_coord['Sample'][1], 'Image Name', self.stimulus_image])
             self.protocol_floatlayout.remove_widget(self.novel_image_button)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Image Removed', 'Novel Image', 'X Position', self.trial_coord['Choice'][0],
+                 'Y Position', self.trial_coord['Choice'][1], 'Image Name', self.stimulus_image])
             self.feedback_string = self.stim_feedback_incorrect_str
             self.feedback_label.text = self.feedback_string
             self.current_correct = 0
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Correct', 'Value', str(self.current_correction),
+                 '', '', '', ''])
             self.write_summary_file()
 
             self.protocol_floatlayout.add_widget(self.feedback_label)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                 '', '', '', ''])
             self.feedback_on_screen = True
             self.hold_button.bind(on_press=self.iti)
             self.sample_completed = False
 
             if self.correction_trial_enabled:
                 self.current_correction = 1
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Variable Change', 'Current Correction', 'Value', str(self.current_correction),
+                     '', '', '', ''])
                 if self.current_probe == 'Spatial':
                     self.distractor_target_list, self.distractor_ignore_list = \
                         self.generate_distractor_pos(self.space_probe_distract_target_count,
@@ -860,6 +1028,9 @@ class ProtocolScreen(Screen):
                     self.distractor_ignore_button_list.append(image)
             else:
                 self.current_correction = 0
+                self.event_logger.add_event(
+                    [self.elapsed_time, 'Variable Change', 'Current Correction', 'Value', str(self.current_correction),
+                     '', '', '', ''])
                 self.trial_contingency()
 
 
@@ -867,18 +1038,36 @@ class ProtocolScreen(Screen):
 
     # Novel Stimuli Pressed during Choice
     def novel_pressed(self, *args):
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Correct Response', '', '',
+             '', '', '', ''])
         self.choice_touch_time = time.time()
         self.sample_press_to_choice = self.choice_touch_time - self.sample_touch_time
         self.choice_lat = self.choice_touch_time - self.choice_start
         self.protocol_floatlayout.remove_widget(self.sample_image_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Sample Image', 'X Position', self.trial_coord['Sample'][0],
+             'Y Position', self.trial_coord['Sample'][1], 'Image Name', self.stimulus_image])
         self.protocol_floatlayout.remove_widget(self.novel_image_button)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Novel Image', 'X Position', self.trial_coord['Choice'][0],
+             'Y Position', self.trial_coord['Choice'][1], 'Image Name', self.stimulus_image])
         self.feedback_string = self.stim_feedback_correct_str
         self.feedback_label.text = self.feedback_string
         self.current_correct = 1
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Variable Change', 'Current Correct', 'Value', str(self.current_correction),
+             '', '', '', ''])
         self.write_summary_file()
         self.current_correction = 0
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Variable Change', 'Current Correction', 'Value', str(self.current_correction),
+             '', '', '', ''])
         self.trial_contingency()
         self.protocol_floatlayout.add_widget(self.feedback_label)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+             '', '', '', ''])
         self.feedback_on_screen = True
         self.hold_button.bind(on_press=self.iti)
         self.sample_completed = False
@@ -886,12 +1075,23 @@ class ProtocolScreen(Screen):
 
     # Distractor pressed during Choice
     def distractor_target_press(self, instance, *args):
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Stage Change', 'Distractor Target Pressed', '', '',
+             '', '', '', ''])
         touch_coord = instance.coord
         distract_index = random.randint(0, (len(self.distractor_ignore_list) - 1))
         old_coord = [touch_coord,self.distractor_ignore_list[distract_index]]
 
         self.protocol_floatlayout.remove_widget(instance)
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Distractor Target', 'X Position', touch_coord[0],
+             'Y Position', touch_coord[1], 'Image Name', self.distractor_target_image])
         self.protocol_floatlayout.remove_widget(self.distractor_ignore_button_list[distract_index])
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Distractor Ignore', 'X Position',
+             self.distractor_ignore_button_list[distract_index].coord[0],
+             'Y Position', self.distractor_ignore_button_list[distract_index].coord[1], 'Image Name',
+             self.distractor_ignore_image])
         del self.distractor_target_button_list[self.distractor_target_list.index(touch_coord)]
         del self.distractor_ignore_button_list[distract_index]
         self.distractor_target_list.remove(touch_coord)
@@ -937,6 +1137,9 @@ class ProtocolScreen(Screen):
         self.distractor_target_button_list.append(image)
         self.protocol_floatlayout.add_widget(self.distractor_target_button_list[len(self.distractor_target_button_list) - 1])
         self.distractor_target_button_list[len(self.distractor_target_button_list) - 1].size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Distractor Target', 'X Position', new_target[0],
+             'Y Position', new_target[0], 'Image Name', self.distractor_target_image])
 
         image = ImageButton(source=self.distractor_ignore_image_path, allow_stretch=True)
         image.coord = new_distract
@@ -949,6 +1152,9 @@ class ProtocolScreen(Screen):
 
         self.distractor_ignore_button_list[len(self.distractor_target_button_list) - 1].size_hint = (
         (0.08 * self.width_adjust), (0.08 * self.height_adjust))
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Distractor Ignore', 'X Position', new_distract[0],
+             'Y Position', new_distract[0], 'Image Name', self.distractor_ignore_image])
         self.distractor_press_count += 1
 
     # Data Saving Function
@@ -975,9 +1181,15 @@ class ProtocolScreen(Screen):
     # Trial Contingency Functions
     def trial_contingency(self):
         self.current_trial += 1
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
+             '', '', '', ''])
 
         if self.current_trial > self.block_threshold:
             self.current_trial -= 1
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
+                 '', '', '', ''])
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
             self.block_threshold += self.block_trial_break
@@ -994,14 +1206,42 @@ class ProtocolScreen(Screen):
             self.current_sep = self.space_probe_trial_list[self.current_space_trial_index]
             self.trial_coord = generate_trial_pos_sep(self.current_sep)
             self.current_delay = self.space_probe_delay_length
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Separation', 'Value', str(self.current_sep),
+                 '', '', '', ''])
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Sample Position', 'X Position',
+                 str(self.trial_coord['Sample'][0]),
+                 'Y Position', str(self.trial_coord['Sample'][1]), '', ''])
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Choice Position', 'X Position',
+                 str(self.trial_coord['Choice'][0]),
+                 'Y Position', str(self.trial_coord['Choice'][1]), '', ''])
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Delay', 'Value', str(self.current_delay),
+                 '', '', '', ''])
             self.distractor_target_list, self.distractor_ignore_list = \
                 self.generate_distractor_pos(self.space_probe_distract_target_count,
                                              self.space_probe_distract_distractor_count)
             self.current_space_trial_index += 1
         elif self.current_probe == 'Delay':
             self.current_sep = self.delay_probe_sep
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Separation', 'Value', str(self.current_sep),
+                 '', '', '', ''])
             self.trial_coord = generate_trial_pos_sep(self.current_sep)
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Sample Position', 'X Position',
+                 str(self.trial_coord['Sample'][0]),
+                 'Y Position', str(self.trial_coord['Sample'][1]), '', ''])
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Choice Position', 'X Position',
+                 str(self.trial_coord['Choice'][0]),
+                 'Y Position', str(self.trial_coord['Choice'][1]), '', ''])
             self.current_delay = self.delay_probe_trial_list[self.current_delay_trial_index]
+            self.event_logger.add_event(
+                [self.elapsed_time, 'Variable Change', 'Current Delay', 'Value', str(self.current_delay),
+                 '', '', '', ''])
             self.distractor_target_list, self.distractor_ignore_list = \
                 self.generate_distractor_pos(self.delay_probe_target_count,
                                              self.delay_probe_distractor_count)
@@ -1046,6 +1286,9 @@ class ProtocolScreen(Screen):
             Clock.unschedule(self.block_contingency)
 
         self.protocol_floatlayout.clear_widgets()
+        self.event_logger.add_event(
+            [self.elapsed_time, 'Image Removed', 'Grid Array', '', '',
+             '', '', '', ''])
         self.feedback_string = ''
         self.feedback_label.text = self.feedback_string
 
@@ -1082,3 +1325,7 @@ class ProtocolScreen(Screen):
         height = self.protocol_floatlayout.height
 
         self.screen_ratio = width / height
+
+    def record_touch_event(self,event_type):
+        self.event_logger.add_event([self.elapsed_time, 'Screen',event_type,'X Position',
+                                    'FILL','Y Position','FILL','',''])
