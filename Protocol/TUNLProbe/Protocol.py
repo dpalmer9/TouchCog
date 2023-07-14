@@ -23,6 +23,7 @@ class ImageButton(ButtonBehavior, Image):
         self.coord = None
         self.fit_mode = 'fill'
         self.touch_pos = (0,0)
+        self.name = ''
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
