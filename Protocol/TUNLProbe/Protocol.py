@@ -22,16 +22,60 @@ class ImageButton(ButtonBehavior, Image):
         super(ImageButton, self).__init__(**kwargs)
         self.coord = None
         self.fit_mode = 'fill'
-        self.press_x = 0
-        self.press_y = 0
+        self.touch_pos = (0,0)
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
-            self.press_x = touch.pos[0]
-            self.press_y = touch.pos[1]
+            self.touch_pos = touch.pos
             return super(ImageButton, self).on_touch_down(touch)
         else:
             return False
+
+
+class FloatLayoutLog(FloatLayout):
+    def __init__(self, **kwargs):
+        super(FloatLayoutLog, self).__init__(**kwargs)
+        self.touch_pos = [0,0]
+        self.held_name = ''
+
+    def on_touch_down(self, touch):
+        self.touch_pos = touch.pos
+        if self.disabled and self.collide_point(*touch.pos):
+            return True
+        for child in self.children[:]:
+            if child.dispatch('on_touch_down', touch):
+                if isinstance(child, ImageButton):
+                    self.held_name = child.name
+                else:
+                    self.held_name = ''
+                return True
+        self.held_name = ''
+
+    def on_touch_move(self, touch):
+        self.touch_pos = touch.pos
+        if self.disabled:
+            return
+        for child in self.children[:]:
+            if child.dispatch('on_touch_move', touch):
+                if isinstance(child, ImageButton):
+                    self.held_name = child.name
+                else:
+                    self.held_name = ''
+                return True
+        self.held_name = ''
+
+    def on_touch_up(self, touch):
+        self.touch_pos = touch.pos
+        if self.disabled:
+            return
+        for child in self.children[:]:
+            if child.dispatch('on_touch_up', touch):
+                if isinstance(child, ImageButton):
+                    self.held_name = child.name
+                else:
+                    self.held_name = ''
+                return True
+        self.held_name = ''
 
 class EventLogger():
     def __init__(self):
@@ -122,14 +166,14 @@ class ProtocolScreen(Screen):
         super(ProtocolScreen, self).__init__(**kwargs)
 
         self.event_logger = EventLogger()
-        event_log_press = lambda a,b:self.record_touch_event('Touch Press')
-        event_log_release = lambda a,b:self.record_touch_event('Touch Release')
-        event_log_move = lambda a,b:self.record_touch_event('Touch Move')
+        self.event_log_press = lambda a,b:self.record_touch_event('Touch Press')
+        self.event_log_release = lambda a,b:self.record_touch_event('Touch Release')
+        self.event_log_move = lambda a,b:self.record_touch_event('Touch Move')
 
-        self.protocol_floatlayout = FloatLayout()
-        self.protocol_floatlayout.bind(on_touch_down=event_log_press)
-        self.protocol_floatlayout.bind(on_touch_up=event_log_release)
-        self.protocol_floatlayout.bind(on_touch_move=event_log_move)
+        self.protocol_floatlayout = FloatLayoutLog()
+        self.protocol_floatlayout.bind(on_touch_down=self.event_log_press)
+        self.protocol_floatlayout.bind(on_touch_up=self.event_log_release)
+        self.protocol_floatlayout.bind(on_touch_move=self.event_log_move)
 
         self.add_widget(self.protocol_floatlayout)
         width = screen_resolution[0]
@@ -543,6 +587,7 @@ class ProtocolScreen(Screen):
         self.hold_button = ImageButton(source=self.hold_button_image_path)
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.001}
         self.hold_button.size_hint = (None, None)
+        self.hold_button.name = 'Hold Button'
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
@@ -567,12 +612,14 @@ class ProtocolScreen(Screen):
                                              "center_y": self.y_dim_hint[self.trial_coord['Sample'][1]]}
         self.sample_image_button.bind(on_press=self.sample_pressed)
         self.sample_image_button.size_hint = (None, None)
+        self.sample_image_button.name = 'Sample Image'
 
         self.novel_image_button = ImageButton(source=self.stimulus_image_path)
         self.novel_image_button.pos_hint = {"center_x": self.x_dim_hint[self.trial_coord['Choice'][0]],
                                             "center_y": self.y_dim_hint[self.trial_coord['Choice'][1]]}
         self.novel_image_button.bind(on_press=self.novel_pressed)
         self.novel_image_button.size_hint = (None, None)
+        self.novel_image_button.name = 'Novel Image'
 
         self.distractor_target_button_list = list()
         self.distractor_target_image_path = self.image_folder + self.distractor_target_image + '.png'
@@ -584,6 +631,7 @@ class ProtocolScreen(Screen):
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
             image.size_hint = (None, None)
+            image.name = 'Distractor Target'
             self.distractor_target_button_list.append(image)
 
         self.distractor_ignore_button_list = list()
@@ -594,6 +642,7 @@ class ProtocolScreen(Screen):
             image.coord = coord
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.size_hint = (None, None)
+            image.name = 'Distractor Ignore'
             self.distractor_ignore_button_list.append(image)
 
         # Define Widgets - Text
@@ -953,7 +1002,6 @@ class ProtocolScreen(Screen):
 
     # Sample Stimuli Pressed during Choice
     def sample_pressed(self, *args):
-        print(args)
         if self.sample_completed is False:
             self.event_logger.add_event(
                 [self.elapsed_time, 'Stage Change', 'Sample Pressed', '', '',
@@ -1134,6 +1182,7 @@ class ProtocolScreen(Screen):
         image.pos_hint = {"center_x": self.x_dim_hint[new_target[0]], "center_y": self.y_dim_hint[new_target[1]]}
         image.size_hint = (None, None)
         image.bind(on_press=lambda instance: self.distractor_target_press(instance,index))
+        image.name = 'Distractor Target'
         self.distractor_target_button_list.append(image)
         self.protocol_floatlayout.add_widget(self.distractor_target_button_list[len(self.distractor_target_button_list) - 1])
         self.distractor_target_button_list[len(self.distractor_target_button_list) - 1].size_hint = ((0.08 * self.width_adjust), (0.08 * self.height_adjust))
@@ -1146,6 +1195,7 @@ class ProtocolScreen(Screen):
         image.size_hint = ((0.08 * self.screen_ratio), 0.08)
         image.pos_hint = {"center_x": self.x_dim_hint[new_distract[0]], "center_y": self.y_dim_hint[new_distract[1]]}
         image.size_hint = (None, None)
+        image.name = 'Distractor Ignore'
         self.distractor_ignore_button_list.append(image)
         self.protocol_floatlayout.add_widget(
             self.distractor_ignore_button_list[len(self.distractor_ignore_button_list) - 1])
@@ -1261,6 +1311,7 @@ class ProtocolScreen(Screen):
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.bind(on_press=lambda instance: self.distractor_target_press(instance, index))
             image.size_hint = (None, None)
+            image.name = 'Distractor Target'
             self.distractor_target_button_list.append(image)
 
         self.distractor_ignore_button_list = list()
@@ -1270,6 +1321,7 @@ class ProtocolScreen(Screen):
             image.size_hint = ((0.08 * self.screen_ratio), 0.08)
             image.pos_hint = {"center_x": self.x_dim_hint[coord[0]], "center_y": self.y_dim_hint[coord[1]]}
             image.size_hint = (None, None)
+            image.name = 'Distractor Ignore'
             self.distractor_ignore_button_list.append(image)
 
     # Block Contingency Function
@@ -1328,4 +1380,4 @@ class ProtocolScreen(Screen):
 
     def record_touch_event(self,event_type):
         self.event_logger.add_event([self.elapsed_time, 'Screen',event_type,'X Position',
-                                    'FILL','Y Position','FILL','',''])
+                                    self.protocol_floatlayout.touch_pos[0],'Y Position',self.protocol_floatlayout.touch_pos[1],'Stimulus Name',self.protocol_floatlayout.held_name])
