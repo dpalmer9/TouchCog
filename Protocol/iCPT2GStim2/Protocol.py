@@ -961,7 +961,6 @@ class Protocol_Screen(Screen):
     def start_clock(self, *args):
         self.start_time = time.time()
         Clock.schedule_interval(self.clock_monitor, 0.1)
-        Clock.schedule_interval(self.display_monitor, 0.1)
 
     def clock_monitor(self, *args):
         self.current_time = time.time()
@@ -971,9 +970,5 @@ class Protocol_Screen(Screen):
         if self.elapsed_time > self.session_length_max:
             Clock.unschedule(self.clock_monitor)
             self.protocol_end()
-
-    def display_monitor(self, *args):
-        width = self.protocol_floatlayout.width
-        height = self.protocol_floatlayout.height
         
         

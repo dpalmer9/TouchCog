@@ -1363,7 +1363,6 @@ class ProtocolScreen(Screen):
     def start_clock(self, *args):
         self.start_time = time.time()
         Clock.schedule_interval(self.clock_monitor, 0.1)
-        Clock.schedule_interval(self.display_monitor, 0.1)
 
     # Update Clock
     def clock_monitor(self, *args):
@@ -1376,6 +1375,3 @@ class ProtocolScreen(Screen):
             self.protocol_end()
 
     # Get Display Information
-    def display_monitor(self, *args):
-        width = self.protocol_floatlayout.width
-        height = self.protocol_floatlayout.height
