@@ -33,14 +33,7 @@ class ImageButton(ButtonBehavior, Image):
         self.fit_mode = 'fill'
         self.press_x = 0
         self.press_y = 0
-
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            self.press_x = touch.pos[0]
-            self.press_y = touch.pos[1]
-            return super(ImageButton, self).on_touch_down(touch)
-        else:
-            return False
+        self.name = ''
 
 class Protocol_Screen(Screen):
     def __init__(self, screen_resolution, **kwargs):

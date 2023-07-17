@@ -21,6 +21,7 @@ class ImageButton(ButtonBehavior, Image):
         self.fit_mode = 'fill'
         self.press_x = 0
         self.press_y = 0
+        self.name = ''
 
 class FloatLayoutLog(FloatLayout):
     def __init__(self, **kwargs):
