@@ -243,6 +243,7 @@ class Protocol_Screen(Screen):
         self.response_lat = 0
         self.correct_location = 0
         self.incorrect_location = 0
+        self.elapsed_time = 0
 
         # Define Variables - Trial Configuration
         self.trial_configuration = random.randint(1, 6)

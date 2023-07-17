@@ -230,6 +230,7 @@ class Protocol_Screen(Screen):
         self.current_time = 0
         self.start_stimulus = 0
         self.response_lat = 0
+        self.elapsed_time = 0
 
         # Define Variables - Trial Configuration
         self.left_stimulus_index = random.randint(0, 1)
