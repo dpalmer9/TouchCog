@@ -283,7 +283,8 @@ class ProtocolBase(Screen):
             temp_filename = self.participant_id + self.protocol_name + str(file_index) + '.csv'
             self.file_path = folder_path + self.folder_mod + temp_filename
 
-        self.session_data.columns = self.data_cols
+
+        self.session_data = pd.DataFrame(columns=self.data_cols)
         self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
 
         event_path = folder_path + self.folder_mod + self.participant_id + self.protocol_name + str(
@@ -447,10 +448,9 @@ class ProtocolBase(Screen):
                 self.stimulus_presentation()
 
     def write_summary_file(self, data_row):
-        data_file = open(self.file_path, "a")
-        data_file.write("\n")
-        data_file.write(data_row)
-        data_file.close()
+        data_row = pd.Series(data_row)
+        self.session_data = pd.concat([self.session_data, data_row])
+        self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
         return
 
     def start_clock(self, *args):
