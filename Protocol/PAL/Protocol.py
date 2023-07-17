@@ -220,12 +220,19 @@ class Protocol_Screen(Screen):
         self.current_correct = 0
         self.stage_index = 0
         self.current_block = 0
+        self.left_chosen = 0
+        self.center_chosen = 0
+        self.right_chosen = 0
+        self.location_chosen = 0
 
         # Define Variables - String
         self.correct_image = self.training_image
         self.incorrect_image = self.training_image_incorrect
         self.current_stage = self.stage_list[self.stage_index]
         self.feedback_string = ''
+        self.l1_image = ''
+        self.l2_image = ''
+        self.l3_image = ''
 
         # Define Variables - Time
         self.start_iti = 0
@@ -233,6 +240,8 @@ class Protocol_Screen(Screen):
         self.current_time = 0
         self.start_stimulus = 0
         self.response_lat = 0
+        self.correct_location = 0
+        self.incorrect_location = 0
 
         # Define Variables - Trial Configuration
         self.trial_configuration = random.randint(1, 6)
