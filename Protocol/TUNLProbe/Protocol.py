@@ -1373,5 +1373,3 @@ class ProtocolScreen(Screen):
         if self.elapsed_time > self.session_max_length:
             Clock.unschedule(self.clock_monitor)
             self.protocol_end()
-
-    # Get Display Information
