@@ -5,8 +5,8 @@ import configparser
 import time
 import numpy as np
 import pandas as pd
-import random
 import csv
+import random
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
@@ -14,7 +14,6 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
-from kivy.uix.widget import Widget
 
 
 class ImageButton(ButtonBehavior, Image):
@@ -177,9 +176,6 @@ def generate_trial_pos_sep(sep_level):
 class ProtocolScreen(Screen):
     def __init__(self,screen_resolution,**kwargs):
         super(ProtocolScreen, self).__init__(**kwargs)
-
-        self.event_logger = EventLogger()
-
         self.protocol_floatlayout = FloatLayoutLog()
 
         self.add_widget(self.protocol_floatlayout)
@@ -1383,9 +1379,3 @@ class ProtocolScreen(Screen):
     def display_monitor(self, *args):
         width = self.protocol_floatlayout.width
         height = self.protocol_floatlayout.height
-
-        self.screen_ratio = width / height
-
-    def record_touch_event(self,event_type):
-        self.protocol_floatlayout.add_event([self.elapsed_time, 'Screen',event_type,'X Position',
-                                    self.protocol_floatlayout.touch_pos[0],'Y Position',self.protocol_floatlayout.touch_pos[1],'Stimulus Name',self.protocol_floatlayout.held_name])

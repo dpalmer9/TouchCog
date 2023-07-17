@@ -1,6 +1,4 @@
 # Imports #
-import kivy
-import zipimport
 import sys
 import os
 import configparser
@@ -8,23 +6,13 @@ import time
 import numpy as np
 import pandas as pd
 import csv
-from kivy.app import App
-from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.image import AsyncImage
-#from win32api import GetSystemMetrics
-from kivy.core.window import Window
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.uix.textinput import TextInput
-from kivy.uix.vkeyboard import VKeyboard
-from kivy.uix.screenmanager import ScreenManager, Screen
-from functools import partial
+from kivy.uix.screenmanager import Screen
 
 class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
@@ -987,11 +975,5 @@ class Protocol_Screen(Screen):
     def display_monitor(self, *args):
         width = self.protocol_floatlayout.width
         height = self.protocol_floatlayout.height
-
-        self.screen_ratio = width / height
-            
-    def record_touch_event(self,event_type):
-        self.protocol_floatlayout.add_event([self.elapsed_time, 'Screen',event_type,'X Position',
-                                    self.protocol_floatlayout.touch_pos[0],'Y Position',self.protocol_floatlayout.touch_pos[1],'Stimulus Name',self.protocol_floatlayout.held_name])
         
         
