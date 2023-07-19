@@ -19,6 +19,7 @@ class ProtocolScreen(ProtocolBase):
     def __init__(self, screen_resolution, **kwargs):
         super(ProtocolScreen, self).__init__(**kwargs)
         self.protocol_name = 'iCPT2GStim2'
+        self.update_task()
         width = screen_resolution[0]
         height = screen_resolution[1]
         self.size = screen_resolution
@@ -283,7 +284,7 @@ class ProtocolScreen(ProtocolBase):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Stage Change', 'Premature Response', '', '',
              '', '', '', ''])
-        self.feedback_string = self.hold_feedback_wait_str
+        self.feedback_string = self.feedback_dict['wait']
         contingency = '2'
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
@@ -296,7 +297,7 @@ class ProtocolScreen(ProtocolBase):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
-        self.write_summary_file(response, contingency)
+        self.write_trial(response, contingency)
         self.response_lat = 0
         self.iti_active = False
         self.feedback_label.text = self.feedback_string
@@ -305,11 +306,12 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
                  '', '', '', ''])
+            self.feedback_on_screen = True
         self.hold_button.unbind(on_release=self.premature_response)
         self.hold_button.bind(on_press=self.iti)
 
     def return_hold(self):
-        self.feedback_string = self.hold_feedback_return_str
+        self.feedback_string = self.feedback_dict['return']
         self.hold_button.bind(on_press=self.iti)
 
     # Contingency Stages #
@@ -330,7 +332,7 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
-            self.feedback_string = self.stim_feedback_correct_str
+            self.feedback_string = self.feedback_dict['correct']
             contingency = '1'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
@@ -341,7 +343,7 @@ class ProtocolScreen(ProtocolBase):
                  '', '', '', ''])
             self.current_hits += 1
         else:
-            self.feedback_string = self.stim_feedback_incorrect_str
+            self.feedback_string = self.feedback_dict['incorrect']
             self.trial_outcome = '3'
             self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
