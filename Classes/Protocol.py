@@ -204,6 +204,10 @@ class ProtocolBase(Screen):
         self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
         self.return_button.bind(on_press=self.return_to_main)
 
+    def update_task(self):
+        self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + self.folder_mod
+
+
     def set_language(self, language):
         self.language = language
         lang_folder_path = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Language' + \
@@ -407,7 +411,7 @@ class ProtocolBase(Screen):
                 [self.elapsed_time, 'Stage Change', 'ITI Start', '', '',
                  '', '', '', ''])
 
-            if self.feedback_string == self.hold_feedback_wait_str:
+            if self.feedback_string == self.feedback_dict['wait']:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
@@ -448,8 +452,8 @@ class ProtocolBase(Screen):
                 self.stimulus_presentation()
 
     def write_summary_file(self, data_row):
-        data_row = pd.Series(data_row)
-        self.session_data = pd.concat([self.session_data, data_row])
+        data_row = pd.Series(data_row, index=self.data_cols)
+        self.session_data = pd.concat([self.session_data, data_row.to_frame().T], axis=0, ignore_index=True)
         self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
         return
 
