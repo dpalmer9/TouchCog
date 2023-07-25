@@ -169,27 +169,14 @@ class Protocol_Menu(Screen):
         return task_list
 
     def protocol_constructor(self, protocol):
-        if protocol == 'iCPT2GStim1':
-            from Protocol.iCPT2GStim1.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'iCPT2GStim2':
-            from Protocol.iCPT2GStim2.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'vPRL':
-            from Protocol.vPRL.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'PAL':
-            from Protocol.PAL.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'PRHuman':
-            from Protocol.PRHuman.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'TUNL':
-            from Protocol.TUNL.Menu import Configure_Screen
-            self.Protocol_Configure_Screen = Configure_Screen()
-        elif protocol == 'TUNLProbe':
-            from Protocol.TUNLProbe.Menu import ConfigureScreen
-            self.Protocol_Configure_Screen = ConfigureScreen()
+        # cwd = os.getcwd()
+        # mod = os_folder_modifier()
+        # prot_path = cwd + mod + 'Protocol' + mod + protocol
+        # sys.path.append(prot_path)
+        from Classes.Menu import MenuBase
+        self.Protocol_Configure_Screen = MenuBase()
+        # sys.path.remove(prot_path)
+        self.Protocol_Configure_Screen.menu_constructor(protocol)
 
 
 # Class App Builder #
