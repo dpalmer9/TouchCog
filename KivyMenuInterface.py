@@ -169,13 +169,13 @@ class Protocol_Menu(Screen):
         return task_list
 
     def protocol_constructor(self, protocol):
-        # cwd = os.getcwd()
-        # mod = os_folder_modifier()
-        # prot_path = cwd + mod + 'Protocol' + mod + protocol
-        # sys.path.append(prot_path)
-        from Classes.Menu import MenuBase
-        self.Protocol_Configure_Screen = MenuBase()
-        # sys.path.remove(prot_path)
+        cwd = os.getcwd()
+        mod = os_folder_modifier()
+        prot_path = cwd + mod + 'Protocol' + mod + protocol
+        sys.path.append(prot_path)
+        from Task.Menu import ConfigureScreen
+        self.Protocol_Configure_Screen = ConfigureScreen()
+        sys.path.remove(prot_path)
         self.Protocol_Configure_Screen.menu_constructor(protocol)
 
 
