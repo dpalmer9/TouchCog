@@ -50,6 +50,8 @@ class MenuBase(Screen):
         self.start_button.pos_hint = {"x": 0.45, "y": 0.1}
         self.start_button.bind(on_press=self.start_protocol)
 
+        self.settings_widgets = [Label(text='Language'), self.dropdown_main]
+
     def start_protocol(self, *args):
         sys.path.append(self.protocol_path)
         from Task.Protocol import ProtocolScreen
@@ -83,7 +85,7 @@ class MenuBase(Screen):
         config_file.read(config_path)
         self.parameters_config = config_file['TaskParameters']
         num_parameters = len(self.parameters_config)
-        self.setting_gridlayout = GridLayout(cols=2, rows= (num_parameters + 1))
+        self.setting_gridlayout = GridLayout(cols=2, rows= (num_parameters + int(len(self.settings_widgets) / 2)))
         self.setting_scrollview.add_widget(self.setting_gridlayout)
         self.setting_scrollview.size_hint = (0.85, 0.6)
         self.setting_scrollview.pos_hint = {"x": 0.1, "y": 0.4}
@@ -91,8 +93,8 @@ class MenuBase(Screen):
         for parameter in self.parameters_config:
             self.setting_gridlayout.add_widget(Label(text=parameter))
             self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
-        self.setting_gridlayout.add_widget(Label(text='Language'))
-        self.setting_gridlayout.add_widget(self.dropdown_main)
+        for wid in self.settings_widgets:
+            self.setting_gridlayout.add_widget(wid)
         self.main_layout.add_widget(self.setting_scrollview)
         self.main_layout.add_widget(self.id_grid)
         self.main_layout.add_widget(self.start_button)
