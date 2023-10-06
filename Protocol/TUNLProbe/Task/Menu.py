@@ -1,25 +1,14 @@
 # Imports #
-import sys
-import configparser
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.dropdown import DropDown
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
-#from win32api import GetSystemMetrics
-from kivy.uix.textinput import TextInput
-from kivy.uix.screenmanager import Screen
-
 from Classes.Menu import MenuBase
 
-
-## TextInput(text="Test",id="Test1")
 
 class ConfigureScreen(MenuBase):
     def __init__(self,**kwargs):
         super(ConfigureScreen,self).__init__(**kwargs)
-
+        self.protocol = 'TUNLProbe'
         self.correction_dropdown = DropDown()
         self.correction_button = Button(text='Correction Trials Disabled')
         self.correction_list = ['Correction Trials Enabled', 'Correction Trials Disabled']
@@ -32,7 +21,9 @@ class ConfigureScreen(MenuBase):
         self.correction_dropdown.bind(on_select=lambda instance, x: setattr(self.correction_button, 'text', x))
 
         self.settings_widgets.append(Label(text='Correction Trials'))
-        self.settings_widgets.append(self.correction_dropdown)
+        self.settings_widgets.append(self.correction_button)
+
+        self.menu_constructor(self.protocol)
             
         
         

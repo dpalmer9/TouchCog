@@ -64,6 +64,7 @@ from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.config import Config
 from functools import partial
+from Classes.Menu import MenuBase
 
 # Window.borderless = True
 Window.size = (int(x_dim), int(y_dim))
@@ -133,6 +134,8 @@ class Protocol_Menu(Screen):
         super(Protocol_Menu, self).__init__(**kwargs)
         self.Protocol_Layout = FloatLayout()
 
+        self.Protocol_Configure_Screen = MenuBase()
+
         protocol_list = self.search_protocols()
         self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
         protocol_index = 0
@@ -176,7 +179,6 @@ class Protocol_Menu(Screen):
         from Task.Menu import ConfigureScreen
         self.Protocol_Configure_Screen = ConfigureScreen()
         sys.path.remove(prot_path)
-        self.Protocol_Configure_Screen.menu_constructor(protocol)
 
 
 # Class App Builder #

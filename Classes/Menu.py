@@ -62,9 +62,14 @@ class MenuBase(Screen):
         value = ''
         parameter_dict = {}
         for widget in self.setting_gridlayout.walk():
-            if isinstance(widget, Label):
+            if isinstance(widget, Label) and not isinstance(widget, Button):
                 key = widget.text
+                key = key.lower()
+                key = key.replace(' ','_')
             elif isinstance(widget, TextInput):
+                value = widget.text
+                parameter_dict[key] = value
+            elif isinstance(widget, Button):
                 value = widget.text
                 parameter_dict[key] = value
         parameter_dict['participant_id'] = self.id_entry.text
@@ -85,8 +90,8 @@ class MenuBase(Screen):
         config_file.read(config_path)
         self.parameters_config = config_file['TaskParameters']
         num_parameters = len(self.parameters_config)
-        self.setting_gridlayout = GridLayout(cols=2, rows= (num_parameters + int(len(self.settings_widgets) / 2)))
-        self.setting_scrollview.add_widget(self.setting_gridlayout)
+        self.setting_gridlayout.rows = (num_parameters + int(len(self.settings_widgets) / 2))
+        self.setting_gridlayout.cols = 2
         self.setting_scrollview.size_hint = (0.85, 0.6)
         self.setting_scrollview.pos_hint = {"x": 0.1, "y": 0.4}
 
@@ -95,6 +100,7 @@ class MenuBase(Screen):
             self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
         for wid in self.settings_widgets:
             self.setting_gridlayout.add_widget(wid)
+        self.setting_scrollview.add_widget(self.setting_gridlayout)
         self.main_layout.add_widget(self.setting_scrollview)
         self.main_layout.add_widget(self.id_grid)
         self.main_layout.add_widget(self.start_button)
