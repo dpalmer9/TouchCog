@@ -113,8 +113,9 @@ class ProtocolScreen(ProtocolBase):
         self.image_folder = 'Protocol' + self.folder_mod + 'TUNLProbe' + self.folder_mod + 'Image' + self.folder_mod
         self.data_output_path = None
 
-        self.data_cols = ['TrialNo,Current Block','Probe Type,Separation','Delay','Sample_X','Sample_Y','Novel_X',
-                          'Novel_Y','Num_Distractors','Correction Trial','Correct,Sample Latency','Choice Latency']
+        self.data_cols = ['TrialNo', 'Current Block', 'Probe Type', 'Separation', 'Delay', 'Sample_X', 'Sample_Y',
+                          'Novel_X', 'Novel_Y', 'Num_Distractors', 'Correction Trial','Correct', 'Sample Latency',
+                          'Choice Latency']
 
         self.metadata_cols = ['participant_id', 'stimulus_image', 'distractor_target_image',
                          'distractor_ignore_image', 'iti_length', 'session_length_max',
@@ -188,6 +189,7 @@ class ProtocolScreen(ProtocolBase):
         self.set_language(self.language)
 
         # Define Variables - Coordinates
+        self.current_probe = 'Spatial'
         self.trial_coord = generate_trial_pos_sep(self.current_sep)
         self.distractor_target_list, self.distractor_ignore_list = \
             self.generate_distractor_pos(self.space_probe_distract_target_count,
@@ -731,7 +733,7 @@ class ProtocolScreen(ProtocolBase):
         self.distractor_press_count += 1
 
     # Data Saving Function
-    def write_trial(self, correct):
+    def write_trial(self):
         samp_x = self.trial_coord['Sample'][0]
         samp_y = self.trial_coord['Sample'][1]
         novel_x = self.trial_coord['Choice'][0]
