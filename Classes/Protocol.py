@@ -350,7 +350,6 @@ class ProtocolBase(Screen):
 
     def block_end(self, *args):
         self.block_started = False
-        self.trial_contingency(1, 1)
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Text Removed', 'Block Instruction', '', '',
@@ -358,7 +357,6 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Button Removed', 'Continue Button', '', '',
              '', '', '', ''])
-        self.trial_contingency(1, 1)
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
