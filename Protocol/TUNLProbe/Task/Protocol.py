@@ -555,7 +555,7 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Current Correct', 'Value', str(self.current_correction),
                  '', '', '', ''])
-            self.write_summary_file()
+            self.write_trial()
 
             self.protocol_floatlayout.add_widget(self.feedback_label)
             self.protocol_floatlayout.add_event(
@@ -629,7 +629,7 @@ class ProtocolScreen(ProtocolBase):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Current Correct', 'Value', str(self.current_correction),
              '', '', '', ''])
-        self.write_summary_file()
+        self.write_trial()
         self.current_correction = 0
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Current Correction', 'Value', str(self.current_correction),
@@ -731,6 +731,20 @@ class ProtocolScreen(ProtocolBase):
         self.distractor_press_count += 1
 
     # Data Saving Function
+    def write_trial(self, correct):
+        samp_x = self.trial_coord['Sample'][0]
+        samp_y = self.trial_coord['Sample'][1]
+        novel_x = self.trial_coord['Choice'][0]
+        novel_y = self.trial_coord['Choice'][1]
+        if self.current_probe == 'Spatial':
+            num_distractors = self.space_probe_distract_target_count
+        else:
+            num_distractors = self.delay_probe_target_count
+        trial_data = [self.current_trial, self.current_block, self.current_probe, self.current_sep, self.current_delay,
+                      (samp_x + 1), (samp_y + 1), (novel_x + 1), (novel_y + 1), num_distractors,
+                      self.current_correction, self.current_correct, self.sample_lat, self.choice_lat]
+        self.write_summary_file(trial_data)
+        return
 
     # Trial Contingency Functions
     def trial_contingency(self):
