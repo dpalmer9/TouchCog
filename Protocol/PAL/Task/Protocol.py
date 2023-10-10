@@ -446,7 +446,7 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
              '', '', '', ''])
         self.feedback_on_screen = True
-        self.write_summary_file(correct)
+        self.write_trial(correct)
         
         if correct == '0':
             self.correction_trial = True
@@ -498,7 +498,7 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
              '', '', '', ''])
         self.feedback_on_screen = True
-        self.write_summary_file(correct)
+        self.write_trial(correct)
         
         if correct == '0':
             self.correction_trial = True
@@ -550,16 +550,26 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
              '', '', '', ''])
         self.feedback_on_screen = True
-        self.write_summary_file(correct)
+        self.write_trial(correct)
         
         if correct == '0':
             self.correction_trial = True
         else:
             self.correction_trial = False
             self.trial_contingency()
-            
-        
+
         self.hold_button.bind(on_press=self.iti)
+
+    def write_trial(self, correct):
+        if self.correction_trial:
+            correction = 1
+        else:
+            correction = 0
+        trial_data = [self.current_trial, self.current_stage, self.correct_image, self.incorrect_image,
+                      self.correct_location, self.incorrect_location, correction, self.location_chosen, correct,
+                      self.response_lat]
+        self.write_summary_file(trial_data)
+        return
 
     # Trial Contingency Functions #
     
