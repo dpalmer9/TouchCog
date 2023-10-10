@@ -169,6 +169,9 @@ class Protocol_Menu(Screen):
         mod = os_folder_modifier()
         folder = cwd + mod + "Protocol"
         task_list = os.listdir(folder)
+        for task in task_list:
+            if '.py' in task:
+                task_list.remove(task)
         return task_list
 
     def protocol_constructor(self, protocol):
