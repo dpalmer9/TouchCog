@@ -400,6 +400,26 @@ class ProtocolScreen(ProtocolBase):
             distractor_list.append(coord)
         return target_list, distractor_list
 
+        # Remove Block Screen and Resume Task
+    def block_end(self, *args):
+        self.block_started = False
+        self.protocol_floatlayout.clear_widgets()
+        self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Text Removed', 'Block Instruction', '', '',
+             '', '', '', ''])
+        self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Button Removed', 'Continue Button', '', '',
+             '', '', '', ''])
+        self.trial_contingency()
+        for image_wid in self.background_grid_list:
+            self.protocol_floatlayout.add_widget(image_wid)
+        self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Image Displayed', 'Grid Array', '', '',
+             '', '', '', ''])
+        self.protocol_floatlayout.add_widget(self.hold_button)
+        self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+             '', '', '', ''])
 
     # Protocol Staging
     def start_protocol(self, *args):
@@ -429,7 +449,6 @@ class ProtocolScreen(ProtocolBase):
         self.feedback_label.text = self.feedback_string
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.1}
         self.hold_button.bind(on_press=self.iti)
-
 
     # Delay Period
     def delay_period(self,*args):
