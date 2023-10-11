@@ -873,5 +873,5 @@ class ProtocolScreen(ProtocolBase):
             return
 
         self.current_block += 1
-
+        self.trial_contingency()
         self.block_screen()

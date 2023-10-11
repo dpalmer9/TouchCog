@@ -102,6 +102,7 @@ class ProtocolScreen(ProtocolBase):
         # Define Variables - Time
         self.start_stimulus = 0
         self.response_lat = 0
+        self.feedback_start = 0
 
         # Define Variables - Trial Configurations
         distractor_prob = 1 - self.target_probability
@@ -400,7 +401,7 @@ class ProtocolScreen(ProtocolBase):
         self.hold_button.unbind(on_press=self.hold_returned_stim)
         self.hold_button.unbind(on_release=self.hold_removed_stim)
 
-        if self.hold_active == True:
+        if self.hold_active:
             self.iti()
         else:
             self.return_hold()
@@ -415,8 +416,8 @@ class ProtocolScreen(ProtocolBase):
 
     # Data Saving Functions #
     def write_trial(self, response, contingency):
-        trial_data = [self.current_trial, self.current_stage, self.current_block, self.center_image, int(self.current_correction),
-        response, contingency, self.trial_outcome, self.response_lat]
+        trial_data = [self.current_trial, self.current_stage, self.current_block, self.center_image,
+                      int(self.current_correction), response, contingency, self.trial_outcome, self.response_lat]
         self.write_summary_file(trial_data)
         return
 
@@ -501,5 +502,6 @@ class ProtocolScreen(ProtocolBase):
                 self.protocol_end()
                 return
 
+        self.trial_contingency()
         self.block_screen()
         

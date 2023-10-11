@@ -618,7 +618,6 @@ class ProtocolScreen(ProtocolBase):
             self.trial_configuration = random.randint(1,6)
             self.generate_trial_contingency()
 
-        
         self.block_screen()
         
         
