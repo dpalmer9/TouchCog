@@ -49,12 +49,12 @@ class MenuBase(Screen):
 
         self.back_button = Button(text="Back")
         self.back_button.size_hint = (0.1,0.1)
-        self.back_button.pos_hint = {"x": 0.3, "y": 0.1}
+        self.back_button.pos_hint = {"x": 0.4, "y": 0.1}
         self.back_button.bind(on_press=self.return_menu)
 
         self.start_button = Button(text="Start Task")
         self.start_button.size_hint = (0.1, 0.1)
-        self.start_button.pos_hint = {"x": 0.7, "y": 0.1}
+        self.start_button.pos_hint = {"x": 0.6, "y": 0.1}
         self.start_button.bind(on_press=self.start_protocol)
 
         self.settings_widgets = [Label(text='Language'), self.dropdown_main]
