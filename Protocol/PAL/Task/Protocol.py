@@ -26,7 +26,6 @@ class ProtocolScreen(ProtocolBase):
             self.width_adjust = 1
             self.height_adjust = 1
 
-
         # Define Variables - Folder Path
         self.image_folder = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Image' + self.folder_mod
         self.data_output_path = None
@@ -64,6 +63,7 @@ class ProtocolScreen(ProtocolBase):
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
         self.paltype = 'dPAL'
+        self.correction_trials_enabled = False
 
         # Define Language
         self.language = 'English'
@@ -126,7 +126,7 @@ class ProtocolScreen(ProtocolBase):
         self.language = self.parameters_dict['language']
 
         # Define Variables - Config
-        self.session_max_length = float(self.parameters_dict['session_length_max'])
+        self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = int(self.parameters_dict['session_trial_max'])
         self.iti_length = float(self.parameters_dict['iti_length'])
         self.feedback_length = float(self.parameters_dict['feedback_length'])
@@ -142,8 +142,12 @@ class ProtocolScreen(ProtocolBase):
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
-        self.paltype = 'dPAL'
-
+        self.paltype = self.parameters_dict['pal_type']
+        self.correction_trials_enabled = self.parameters_dict['correction_trials']
+        if self.correction_trials_enabled == 'Correction Trials Enabled':
+            self.correction_trials_enabled = True
+        else:
+            self.correction_trials_enabled = False
 
         # Define Language
         self.set_language(self.language)
@@ -184,8 +188,7 @@ class ProtocolScreen(ProtocolBase):
         self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
 
         self.present_instructions()
-        
-        
+
     def generate_trial_contingency(self,training=False):
         if not training and self.paltype == 'dPAL':
             if self.trial_configuration == 1:
@@ -285,7 +288,7 @@ class ProtocolScreen(ProtocolBase):
                 self.l3_image = self.correct_image
                 self.l2_image = self.incorrect_image
                 self.l1_image = self.mask_image
-        elif training == True:
+        elif training:
             if self.trial_configuration == 1:
                 self.correct_location = 0
                 self.incorrect_location = 1
@@ -353,7 +356,6 @@ class ProtocolScreen(ProtocolBase):
 
     # Protocol Staging #
 
-                
     def stimulus_presentation(self,*args):
         self.left_stimulus.source = self.left_stimulus_image_path
         self.center_stimulus.source = self.center_stimulus_image_path
@@ -373,14 +375,11 @@ class ProtocolScreen(ProtocolBase):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '3',
              'Y Position', '1', 'Image Name', self.l3_image])
-
-
             
         self.start_stimulus = time.time()
         
         self.stimulus_on_screen = True
-            
-                
+
     def premature_response(self,*args):
         if self.stimulus_on_screen:
             return None
@@ -400,9 +399,6 @@ class ProtocolScreen(ProtocolBase):
                  '', '', '', ''])
         self.hold_button.unbind(on_release=self.premature_response)
         self.hold_button.bind(on_press=self.iti)
-        
-        
-            
         
     # Contingency Stages #
     def left_stimulus_pressed(self,*args):
@@ -450,11 +446,13 @@ class ProtocolScreen(ProtocolBase):
         
         if correct == '0':
             self.correction_trial = True
+            if not self.correction_trials_enabled:
+                self.correction_trial = False
+                self.trial_contingency()
         else:
             self.correction_trial = False
             self.trial_contingency()
-            
-        
+
         self.hold_button.bind(on_press=self.iti)
         
     def center_stimulus_pressed(self,*args):
@@ -502,11 +500,13 @@ class ProtocolScreen(ProtocolBase):
         
         if correct == '0':
             self.correction_trial = True
+            if not self.correction_trials_enabled:
+                self.correction_trial = False
+                self.trial_contingency()
         else:
             self.correction_trial = False
             self.trial_contingency()
-            
-        
+
         self.hold_button.bind(on_press=self.iti)
     
     def right_stimulus_pressed(self,*args):
@@ -554,6 +554,9 @@ class ProtocolScreen(ProtocolBase):
         
         if correct == '0':
             self.correction_trial = True
+            if not self.correction_trials_enabled:
+                self.correction_trial = False
+                self.trial_contingency()
         else:
             self.correction_trial = False
             self.trial_contingency()
@@ -590,8 +593,6 @@ class ProtocolScreen(ProtocolBase):
             self.trial_configuration = random.randint(1,6)
             self.generate_trial_contingency(training=True)
         
-            
-        
         if self.stage_index == 1:
             if self.current_trial > self.block_threshold:
                 self.block_contingency()
@@ -619,6 +620,3 @@ class ProtocolScreen(ProtocolBase):
             self.generate_trial_contingency()
 
         self.block_screen()
-        
-        
-        
