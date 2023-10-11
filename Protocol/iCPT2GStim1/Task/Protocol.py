@@ -501,6 +501,7 @@ class ProtocolScreen(ProtocolBase):
                 self.protocol_end()
                 return
 
+        self.trial_contingency()
         self.block_screen()
         
         
