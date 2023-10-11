@@ -241,6 +241,9 @@ class ProtocolScreen(ProtocolBase):
             image.coord = coord
             self.distractor_ignore_button_list.append(image)
 
+        # Define Widgets - Labels
+        self.feedback_label.size_hint = (0.7, 0.4)
+        self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.98}
 
     # Initialization Functions
 
