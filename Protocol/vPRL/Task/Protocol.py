@@ -1,18 +1,9 @@
 # Imports #
-import sys
-import os
 import configparser
 import time
-import pandas as pd
-import csv
 import random
-from kivy.uix.button import Button
-from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.uix.screenmanager import Screen
 from Classes.Protocol import ImageButton, ProtocolBase
 
 
@@ -54,7 +45,7 @@ class ProtocolScreen(ProtocolBase):
         self.parameters_dict = config_file['TaskParameters']
 
         self.participant_id = 'Default'
-        self.session_max_length = float(self.parameters_dict['session_length_max'])
+        self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = int(self.parameters_dict['session_trial_max'])
         self.iti_length = float(self.parameters_dict['iti_length'])
         self.feedback_length = float(self.parameters_dict['feedback_length'])
@@ -138,7 +129,7 @@ class ProtocolScreen(ProtocolBase):
         self.participant_id = self.parameters_dict['participant_id']
 
         # Define Variables - Config
-        self.session_max_length = float(self.parameters_dict['session_length_max'])
+        self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = int(self.parameters_dict['session_trial_max'])
         self.iti_length = float(self.parameters_dict['iti_length'])
         self.feedback_length = float(self.parameters_dict['feedback_length'])
@@ -433,7 +424,7 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_end()
             return
         if self.stage_index == 0:
-            if (self.current_correct >= 10):
+            if self.current_correct >= 10:
                 self.block_contingency()
                 return
             self.left_stimulus_index = random.randint(0,1)
@@ -446,10 +437,7 @@ class ProtocolScreen(ProtocolBase):
             self.left_stimulus.source = self.image_folder + self.left_stimulus_image + '.png'
             self.right_stimulus.source = self.image_folder + self.right_stimulus_image + '.png'
             self.reward_contingency = 1
-            
-        
 
-        
         if self.stage_index == 1:
             self.left_stimulus_index = random.randint(0,1)
             if self.left_stimulus_index == 0:
@@ -479,8 +467,8 @@ class ProtocolScreen(ProtocolBase):
                 random.shuffle(self.reward_distribution)
             self.reward_contingency = self.reward_distribution[self.reward_index]
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Current Reward Contingency', 'Value', str(self.reward_contingency),
-                 '', '', '', ''])
+                [self.elapsed_time, 'Variable Change', 'Current Reward Contingency', 'Value',
+                 str(self.reward_contingency), '', '', '', ''])
             self.reward_index += 1
             if self.current_reversal >= self.maximum_reversals:
                 self.protocol_end()
@@ -501,24 +489,5 @@ class ProtocolScreen(ProtocolBase):
             self.incorrect_image = self.test_images[0]
         self.current_correct = 0
         self.current_score = 0
-        
+        self.trial_contingency()
         self.block_screen()
-            
-    
-    # Time Monitor Functions #
-    def start_clock(self,*args):
-        self.start_time = time.time()
-        Clock.schedule_interval(self.clock_monitor,0.1)
-    
-    def clock_monitor(self,*args):
-        self.current_time = time.time()
-        self.elapsed_time = self.current_time - self.start_time
-        self.protocol_floatlayout.elapsed_time = self.elapsed_time
-        
-        if self.elapsed_time > self.session_max_length:
-            Clock.unschedule(self.clock_monitor)
-            self.protocol_end()
-            
-        
-        
-        
