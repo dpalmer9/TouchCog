@@ -1,27 +1,16 @@
 # Imports #
-import kivy
-import zipimport
 import sys
-import os
 import configparser
-from kivy.app import App
-from kivy.uix.widget import Widget
 from kivy.uix.button import Button
-from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.dropdown import DropDown
-from kivy.uix.image import AsyncImage
 #from win32api import GetSystemMetrics
-from kivy.core.window import Window
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
-from kivy.uix.vkeyboard import VKeyboard
-from kivy.uix.screenmanager import ScreenManager, Screen
-from functools import partial
+from kivy.uix.screenmanager import Screen
+
 
 ## TextInput(text="Test",id="Test1")
 
@@ -83,7 +72,7 @@ class Configure_Screen(Screen):
         self.add_widget(self.main_layout)
         
     def start_protocol(self,*args):
-        from Protocol.PRHuman.Protocol import Protocol_Screen
+        from Protocol.PRHuman.Task.Protocol import Protocol_Screen
         self.Protocol_Task_Screen = Protocol_Screen(screen_resolution=self.size)
         
         key = ''
