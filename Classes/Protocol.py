@@ -8,9 +8,9 @@ from kivy.clock import Clock
 import pandas as pd
 import configparser
 import sys
-import csv
 import os
 import time
+
 
 class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
@@ -20,10 +20,11 @@ class ImageButton(ButtonBehavior, Image):
         self.touch_pos = (0, 0)
         self.name = ''
 
+
 class FloatLayoutLog(FloatLayout):
     def __init__(self, **kwargs):
         super(FloatLayoutLog, self).__init__(**kwargs)
-        self.touch_pos = [0,0]
+        self.touch_pos = [0, 0]
         self.held_name = ''
         self.event_columns = ['Time', 'Event_Type', 'Event_Name', 'Arg1_Name', 'Arg1_Value',
                               'Arg2_Name', 'Arg2_Value', 'Arg3_Name', 'Arg3_Value']
@@ -42,8 +43,8 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.elapsed_time, 'Screen','Touch Press','X Position',
-                                    self.touch_pos[0],'Y Position',self.touch_pos[1],'Stimulus Name',self.held_name])
+                self.add_event([self.elapsed_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                                'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
         self.add_event([self.elapsed_time, 'Screen', 'Touch Press', 'X Position',
@@ -84,15 +85,16 @@ class FloatLayoutLog(FloatLayout):
         if self.held_name != '':
             self.held_name = ''
 
-
-    def add_event(self,row):
+    def add_event(self, row):
         self.event_dataframe.loc[self.event_index] = row
         self.event_index += 1
         if self.save_path != '':
-            self.event_dataframe.to_csv(self.save_path,index=False)
+            self.event_dataframe.to_csv(self.save_path, index=False)
 
-    def update_path(self,path):
+    def update_path(self, path):
         self.save_path = path
+
+
 class ProtocolBase(Screen):
     def __init__(self, **kwargs):
         super(ProtocolBase, self).__init__(**kwargs)
@@ -164,6 +166,7 @@ class ProtocolBase(Screen):
 
         # Define Dictionaries
         self.parameters_dict = {}
+        self.feedback_dict = {}
 
         # Define Widgets - Images
         self.hold_button = ImageButton()
@@ -205,8 +208,8 @@ class ProtocolBase(Screen):
         self.return_button.bind(on_press=self.return_to_main)
 
     def update_task(self):
-        self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + self.folder_mod
-
+        self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + \
+                            self.folder_mod
 
     def set_language(self, language):
         self.language = language
@@ -253,7 +256,6 @@ class ProtocolBase(Screen):
             stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
         self.feedback_dict['correct'] = stim_feedback_correct_str
 
-
         stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
         stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
         if stim_feedback_incorrect_color != '':
@@ -287,7 +289,6 @@ class ProtocolBase(Screen):
             temp_filename = self.participant_id + self.protocol_name + str(file_index) + '.csv'
             self.file_path = folder_path + self.folder_mod + temp_filename
 
-
         self.session_data = pd.DataFrame(columns=self.data_cols)
         self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
 
@@ -310,10 +311,11 @@ class ProtocolBase(Screen):
         meta_output_path = folder_path + self.folder_mod + meta_output_filename
         while os.path.isfile(meta_output_path):
             file_index += 1
-            meta_output_filename = self.participant_id + '_' + self.protocol_name + '_Metadata_' + str(file_index) + '.csv'
+            meta_output_filename = self.participant_id + '_' + self.protocol_name + '_Metadata_' + str(file_index) + \
+                                   '.csv'
             meta_output_path = folder_path + self.folder_mod + meta_output_filename
 
-        self.meta_data = pd.DataFrame(meta_list, columns=['Parameter','Value'])
+        self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
         self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
 
     def present_instructions(self):
@@ -363,7 +365,7 @@ class ProtocolBase(Screen):
              '', '', '', ''])
 
     # End Staging #
-    def protocol_end(self):
+    def protocol_end(self, *args):
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_widget(self.end_label)
         self.protocol_floatlayout.add_event(
@@ -374,9 +376,8 @@ class ProtocolBase(Screen):
             [self.elapsed_time, 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
 
-    def return_to_main(self):
+    def return_to_main(self, *args):
         self.manager.current = 'mainmenu'
-
 
     def start_protocol(self, *args):
         self.protocol_floatlayout.add_event(
@@ -424,7 +425,8 @@ class ProtocolBase(Screen):
                      '', '', '', ''])
                 self.feedback_start_time = time.time()
                 self.feedback_on_screen = True
-            if ((time.time() - self.feedback_start_time) > self.feedback_length) and self.feedback_on_screen and self.feedback_length > 0:
+            if ((time.time() - self.feedback_start_time) > self.feedback_length) and self.feedback_on_screen and \
+                    self.feedback_length > 0:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
@@ -432,8 +434,8 @@ class ProtocolBase(Screen):
                 self.feedback_on_screen = False
             Clock.schedule_interval(self.iti, 0.1)
         if self.iti_active:
-            if (((time.time() - self.start_iti) > self.feedback_length) or ((
-                                                                                    time.time() - self.feedback_start_time) > self.feedback_length)) and self.feedback_on_screen == True:
+            if (((time.time() - self.start_iti) > self.feedback_length) or (
+                    (time.time() - self.feedback_start_time) > self.feedback_length)) and self.feedback_on_screen:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
