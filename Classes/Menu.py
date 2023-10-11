@@ -1,4 +1,4 @@
-from kivy.uix.screenmanager import Screen
+from kivy.uix.screenmanager import Screen, ScreenManagerException
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
@@ -8,12 +8,14 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 import sys
 import os
+import importlib
+import importlib.util
 import configparser
 
 class MenuBase(Screen):
     def __init__(self, **kwargs):
         super(MenuBase, self).__init__(**kwargs)
-
+        self.name = 'menuscreen'
         self.main_layout = FloatLayout()
 
         if sys.platform == 'linux' or sys.platform == 'darwin':
@@ -45,18 +47,39 @@ class MenuBase(Screen):
         self.id_grid.size_hint = (0.85, 0.05)
         self.id_grid.pos_hint = {'x': 0.1, 'y': 0.3}
 
+        self.back_button = Button(text="Back")
+        self.back_button.size_hint = (0.1,0.1)
+        self.back_button.pos_hint = {"x": 0.3, "y": 0.1}
+        self.back_button.bind(on_press=self.return_menu)
+
         self.start_button = Button(text="Start Task")
         self.start_button.size_hint = (0.1, 0.1)
-        self.start_button.pos_hint = {"x": 0.45, "y": 0.1}
+        self.start_button.pos_hint = {"x": 0.7, "y": 0.1}
         self.start_button.bind(on_press=self.start_protocol)
 
         self.settings_widgets = [Label(text='Language'), self.dropdown_main]
 
     def start_protocol(self, *args):
-        sys.path.append(self.protocol_path)
-        from Task.Protocol import ProtocolScreen
-        protocol_task_screen = ProtocolScreen(screen_resolution=self.size)
-        sys.path.remove(self.protocol_path)
+        def lazy_import(protocol):
+            cwd = os.getcwd()
+            working = cwd + '\\Protocol\\' + protocol + '\\Task\\Protocol.py'
+            mod_name = 'Protocol'
+            mod_spec = importlib.util.spec_from_file_location(mod_name, working)
+            mod_loader = importlib.util.LazyLoader(mod_spec.loader)
+            mod_spec.loader = mod_loader
+            module = importlib.util.module_from_spec(mod_spec)
+            sys.modules[mod_name] = module
+            mod_loader.exec_module(module)
+            return module
+        task_module = lazy_import(self.protocol)
+        protocol_task_screen = task_module.ProtocolScreen(screen_resolution=self.size)
+
+        try:
+            self.manager.remove_widget(self.manager.get_screen('protocolscreen'))
+            self.manager.add_widget(protocol_task_screen)
+        except ScreenManagerException:
+            self.manager.add_widget(protocol_task_screen)
+
 
         key = ''
         value = ''
@@ -80,7 +103,10 @@ class MenuBase(Screen):
 
         protocol_task_screen.load_parameters(parameter_dict)
 
-        self.manager.switch_to(protocol_task_screen)
+        self.manager.current = 'protocolscreen'
+
+    def return_menu(self, *args):
+        self.manager.current = 'protocolmenu'
 
     def menu_constructor(self, protocol_name):
         self.protocol_name = protocol_name
@@ -103,6 +129,7 @@ class MenuBase(Screen):
         self.setting_scrollview.add_widget(self.setting_gridlayout)
         self.main_layout.add_widget(self.setting_scrollview)
         self.main_layout.add_widget(self.id_grid)
+        self.main_layout.add_widget(self.back_button)
         self.main_layout.add_widget(self.start_button)
         self.add_widget(self.main_layout)
 

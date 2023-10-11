@@ -6,8 +6,9 @@
 # Setup#
 from kivy.config import Config
 import os
+import importlib.util
+import importlib
 import configparser
-
 main_path = os.getcwd()
 config_path = main_path + '/Screen.ini'
 config_file = configparser.ConfigParser()
@@ -95,16 +96,18 @@ class ImageButton(ButtonBehavior, Image):
 
 # Class Screen Manager #
 
-class Screen_Manager(ScreenManager):
+class ScreenManager(ScreenManager):
     def __init__(self, **kwargs):
-        super(Screen_Manager, self).__init__(**kwargs)
+        super(ScreenManager, self).__init__(**kwargs)
 
 
 # Class Task Selection #
-class Main_Menu(Screen):
+class MainMenu(Screen):
     def __init__(self, **kwargs):
-        super(Main_Menu, self).__init__(**kwargs)
+        super(MainMenu, self).__init__(**kwargs)
+        self.name = 'mainmenu'
         self.Menu_Layout = FloatLayout()
+        self.protocol_window = ''
         self.add_widget(self.Menu_Layout)
         launch_button = Button(text="Start Session")
         launch_button.size_hint = (0.3, 0.2)
@@ -119,9 +122,12 @@ class Main_Menu(Screen):
         self.Menu_Layout.add_widget(exit_button)
 
     def load_protocol_menu(self, *args):
-        self.protocol_window = Protocol_Menu()
-        self.manager.add_widget(Protocol_Menu(name='protocolmenu'))
-        self.manager.current = "protocolmenu"
+        if isinstance(self.protocol_window, ProtocolMenu):
+            self.manager.current = "protocolmenu"
+        else:
+            self.protocol_window = ProtocolMenu()
+            self.manager.add_widget(self.protocol_window)
+            self.manager.current = "protocolmenu"
 
     def exit_program(self, *args):
         App.get_running_app().stop()
@@ -129,10 +135,12 @@ class Main_Menu(Screen):
 
 
 # Class Protocol Selection #
-class Protocol_Menu(Screen):
+class ProtocolMenu(Screen):
     def __init__(self, **kwargs):
-        super(Protocol_Menu, self).__init__(**kwargs)
+        super(ProtocolMenu, self).__init__(**kwargs)
         self.Protocol_Layout = FloatLayout()
+        self.Protocol_Configure_Screen = ''
+        self.name = 'protocolmenu'
 
         self.Protocol_Configure_Screen = MenuBase()
 
@@ -157,9 +165,12 @@ class Protocol_Menu(Screen):
         self.add_widget(self.Protocol_Layout)
 
     def set_protocol(self, label, *args):
+        if isinstance(self.Protocol_Configure_Screen,MenuBase):
+            self.manager.remove_widget(self.Protocol_Configure_Screen)
         self.protocol_constructor(label)
         self.Protocol_Configure_Screen.size = Window.size
-        self.manager.switch_to(self.Protocol_Configure_Screen)
+        self.manager.add_widget(self.Protocol_Configure_Screen)
+        self.manager.current = 'menuscreen'
 
     def cancel_protocol(self, *args):
         self.manager.current = "mainmenu"
@@ -175,20 +186,35 @@ class Protocol_Menu(Screen):
         return task_list
 
     def protocol_constructor(self, protocol):
-        cwd = os.getcwd()
-        mod = os_folder_modifier()
-        prot_path = cwd + mod + 'Protocol' + mod + protocol
-        sys.path.append(prot_path)
-        from Task.Menu import ConfigureScreen
-        self.Protocol_Configure_Screen = ConfigureScreen()
-        sys.path.remove(prot_path)
+        #cwd = os.getcwd()
+        #mod = os_folder_modifier()
+        #prot_path = cwd + mod + 'Protocol' + mod + protocol
+        #sys.path.append(prot_path)
+        #from Task.Menu import ConfigureScreen
+        #self.Protocol_Configure_Screen = ConfigureScreen()
+        #sys.path.remove(prot_path)
+        def lazy_import(protocol):
+            cwd = os.getcwd()
+            working = cwd + '\\Protocol\\' + protocol + '\\Task\\Menu.py'
+            mod_name = 'Menu'
+            mod_spec = importlib.util.spec_from_file_location(mod_name, working)
+            mod_loader = importlib.util.LazyLoader(mod_spec.loader)
+            mod_spec.loader = mod_loader
+            module = importlib.util.module_from_spec(mod_spec)
+            sys.modules[mod_name] = module
+            mod_loader.exec_module(module)
+            return module
+        task_module = lazy_import(protocol)
+        self.Protocol_Configure_Screen = task_module.ConfigureScreen()
+
 
 
 # Class App Builder #
 class MenuApp(App):
     def build(self):
-        self.s_manager = Screen_Manager()
-        self.s_manager.add_widget(Main_Menu(name="mainmenu"))
+        self.s_manager = ScreenManager()
+        self.main_menu = MainMenu()
+        self.s_manager.add_widget(self.main_menu)
 
         return self.s_manager
 

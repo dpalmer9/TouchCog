@@ -98,6 +98,7 @@ class FloatLayoutLog(FloatLayout):
 class ProtocolBase(Screen):
     def __init__(self, **kwargs):
         super(ProtocolBase, self).__init__(**kwargs)
+        self.name = 'protocolscreen'
 
         if sys.platform == 'linux' or sys.platform == 'darwin':
             self.folder_mod = '/'
