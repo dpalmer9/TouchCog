@@ -382,7 +382,7 @@ class ProtocolScreen(ProtocolBase):
             
                 
     def premature_response(self,*args):
-        if self.stimulus_on_screen == True:
+        if self.stimulus_on_screen:
             return None
         
         Clock.unschedule(self.iti)
