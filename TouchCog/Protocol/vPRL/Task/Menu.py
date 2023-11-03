@@ -1,5 +1,5 @@
 # Imports #
-from Classes.Menu import MenuBase
+from TouchCog.Classes.Menu import MenuBase
 
 
 class ConfigureScreen(MenuBase):

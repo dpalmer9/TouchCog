@@ -2,7 +2,7 @@
 import configparser
 import time
 from kivy.clock import Clock
-from Classes.Protocol import ImageButton, ProtocolBase
+from TouchCog.Classes.Protocol import ImageButton, ProtocolBase
 import random
 
 

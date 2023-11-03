@@ -1,24 +1,14 @@
 # Imports #
-import sys
-import os
 import configparser
 import time
 import numpy as np
-import pandas as pd
-import csv
-from kivy.uix.button import Button
-from kivy.uix.image import Image
-from kivy.uix.label import Label
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.uix.screenmanager import Screen
-from Classes.Protocol import ImageButton, ProtocolBase
+from TouchCog.Classes.Protocol import ImageButton, ProtocolBase
 
 class ProtocolScreen(ProtocolBase):
     def __init__(self, screen_resolution, **kwargs):
         super(ProtocolScreen, self).__init__(**kwargs)
-        self.protocol_name = 'iCPT2GStim1'
+        self.protocol_name = 'iCPT2GStim2'
         self.update_task()
         width = screen_resolution[0]
         height = screen_resolution[1]
@@ -102,6 +92,7 @@ class ProtocolScreen(ProtocolBase):
         # Define Variables - Time
         self.start_stimulus = 0
         self.response_lat = 0
+        self.feedback_start = 0
 
         # Define Variables - Trial Configurations
         distractor_prob = 1 - self.target_probability
@@ -129,7 +120,7 @@ class ProtocolScreen(ProtocolBase):
 
     def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'iCPT2GStim1' + self.folder_mod + 'Configuration.ini'
+        config_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Configuration.ini'
         config_file = configparser.ConfigParser()
         config_file.read(config_path)
         self.participant_id = self.parameters_dict['participant_id']
@@ -285,19 +276,19 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Stage Change', 'Premature Response', '', '',
              '', '', '', ''])
         self.feedback_string = self.feedback_dict['wait']
-        contingency = '2'
+        self.contingency = '2'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+            [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
              '', '', '', ''])
-        response = '1'
+        self.response = '1'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         self.trial_outcome = '5'
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
-        self.write_trial(response, contingency)
+        self.write_trial(self.response, self.contingency)
         self.response_lat = 0
         self.iti_active = False
         self.feedback_label.text = self.feedback_string
@@ -327,15 +318,15 @@ class ProtocolScreen(ProtocolBase):
 
         self.stimulus_on_screen = False
         self.response_lat = time.time() - self.start_stimulus
-        response = '1'
+        self.response = '1'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = self.feedback_dict['correct']
-            contingency = '1'
+            self.contingency = '1'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '1'
             self.protocol_floatlayout.add_event(
@@ -348,9 +339,9 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
-            contingency = '0'
+            self.contingency = '0'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
 
         self.feedback_label.text = self.feedback_string
@@ -360,8 +351,8 @@ class ProtocolScreen(ProtocolBase):
              '', '', '', ''])
         self.feedback_start_time = time.time()
         self.feedback_on_screen = True
-        self.write_trial(response, contingency)
-        self.trial_contingency(response, contingency)
+        self.write_trial(self.response, self.contingency)
+        self.trial_contingency()
 
         self.hold_button.unbind(on_press=self.hold_returned_stim)
         self.hold_button.unbind(on_release=self.hold_removed_stim)
@@ -370,15 +361,15 @@ class ProtocolScreen(ProtocolBase):
 
     def center_notpressed(self):
         self.response_lat = ''
-        response = '0'
+        self.response = '0'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = ''
-            contingency = '0'  #######
+            self.contingency = '0'  #######
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '2'  #####
             self.protocol_floatlayout.add_event(
@@ -386,21 +377,21 @@ class ProtocolScreen(ProtocolBase):
                  '', '', '', ''])
         else:
             self.feedback_string = ''
-            contingency = '1'  #####
+            self.contingency = '1'  #####
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '4'  ######
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
-        self.write_trial(response, contingency)
-        self.trial_contingency(response, contingency)
+        self.write_trial(self.response, self.contingency)
+        self.trial_contingency()
 
         self.hold_button.unbind(on_press=self.hold_returned_stim)
         self.hold_button.unbind(on_release=self.hold_removed_stim)
 
-        if self.hold_active == True:
+        if self.hold_active:
             self.iti()
         else:
             self.return_hold()
@@ -415,14 +406,14 @@ class ProtocolScreen(ProtocolBase):
 
     # Data Saving Functions #
     def write_trial(self, response, contingency):
-        trial_data = [self.current_trial, self.current_stage, self.current_block, self.center_image, int(self.current_correction),
-        response, contingency, self.trial_outcome, self.response_lat]
+        trial_data = [self.current_trial, self.current_stage, self.current_block, self.center_image,
+                      int(self.current_correction), response, contingency, self.trial_outcome, self.response_lat]
         self.write_summary_file(trial_data)
         return
 
     # Trial Contingency Functions #
 
-    def trial_contingency(self, response, contingency):
+    def trial_contingency(self):
         self.current_trial += 1
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
@@ -445,14 +436,14 @@ class ProtocolScreen(ProtocolBase):
             Clock.schedule_interval(self.block_contingency, 0.1)
             return
 
-        if contingency == '0' and response == "1":
+        if self.contingency == '0' and self.response == "1":
             self.current_correction = True
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             return
-        elif contingency == '2':
+        elif self.contingency == '2':
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
@@ -472,7 +463,7 @@ class ProtocolScreen(ProtocolBase):
 
     def block_contingency(self, *args):
 
-        if self.feedback_on_screen == True:
+        if self.feedback_on_screen:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
                 Clock.unschedule(self.block_contingency)
@@ -503,5 +494,4 @@ class ProtocolScreen(ProtocolBase):
 
         self.trial_contingency()
         self.block_screen()
-        
         

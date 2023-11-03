@@ -7,7 +7,7 @@ import random
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.clock import Clock
-from Classes.Protocol import ImageButton, ProtocolBase
+from TouchCog.Classes.Protocol import ImageButton, ProtocolBase
 
 
 class ProtocolScreen(ProtocolBase):

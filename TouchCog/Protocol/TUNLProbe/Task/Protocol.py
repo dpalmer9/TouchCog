@@ -1,20 +1,12 @@
 # Imports #
 import sys
-import os
 import configparser
 import time
 import numpy as np
-import pandas as pd
-import csv
 import random
-from kivy.uix.button import Button
 from kivy.uix.image import Image
-from kivy.uix.label import Label
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.uix.screenmanager import Screen
-from Classes.Protocol import ImageButton, ProtocolBase
+from TouchCog.Classes.Protocol import ImageButton, ProtocolBase
 
 
 def generate_sample_choice_pos():

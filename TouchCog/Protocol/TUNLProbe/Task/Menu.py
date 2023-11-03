@@ -2,7 +2,7 @@
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.dropdown import DropDown
-from Classes.Menu import MenuBase
+from TouchCog.Classes.Menu import MenuBase
 
 
 class ConfigureScreen(MenuBase):

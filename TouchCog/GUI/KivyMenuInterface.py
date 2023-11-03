@@ -44,28 +44,19 @@ if use_mouse == 0:
     Config.set('graphics','show_cursor', 0)
 
 # Imports #
-import kivy
-import zipimport
 import sys
 import os
-import configparser
 from kivy.app import App
 from kivy.core.window import Window
-from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
-from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 # from win32api import GetSystemMetrics
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.clock import Clock
-from kivy.uix.textinput import TextInput
-from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.config import Config
 from functools import partial
-from Classes.Menu import MenuBase
+from TouchCog.Classes import MenuBase
 
 # Window.borderless = True
 Window.size = (int(x_dim), int(y_dim))
@@ -222,5 +213,8 @@ class MenuApp(App):
         self.s_manager.add_widget(screen)
 
 
-if __name__ == '__main__':
-    MenuApp().run()
+#if __name__ == '__main__':
+    # MenuApp().run()
+
+def start_touchcog():
+    MenuApp.run()
