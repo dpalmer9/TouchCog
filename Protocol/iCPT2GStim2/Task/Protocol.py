@@ -452,12 +452,14 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
+            self.center_stimulus.source = self.center_stimulus_image_path
             return
         elif self.contingency == '2':
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
+            self.center_stimulus.source = self.center_stimulus_image_path
             return
         else:
             self.current_correction = False
