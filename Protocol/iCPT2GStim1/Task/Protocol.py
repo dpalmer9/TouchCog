@@ -327,15 +327,15 @@ class ProtocolScreen(ProtocolBase):
 
         self.stimulus_on_screen = False
         self.response_lat = time.time() - self.start_stimulus
-        response = '1'
+        self.response = '1'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = self.feedback_dict['correct']
-            contingency = '1'
+            self.contingency = '1'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '1'
             self.protocol_floatlayout.add_event(
@@ -348,9 +348,9 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
-            contingency = '0'
+            self.contingency = '0'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
 
         self.feedback_label.text = self.feedback_string
@@ -360,8 +360,8 @@ class ProtocolScreen(ProtocolBase):
              '', '', '', ''])
         self.feedback_start_time = time.time()
         self.feedback_on_screen = True
-        self.write_trial(response, contingency)
-        self.trial_contingency(response, contingency)
+        self.write_trial(self.response, self.contingency)
+        self.trial_contingency()
 
         self.hold_button.unbind(on_press=self.hold_returned_stim)
         self.hold_button.unbind(on_release=self.hold_removed_stim)
@@ -370,15 +370,15 @@ class ProtocolScreen(ProtocolBase):
 
     def center_notpressed(self):
         self.response_lat = ''
-        response = '0'
+        self.response = '0'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = ''
-            contingency = '0'  #######
+            self.contingency = '0'  #######
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '2'  #####
             self.protocol_floatlayout.add_event(
@@ -386,16 +386,16 @@ class ProtocolScreen(ProtocolBase):
                  '', '', '', ''])
         else:
             self.feedback_string = ''
-            contingency = '1'  #####
+            self.contingency = '1'  #####
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '4'  ######
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
-        self.write_trial(response, contingency)
-        self.trial_contingency(response, contingency)
+        self.write_trial(self.response, self.contingency)
+        self.trial_contingency()
 
         self.hold_button.unbind(on_press=self.hold_returned_stim)
         self.hold_button.unbind(on_release=self.hold_removed_stim)
@@ -422,7 +422,7 @@ class ProtocolScreen(ProtocolBase):
 
     # Trial Contingency Functions #
 
-    def trial_contingency(self, response, contingency):
+    def trial_contingency(self):
         self.current_trial += 1
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
@@ -445,14 +445,14 @@ class ProtocolScreen(ProtocolBase):
             Clock.schedule_interval(self.block_contingency, 0.1)
             return
 
-        if contingency == '0' and response == "1":
+        if self.contingency == '0' and self.response == "1":
             self.current_correction = True
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             return
-        elif contingency == '2':
+        elif self.contingency == '2':
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
