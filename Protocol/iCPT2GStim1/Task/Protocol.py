@@ -66,13 +66,19 @@ class ProtocolScreen(ProtocolBase):
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = float(self.parameters_dict['session_trial_max'])
-        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe_active']
-        if self.stimulus_duration_probe_active == 'True':
+        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
+        if self.stimulus_duration_probe_active == 'Enabled':
             self.stimulus_duration_probe_active = True
         else:
             self.stimulus_duration_probe_active = False
-        self.flanker_probe_active = self.parameters_dict['flanker_probe_active']
-        if self.flanker_probe_active == "True":
+        self.stimulus_duration_list = self.parameters_dict['stimulus_durations_probe']
+        self.stimulus_duration_list = self.stimulus_duration_list.split(',')
+        self.stimulus_duration_list = [eval(i) for i in self.stimulus_duration_list]
+        self.limited_hold_list = self.parameters_dict['limited_holds_probe']
+        self.limited_hold_list = self.limited_hold_list.split(',')
+        self.limited_hold_list = [eval(i) for i in self.limited_hold_list]
+        self.flanker_probe_active = self.parameters_dict['flanker_probe']
+        if self.flanker_probe_active == "Enabled":
             self.flanker_probe_active = True
         else:
             self.flanker_probe_active = False
@@ -112,6 +118,20 @@ class ProtocolScreen(ProtocolBase):
             self.image_prob_list.append(target_prob_single)
         for a in range(0, len(self.incorrect_images)):
             self.image_prob_list.append(distractor_prob_single)
+        
+
+        # Define Variables - Stimulus Duration Probe
+        self.stimulus_duration_list += self.stimulus_duration_list
+        self.limited_hold_list += self.limited_hold_list
+        self.stimulus_duration_pos = 0
+        self.stimulus_duration_index_list = np.random.choice(len(self.stimulus_duration_list),len(self.stimulus_duration_list),replace=False)
+        
+        # Define Variables - Flanker Probe
+        self.distractor_stage = 'No Distractor'
+        self.distractor = ''
+        self.distractor_stage_list = ['No Distractor','Congruent Distractor','Incongruent Distractor','No Distractor','Congruent Distractor','Incongruent Distractor']
+        self.distractor_stage_pos = 0
+        self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),len(self.distractor_stage_list),replace=False)
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
@@ -152,17 +172,26 @@ class ProtocolScreen(ProtocolBase):
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = float(self.parameters_dict['session_trial_max'])
-        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe_active']
-        if self.stimulus_duration_probe_active == 'True':
+        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
+        if self.stimulus_duration_probe_active == 'Enabled':
             self.stimulus_duration_probe_active = True
         else:
             self.stimulus_duration_probe_active = False
-        self.flanker_probe_active = self.parameters_dict['flanker_probe_active']
-        if self.flanker_probe_active == "True":
+        self.stimulus_duration_list = self.parameters_dict['stimulus_durations_probe']
+        self.stimulus_duration_list = self.stimulus_duration_list.split(',')
+        self.stimulus_duration_list = [eval(i) for i in self.stimulus_duration_list]
+        self.limited_hold_list = self.parameters_dict['limited_holds_probe']
+        self.limited_hold_list = self.limited_hold_list.split(',')
+        self.limited_hold_list = [eval(i) for i in self.limited_hold_list]
+        self.flanker_probe_active = self.parameters_dict['flanker_probe']
+        if self.flanker_probe_active == "Enabled":
             self.flanker_probe_active = True
         else:
             self.flanker_probe_active = False
-
+        self.stimulus_duration_block_length = int(self.parameters_dict['stimulus_duration_probe_block_length'])
+        self.stimulus_duration_block_count = int(self.parameters_dict['stimulus_duration_probe_block_count'])
+        self.flanker_block_length = int(self.parameters_dict['flanker_probe_block_length'])
+        self.flanker_block_count = int(self.parameters_dict['flanker_probe_block_count'])
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
 
@@ -198,6 +227,19 @@ class ProtocolScreen(ProtocolBase):
             self.image_prob_list.append(target_prob_single)
         for a in range(0, len(self.incorrect_images)):
             self.image_prob_list.append(distractor_prob_single)
+        
+        # Define Variables - Stimulus Duration Probe
+        self.stimulus_duration_list += self.stimulus_duration_list
+        self.limited_hold_list += self.limited_hold_list
+        self.stimulus_duration_index_list = np.random.choice(len(self.stimulus_duration_list),len(self.stimulus_duration_list),replace=False)
+        self.stimulus_duration_pos = 0
+        
+        # Define Variables - Flanker Probe
+        self.distractor_stage = 'No Distractor'
+        self.distractor = ''
+        self.distractor_stage_list = ['No Distractor','Congruent Distractor','Incongruent Distractor','No Distractor','Congruent Distractor','Incongruent Distractor']
+        self.distractor_stage_pos = 0
+        self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),len(self.distractor_stage_list),replace=False)
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
@@ -251,6 +293,17 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                  'Y Position', '1', 'Image Name', self.center_image])
+            if self.stage_index == 3:
+                self.protocol_floatlayout.add_widget(self.left_stimulus)
+                self.left_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
+                self.protocol_floatlayout.add_widget(self.right_stimulus)
+                self.right_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
+                self.protocol_floatlayout.add_event(
+                [self.elapsed_time, 'Image Displayed', 'Left Stimulus', 'X Position', '0',
+                 'Y Position', '1', 'Image Name', self.distractor])
+                self.protocol_floatlayout.add_event(
+                [self.elapsed_time, 'Image Displayed', 'Right Stimulus', 'X Position', '2',
+                 'Y Position', '1', 'Image Name', self.distractor])
             self.center_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
             self.hold_button.bind(on_press=self.hold_returned_stim)
             self.hold_button.bind(on_release=self.hold_removed_stim)
@@ -267,12 +320,33 @@ class ProtocolScreen(ProtocolBase):
                 self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.mask_image])
+                if self.stage_index == 3:
+                    self.left_stimulus_image_path = self.image_folder + self.mask_image + '.png'
+                    self.right_stimulus_image_path = self.image_folder + self.mask_image + '.png'
+                    self.left_stimulus.source = self.left_stimulus_image_path
+                    self.right_stimulus.source = self.right_stimulus_image_path
+                    
+                    self.protocol_floatlayout.add_event(
+                    [self.elapsed_time, 'Image Displayed', 'Left Stimulus', 'X Position', '0',
+                    'Y Position', '1', 'Image Name', self.mask_image])
+                    self.protocol_floatlayout.add_event(
+                    [self.elapsed_time, 'Image Displayed', 'Right Stimulus', 'X Position', '2',
+                    'Y Position', '1', 'Image Name', self.mask_image])
             if (time.time() - self.start_stimulus) > self.limited_hold:
                 Clock.unschedule(self.stimulus_presentation)
                 self.protocol_floatlayout.remove_widget(self.center_stimulus)
                 self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Image Removed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.center_image])
+                if self.stage_index == 3:
+                    self.protocol_floatlayout.remove_widget(self.left_stimulus)
+                    self.protocol_floatlayout.remove_widget(self.right_stimulus)
+                    self.protocol_floatlayout.add_event(
+                    [self.elapsed_time, 'Image Removed', 'Left Stimulus', 'X Position', '0',
+                    'Y Position', '1', 'Image Name', self.left_stimulus])
+                    self.protocol_floatlayout.add_event(
+                    [self.elapsed_time, 'Image Removed', 'Right Stimulus', 'X Position', '2',
+                    'Y Position', '1', 'Image Name', self.right_stimulus])
                 self.stimulus_on_screen = False
                 self.center_notpressed()
 
@@ -324,6 +398,15 @@ class ProtocolScreen(ProtocolBase):
         self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Image Removed', 'Center Stimulus', 'X Position', '1',
              'Y Position', '1', 'Image Name', self.center_image])
+        if self.stage_index == 3:
+            self.protocol_floatlayout.remove_widget(self.left_stimulus)
+            self.protocol_floatlayout.remove_widget(self.right_stimulus)
+            self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Image Removed', 'Left Stimulus', 'X Position', '0',
+            'Y Position', '1', 'Image Name', self.left_stimulus])
+            self.protocol_floatlayout.add_event(
+            [self.elapsed_time, 'Image Removed', 'Right Stimulus', 'X Position', '2',
+            'Y Position', '1', 'Image Name', self.right_stimulus])
 
         self.stimulus_on_screen = False
         self.response_lat = time.time() - self.start_stimulus
@@ -464,13 +547,45 @@ class ProtocolScreen(ProtocolBase):
             self.current_correction = False
             if self.stage_index == 0:
                 self.center_image = self.training_image
-            elif self.stage_index == 1:
+            elif self.stage_index >= 1:
                 self.center_image = np.random.choice(a=self.total_image_list, size=None, p=self.image_prob_list)
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             self.center_stimulus.source = self.center_stimulus_image_path
+            
+        if self.stage_index == 2:
+            self.stimulus_duration = self.stimulus_duration_list[self.stimulus_duration_index_list[self.stimulus_duration_pos]]
+            self.limited_hold = self.limited_hold_list[self.stimulus_duration_index_list[self.stim_duration_pos]]
+            self.stimulus_duration_pos += 1
+            if self.stimulus_duration_pos >= len(self.stimulus_duration_list):
+                self.stimulus_duration_index_list = np.random.choice(len(self.stimulus_duration_list),4,replace=False)
+                self.stimulus_duration_pos = 0
+        
+        if self.stage_index == 3:
+            self.distractor_stage = self.distractor_stage_list[self.distractor_stage_index_list[self.distractor_stage_pos]]
+            if self.distractor_stage == 'No Distractor':
+                self.left_stimulus_image_path = self.image_folder + 'black.png'
+                self.right_stimulus_image_path = self.image_folder + 'black.png'
+            elif self.distractor_stage == 'Congruent Distractor':
+                self.left_stimulus_image_path = self.center_stimulus_image_path
+                self.right_stimulus_image_path = self.center_stimulus_image_path
+            elif self.distractor_stage == 'Incongruent Distractor':
+                if self.center_image in self.correct_images:
+                    self.distractor = np.random.choice(self.incorrect_images)
+                else:
+                    self.distractor = np.random.choice(self.correct_images)
+                self.left_stimulus_image_path = self.image_folder + self.distractor + '.png'
+                self.right_stimulus_image_path = self.image_folder + self.distractor + '.png'
+
+            self.left_stimulus.source = self.left_stimulus_image_path
+            self.right_stimulus.source = self.right_stimulus_image_path
+            self.distractor_stage_pos += 1
+            if self.distractor_stage_pos >= len(self.distractor_stage_list):
+                self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),len(self.distractor_stage_list),replace=False)
+                self.distractor_stage_pos = 0
+                
 
     def block_contingency(self, *args):
 
@@ -496,9 +611,24 @@ class ProtocolScreen(ProtocolBase):
             self.stage_index += 1
             self.current_block = 1
             self.current_stage = self.stage_list[self.stage_index]
+            
             if self.stage_index == 2 and self.stimulus_duration_probe_active == False:
                 self.stage_index += 1
+            elif self.stage_index == 2 and self.stimulus_duration_probe_active == True:
+                self.block_max_count += self.stimulus_duration_block_count
+                self.block_max_length = self.stimulus_duration_block_length
+                
             if self.stage_index == 3 and self.flanker_probe_active == False:
+                Clock.unschedule(self.clock_monitor)
+                self.protocol_end()
+                return
+            elif self.stage_index == 3 and self.flanker_probe_active == True:
+                self.stimulus_duration = float(self.parameters_dict['stimulus_duration'])
+                self.limited_hold = float(self.parameters_dict['limited_hold'])
+                self.block_max_count += self.flanker_block_count
+                self.block_max_length = self.flanker_block_length
+            
+            if self.stage_index >= 4:
                 Clock.unschedule(self.clock_monitor)
                 self.protocol_end()
                 return
