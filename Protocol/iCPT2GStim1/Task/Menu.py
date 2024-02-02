@@ -8,6 +8,21 @@ class ConfigureScreen(MenuBase):
         super(ConfigureScreen, self).__init__(**kwargs)
 
         self.protocol = 'iCPT2GStim1'
+
+        self.main_task_dropdown = DropDown()
+        self.main_task_button = Button(text='Enabled')
+        self.main_task_list = ['Enabled', 'Disabled']
+        for option in self.main_task_list:
+            main_task_opt = Button(text=option, size_hint_y=None, height=100)
+            main_task_opt.bind(
+                on_release=lambda main_task_opt: self.main_task_dropdown.select(stim_duration_opt.text))
+            self.main_task_dropdown.add_widget(main_task_opt)
+        self.main_task_button.bind(on_release=self.main_task_dropdown.open)
+        self.main_task_dropdown.bind(
+            on_select=lambda instance, x: setattr(self.main_task_button, 'text', x))
+        self.settings_widgets.append(Label(text='Main Task'))
+        self.settings_widgets.append(self.main_task_button)
+        
         
         self.stim_duration_probe_dropdown = DropDown()
         self.stim_duration_probe_button = Button(text='Disabled')
