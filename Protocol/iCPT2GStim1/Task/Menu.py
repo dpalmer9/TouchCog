@@ -48,4 +48,16 @@ class ConfigureScreen(MenuBase):
         self.settings_widgets.append(Label(text='Flanker Probe'))
         self.settings_widgets.append(self.flanker_probe_button)
 
+        self.probability_probe_dropdown = DropDown()
+        self.probability_probe_button = Button(text='Disabled')
+        self.probability_probe_list = ['Enabled', 'Disabled']
+        for option in self.probability_probe_list:
+            probability_opt = Button(text=option, size_hint_y=None, height=100)
+            probability_opt.bind(on_release=lambda probability_opt: self.probability_probe_dropdown.select(probability_opt.text))
+            self.probability_probe_dropdown.add_widget(probability_opt)
+        self.probability_probe_button.bind(on_release=self.probability_probe_dropdown.open)
+        self.probability_probe_dropdown.bind(on_select=lambda instance, x: setattr(self.probability_probe_button, 'text', x))
+        self.settings_widgets.append(Label(text='Probability Probe'))
+        self.settings_widgets.append(self.probability_probe_button)
+
         self.menu_constructor(self.protocol)
