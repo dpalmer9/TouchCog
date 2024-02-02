@@ -66,6 +66,11 @@ class ProtocolScreen(ProtocolBase):
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = float(self.parameters_dict['session_trial_max'])
+        self.main_task_active = self.parameters_dict['main_task']
+        if self.main_task_active == 'Enabled':
+            self.main_task_active = True
+        else:
+            self.main_task_active = False
         self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
         if self.stimulus_duration_probe_active == 'Enabled':
             self.stimulus_duration_probe_active = True
@@ -172,6 +177,11 @@ class ProtocolScreen(ProtocolBase):
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = float(self.parameters_dict['session_trial_max'])
+        self.main_task_active = self.parameters_dict['main_task']
+        if self.main_task_active == 'Enabled':
+            self.main_task_active = True
+        else:
+            self.main_task_active = False
         self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
         if self.stimulus_duration_probe_active == 'Enabled':
             self.stimulus_duration_probe_active = True
@@ -585,7 +595,6 @@ class ProtocolScreen(ProtocolBase):
             if self.distractor_stage_pos >= len(self.distractor_stage_list):
                 self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),len(self.distractor_stage_list),replace=False)
                 self.distractor_stage_pos = 0
-                
 
     def block_contingency(self, *args):
 
@@ -611,7 +620,10 @@ class ProtocolScreen(ProtocolBase):
             self.stage_index += 1
             self.current_block = 1
             self.current_stage = self.stage_list[self.stage_index]
-            
+
+            if self.stage_index == 1 and self.main_task_active == False:
+                self.stage_index += 1
+
             if self.stage_index == 2 and self.stimulus_duration_probe_active == False:
                 self.stage_index += 1
             elif self.stage_index == 2 and self.stimulus_duration_probe_active == True:
