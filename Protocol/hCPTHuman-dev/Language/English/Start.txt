@@ -1,3 +1,4 @@
-During the experiment, hold your finger on the white square before responding .
-To make a response, press on one of the images on the centre of the screen.
-You will receive feedback following touching an image.
+During this task, you will be asked to respond to one or more images on the screen.
+The target image(s) will be shown to you before each block of trials.
+To make a response, press on the image in the centre of the screen.
+Please hold your finger on the white square before responding.

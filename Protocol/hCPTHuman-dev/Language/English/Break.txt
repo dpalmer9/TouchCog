@@ -1,1 +1,13 @@
-PRESS BUTTON TO CONTINUE WHEN READY
+The target image(s) for this block of trials is (are):
+
+
+
+
+
+
+
+
+
+Your goal is to correctly respond to as many target images as you can.
+You will receive feedback for correctly responding to a target image.
+
