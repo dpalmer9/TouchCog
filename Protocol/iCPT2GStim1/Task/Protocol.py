@@ -675,7 +675,7 @@ class ProtocolScreen(ProtocolBase):
         self.current_block += 1
         self.current_hits = 0
 
-        if self.stage_index == 4 and self.probability_stage <= 2:
+        if self.stage_index == 4 and self.probability_stage_pos <= 2:
             self.probability_stage = self.probability_stage_list[self.probability_stage_index_list[self.probability_stage_pos]]
             self.probability_stage_pos += 1
             if self.probability_stage == 'High Probability':
