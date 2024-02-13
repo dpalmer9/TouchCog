@@ -49,57 +49,68 @@ class ProtocolScreen(ProtocolBase):
         config_file.read(config_path)
 
         self.parameters_dict = config_file['TaskParameters']
+        self.probability_probe_low_active = self.parameters_dict['probability_probe_low ']
+        if self.probability_probe_low_active == 'Enabled':
+            self.probability_probe_low_active = True
+        else:
+            self.probability_probe_low_active = False
 
-        self.stimulus_duration = float(self.parameters_dict['stimulus_duration'])
-        self.limited_hold = float(self.parameters_dict['limited_hold'])
-        self.target_probability = float(self.parameters_dict['target_probability'])
-        self.iti_length = float(self.parameters_dict['iti_length'])
+        self.probability_probe_mid_active = self.parameters_dict['probability_probe_mid ']
+        if self.probability_probe_mid_active == 'Enabled':
+            self.probability_probe_mid_active = True
+        else:
+            self.probability_probe_mid_active = False
+
+        self.probability_probe_high_active = self.parameters_dict['probability_probe_high ']
+        if self.probability_probe_hugh_active == 'Enabled':
+            self.probability_probe_low_active = True
+        else:
+            self.probability_probe_low_active = False
+        self.stimulus_duration = float(self.parameters_dict['probability_probe_stimulus_duration'])
+        self.limited_hold = float(self.parameters_dict['probability_probe_limited_hold'])
+        self.target_probability = float(self.parameters_dict['probability_probe_low_prob'])
+        self.iti_length = float(self.parameters_dict['probability_iti_length'])
         self.feedback_length = float(self.parameters_dict['feedback_length'])
         self.training_image = self.parameters_dict['training_image']
-        self.correct_images = self.parameters_dict['correct_images']
-        self.correct_images = self.correct_images.split(',')
-        self.incorrect_images = self.parameters_dict['incorrect_images']
-        self.incorrect_images = self.incorrect_images.split(',')
-        self.total_image_list = self.correct_images + self.incorrect_images
-        self.block_max_length = int(self.parameters_dict['block_max_length'])
-        self.block_max_count = int(self.parameters_dict['block_max_count'])
+        self.block_max_length = int(self.parameters_dict['probability_probe_length'])
+        self.block_max_count = int(self.parameters_dict['probability_probe_low_block_count'])
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
         self.session_length_max = float(self.parameters_dict['session_length_max'])
         self.session_trial_max = float(self.parameters_dict['session_trial_max'])
-        self.main_task_active = self.parameters_dict['main_task']
-        if self.main_task_active == 'Enabled':
-            self.main_task_active = True
-        else:
-            self.main_task_active = False
-        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
-        if self.stimulus_duration_probe_active == 'Enabled':
-            self.stimulus_duration_probe_active = True
-        else:
-            self.stimulus_duration_probe_active = False
-        self.stimulus_duration_list = self.parameters_dict['stimulus_durations_probe']
-        self.stimulus_duration_list = self.stimulus_duration_list.split(',')
-        self.stimulus_duration_list = [eval(i) for i in self.stimulus_duration_list]
-        self.limited_hold_list = self.parameters_dict['limited_holds_probe']
-        self.limited_hold_list = self.limited_hold_list.split(',')
-        self.limited_hold_list = [eval(i) for i in self.limited_hold_list]
+
+        self.probability_probe_mid_prob = float(self.parameters_dict['probability_probe_mid_prob'])
+        self.probability_probe_mid_block_count = int(self.parameters_dict['probability_probe_low_block_count'])
+        self.probability_probe_high_prob = float(self.parameters_dict['probability_probe_mid_prob'])
+        self.probability_probe_high_block_count = int(self.parameters_dict['probability_probe_low_block_count'])
+
         self.flanker_probe_active = self.parameters_dict['flanker_probe']
         if self.flanker_probe_active == "Enabled":
             self.flanker_probe_active = True
         else:
             self.flanker_probe_active = False
+        self.flanker_probe_stimulus_duration = float(self.parameters_dict['flanker_probe_stimulus_duration'])
+        self.flanker_probe_limited_hold = float(self.parameters_dict['flanker_probe_limited_hold'])
+        self.flanker_probe_target_probability = float(self.parameters_dict['flanker_probe_prob'])
+        self.flanker_probe_iti_length = float(self.parameters_dict['flanker_probe_iti_length'])
+        self.flanker_probe_block_length = int(self.parameters_dict['flanker_probe_block_length'])
+        self.flanker_probe_block_count = int(self.parameters_dict['flanker_probe_block_count'])
+
+        self.stimulus_duration_probe_active = self.parameters_dict['stimulus_duration_probe']
+        if self.stimulus_duration_probe_active == 'Enabled':
+            self.stimulus_duration_probe_active = True
+        else:
+            self.stimulus_duration_probe_active = False
+        self.stimulus_duration_probe_stimulus_list = self.parameters_dict['stimulus_duration_probe_stimulus_durations']
+        self.stimulus_duration_list = self.stimulus_duration_list.split(',')
+        self.stimulus_duration_list = [eval(i) for i in self.stimulus_duration_list]
+        self.stimulus_duration_probe_limited_hold_list = self.parameters_dict['stimulus_duration_probe_limited_holds']
+        self.stimulus_duration_probe_limited_hold_list = self.limited_hold_list.split(',')
+        self.stimulus_duration_probe_limited_hold_list = [eval(i) for i in self.limited_hold_list]
+        self.stimulus_duration_probe_target_probability = float(self.parameters_dict['stimulus_duration_probe_prob'])
+        self.stimulus_duration_probe_iti_length = float(self.parameters_dict['stimulus_duration_probe_iti_length'])
         self.stimulus_duration_block_length = int(self.parameters_dict['stimulus_duration_probe_block_length'])
         self.stimulus_duration_block_count = int(self.parameters_dict['stimulus_duration_probe_block_count'])
-        self.flanker_block_length = int(self.parameters_dict['flanker_probe_block_length'])
-        self.flanker_block_count = int(self.parameters_dict['flanker_probe_block_count'])
-        self.probability_probe_active = self.parameters_dict['probability_probe']
-        if self.probability_probe_active == "Enabled":
-            self.probability_probe_active = True
-        else:
-            self.probability_probe_active = False
-        self.probabilty_probe_high = float(self.parameters_dict['probability_probe_high'])
-        self.probabilty_probe_mid = float(self.parameters_dict['probability_probe_mid'])
-        self.probabilty_probe_low = float(self.parameters_dict['probability_probe_low'])
-        self.probabilty_probe_length = int(self.parameters_dict['probability_probe_length'])
+
 
         self.hold_image = config_file['Hold']['hold_image']
         self.mask_image = config_file['Mask']['mask_image']
@@ -110,17 +121,25 @@ class ProtocolScreen(ProtocolBase):
 
 
         # Define Variables - List
-        self.stage_list = ['Training', 'Main', 'Stimulus Duration Probe', 'Flanker Probe', 'Probability Probe']
+        self.stage_list = ['Probability Low','Probability Medium', 'Probability High', 'Flanker', 'Stimulus Duration']
+        self.correct_images = os.listdir(self.image_folder + 'Probability Probe' + self.folder_mod + 'Low' +
+                                          self.folder_mod + 'Target' + self.folder_mod)
+        self.incorrect_images = os.listdir(self.image_folder + 'Probability Probe' + self.folder_mod + 'Low' +
+                                            self.folder_mod + 'NonTarget' + self.folder_mod)
+        self.total_image_list = self.correct_images + self.incorrect_images
 
         # Define Variables - Boolean
         self.current_correction = False
 
         # Define Variables - Count
         self.current_hits = 0
+        self.current_misses = 0
+        self.current_mistakes = 0
+        self.current_correct_rejections = 0
         self.trial_outcome = 1  # 1-Hit,2-Miss,3-Mistake,4-Correct Rejection,5-Premature
 
         # Define Variables - String
-        self.center_image = self.training_image
+        self.center_image = ''
         self.current_stage = self.stage_list[self.stage_index]
         self.current_substage = ''
 
@@ -180,15 +199,11 @@ class ProtocolScreen(ProtocolBase):
         for a in range(0, len(self.incorrect_images)):
             self.probability_low_list.append(low_distract_prob_single)
 
-        self.probability_stage = ''
-        self.probability_stage_list = ['High Probability', 'Middle Probability', 'Low Probability']
-        self.probability_stage_pos = 0
-        self.probability_stage_index_list = np.random.choice(len(self.probability_stage_list), len(self.probability_stage_list), replace=False)
-
 
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
         self.hold_button.source = self.hold_button_image_path
+
 
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
@@ -325,6 +340,10 @@ class ProtocolScreen(ProtocolBase):
         self.right_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
         self.right_stimulus.pos_hint = {"center_x": 0.8, "center_y": 0.6}
+        
+        self.feedback_image_path = self.image_folder + 'Check.png'
+        self.feedback_image = ImageButton(source=self.feedback_image_path)
+        self.feedback_image.pos_hint = {"center_x": 0.5, "center_y": 0.7}
 
         self.present_instructions()
 
@@ -442,12 +461,12 @@ class ProtocolScreen(ProtocolBase):
         self.response_lat = 0
         self.iti_active = False
         self.feedback_label.text = self.feedback_string
-        if not self.feedback_on_screen:
+        if not self.feedback_text_on_screen:
             self.protocol_floatlayout.add_widget(self.feedback_label)
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
                  '', '', '', ''])
-            self.feedback_on_screen = True
+            self.feedback_text_on_screen = True
         self.hold_button.unbind(on_release=self.premature_response)
         self.hold_button.bind(on_press=self.iti)
 
@@ -482,7 +501,6 @@ class ProtocolScreen(ProtocolBase):
             [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
-            self.feedback_string = self.feedback_dict['correct']
             self.contingency = '1'
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
@@ -492,8 +510,12 @@ class ProtocolScreen(ProtocolBase):
                 [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
             self.current_hits += 1
+            self.feedback_image.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
+            self.protocol_floatlayout.add_widget(self.feedback_image)
+            self.protocol_floatlayout.add_event(
+                [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                 '', '', '', ''])
         else:
-            self.feedback_string = self.feedback_dict['incorrect']
             self.trial_outcome = '3'
             self.protocol_floatlayout.add_event(
             [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
@@ -502,14 +524,10 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
+            self.current_mistakes += 1
 
-        self.feedback_label.text = self.feedback_string
-        self.protocol_floatlayout.add_widget(self.feedback_label)
-        self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
-             '', '', '', ''])
         self.feedback_start_time = time.time()
-        self.feedback_on_screen = True
+        self.feedback_text_on_screen = True
         self.write_trial(self.response, self.contingency)
         self.trial_contingency()
 
@@ -534,6 +552,7 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
+            self.current_misses += 1
         else:
             self.feedback_string = ''
             self.contingency = '1'  #####
@@ -544,6 +563,7 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
+            self.current_correct_rejections += 1
         self.write_trial(self.response, self.contingency)
         self.trial_contingency()
 
@@ -657,14 +677,14 @@ class ProtocolScreen(ProtocolBase):
 
     def block_contingency(self, *args):
 
-        if self.feedback_on_screen == True:
+        if self.feedback_text_on_screen == True:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
                 Clock.unschedule(self.block_contingency)
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_string = ''
                 self.feedback_label.text = self.feedback_string
-                self.feedback_on_screen = False
+                self.feedback_text_on_screen = False
             else:
                 return
         else:
@@ -675,17 +695,6 @@ class ProtocolScreen(ProtocolBase):
         self.current_block += 1
         self.current_hits = 0
 
-        if self.stage_index == 4 and self.probability_stage_pos <= 2:
-            self.probability_stage = self.probability_stage_list[self.probability_stage_index_list[self.probability_stage_pos]]
-            self.probability_stage_pos += 1
-            if self.probability_stage == 'High Probability':
-                self.image_prob_list = self.probability_high_list
-            elif self.probability_stage == 'Middle Probability':
-                self.image_prob_list = self.probability_mid_list
-            elif self.probability_stage == 'Low Probability':
-                self.image_prob_list = self.probability_low_list
-            self.current_substage = self.probability_stage
-
         if (self.current_block > self.block_max_count) or self.stage_index == 0:
             self.stage_index += 1
             self.current_block = 1
@@ -693,7 +702,7 @@ class ProtocolScreen(ProtocolBase):
             self.current_substage = ''
 
 
-            if self.stage_index == 1 and self.main_task_active == False:
+            if self.stage_index == 1 and self.stimulus_duration_probe == False:
                 self.stage_index += 1
 
             if self.stage_index == 2 and self.stimulus_duration_probe_active == False:
