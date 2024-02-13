@@ -583,7 +583,7 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_end()
             return
 
-        if (self.current_hits > 10) and (self.stage_index == 0):
+        if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
             Clock.schedule_interval(self.block_contingency, 0.1)
