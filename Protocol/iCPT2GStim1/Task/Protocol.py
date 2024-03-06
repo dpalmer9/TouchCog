@@ -194,7 +194,6 @@ class ProtocolScreen(ProtocolBase):
 
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
-        self.center_stimulus.bind(on_press=self.center_pressed)
 
         self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
@@ -317,8 +316,8 @@ class ProtocolScreen(ProtocolBase):
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
         self.center_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.6}
-        self.center_stimulus.bind(on_press=self.center_pressed)
         self.center_stimulus.name = 'Center Stimulus'
+        self.center_stimulus.bind(on_press=self.center_pressed)
 
         self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
         self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
@@ -359,6 +358,7 @@ class ProtocolScreen(ProtocolBase):
                 [self.elapsed_time, 'Stage Change', 'Display Stimulus', '', '',
                  '', '', '', ''])
             self.protocol_floatlayout.add_widget(self.center_stimulus)
+            self.start_stimulus = time.time()
             self.protocol_floatlayout.add_event(
                 [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                  'Y Position', '1', 'Image Name', self.center_image])
@@ -376,8 +376,6 @@ class ProtocolScreen(ProtocolBase):
             self.center_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
             self.hold_button.bind(on_press=self.hold_returned_stim)
             self.hold_button.bind(on_release=self.hold_removed_stim)
-
-            self.start_stimulus = time.time()
 
             self.stimulus_on_screen = True
             Clock.schedule_interval(self.stimulus_presentation, 0.01)
