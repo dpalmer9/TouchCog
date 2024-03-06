@@ -32,9 +32,11 @@ class FloatLayoutLog(FloatLayout):
         self.event_index = 0
         self.save_path = ''
         self.elapsed_time = 0
+        self.touch_time = 0
 
     def on_touch_down(self, touch):
         self.touch_pos = touch.pos
+        self.touch_time = self.elapsed_time
         if self.disabled and self.collide_point(*touch.pos):
             return True
         for child in self.children[:]:
@@ -43,15 +45,16 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.elapsed_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
                                 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
-        self.add_event([self.elapsed_time, 'Screen', 'Touch Press', 'X Position',
+        self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
                         self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
     def on_touch_move(self, touch):
         self.touch_pos = touch.pos
+        self.touch_time = self.elapsed_time
         if self.disabled:
             return
         for child in self.children[:]:
@@ -60,15 +63,16 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.elapsed_time, 'Screen', 'Touch Move', 'X Position',
+                self.add_event([self.touch_time, 'Screen', 'Touch Move', 'X Position',
                                 self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
-        self.add_event([self.elapsed_time, 'Screen', 'Touch Press', 'X Position',
+        self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
                         self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
     def on_touch_up(self, touch):
         self.touch_pos = touch.pos
+        self.touch_time = self.elapsed_time
         if self.disabled:
             return
         for child in self.children[:]:
@@ -77,10 +81,10 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.elapsed_time, 'Screen', 'Touch Release', 'X Position',
+                self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
                                 self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
-        self.add_event([self.elapsed_time, 'Screen', 'Touch Release', 'X Position',
+        self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
                         self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
         if self.held_name != '':
             self.held_name = ''
@@ -343,7 +347,7 @@ class ProtocolBase(Screen):
                  '', '', '', ''])
             self.block_start = time.time()
             self.block_started = True
-            Clock.schedule_interval(self.block_screen, 0.1)
+            Clock.schedule_interval(self.block_screen, 0.01)
         if (time.time() - self.block_start) > self.block_min_rest_duration:
             Clock.unschedule(self.block_screen)
             self.protocol_floatlayout.add_widget(self.continue_button)
@@ -433,7 +437,7 @@ class ProtocolBase(Screen):
                     [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_on_screen = False
-            Clock.schedule_interval(self.iti, 0.1)
+            Clock.schedule_interval(self.iti, 0.01)
         if self.iti_active:
             if (((time.time() - self.start_iti) > self.feedback_length) or (
                     (time.time() - self.feedback_start_time) > self.feedback_length)) and self.feedback_on_screen:
