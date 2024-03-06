@@ -114,6 +114,8 @@ class ProtocolScreen(ProtocolBase):
 
         # Define Variables - Boolean
         self.current_correction = False
+        self.stimulus_on_screen = False
+        self.limited_hold_started = False
 
         # Define Variables - Count
         self.current_hits = 0
@@ -378,10 +380,10 @@ class ProtocolScreen(ProtocolBase):
             self.start_stimulus = time.time()
 
             self.stimulus_on_screen = True
-            Clock.schedule_interval(self.stimulus_presentation, 0.1)
+            Clock.schedule_interval(self.stimulus_presentation, 0.01)
 
         else:
-            if (time.time() - self.start_stimulus) > self.stimulus_duration:
+            if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
                 self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
                 self.center_stimulus.source = self.center_stimulus_image_path
                 self.protocol_floatlayout.add_event(
@@ -399,6 +401,7 @@ class ProtocolScreen(ProtocolBase):
                     self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Image Displayed', 'Right Stimulus', 'X Position', '2',
                     'Y Position', '1', 'Image Name', self.mask_image])
+                self.limited_hold_started = True
             if (time.time() - self.start_stimulus) > self.limited_hold:
                 Clock.unschedule(self.stimulus_presentation)
                 self.protocol_floatlayout.remove_widget(self.center_stimulus)
@@ -414,8 +417,9 @@ class ProtocolScreen(ProtocolBase):
                     self.protocol_floatlayout.add_event(
                     [self.elapsed_time, 'Image Removed', 'Right Stimulus', 'X Position', '2',
                     'Y Position', '1', 'Image Name', self.right_stimulus])
-                self.stimulus_on_screen = False
                 self.center_notpressed()
+                self.stimulus_on_screen = False
+                self.limited_hold_started = False
 
     def premature_response(self, *args):
         if self.stimulus_on_screen:
@@ -586,13 +590,13 @@ class ProtocolScreen(ProtocolBase):
         if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.1)
+            Clock.schedule_interval(self.block_contingency, 0.01)
             return
 
         if self.current_hits >= self.block_max_length:
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.1)
+            Clock.schedule_interval(self.block_contingency, 0.01)
             return
 
         if self.contingency == '0' and self.response == "1":
