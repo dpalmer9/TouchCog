@@ -20,7 +20,7 @@ fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
-# Config.set('kivy', 'kivy_clock', 'interrupt')
+Config.set('kivy', 'kivy_clock', 'interrupt')
 Config.set('graphics', 'maxfps', 120)
 
 if fullscreen == 0:
