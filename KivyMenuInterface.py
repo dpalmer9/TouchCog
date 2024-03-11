@@ -8,6 +8,7 @@ from kivy.config import Config
 import os
 import importlib.util
 import importlib
+import cProfile
 import configparser
 main_path = os.getcwd()
 config_path = main_path + '/Screen.ini'
@@ -19,6 +20,8 @@ fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
+# Config.set('kivy', 'kivy_clock', 'interrupt')
+Config.set('graphics', 'maxfps', 120)
 
 if fullscreen == 0:
     Config.set('graphics', 'width', str(x_dim))
@@ -220,6 +223,14 @@ class MenuApp(App):
 
     def add_screen(self, screen):
         self.s_manager.add_widget(screen)
+
+    def on_start(self):
+        self.profile = cProfile.Profile()
+        self.profile.enable()
+
+    def on_stop(self):
+        self.profile.disable()
+        self.profile.dump_stats('touchcog.profile')
 
 
 if __name__ == '__main__':

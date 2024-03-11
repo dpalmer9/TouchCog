@@ -33,13 +33,16 @@ class FloatLayoutLog(FloatLayout):
         self.save_path = ''
         self.elapsed_time = 0
         self.touch_time = 0
+        self.start_time = 0
 
+    def filter_children(self,string):
+        return
     def on_touch_down(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled and self.collide_point(*touch.pos):
             return True
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_down', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
@@ -54,10 +57,10 @@ class FloatLayoutLog(FloatLayout):
 
     def on_touch_move(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled:
             return
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_move', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
@@ -72,10 +75,10 @@ class FloatLayoutLog(FloatLayout):
 
     def on_touch_up(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled:
             return
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_up', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
@@ -164,10 +167,13 @@ class ProtocolBase(Screen):
         # Define Variables - Time
         self.start_iti = 0
         self.start_time = 0
-        self.current_time = 0
         self.block_start = 0
         self.elapsed_time = 0
         self.feedback_start_time = 0
+
+        # Define Class - Clock
+        self.iti_clock = Clock
+        self.session_clock = Clock
 
         # Define Dictionaries
         self.parameters_dict = {}
@@ -343,30 +349,30 @@ class ProtocolBase(Screen):
         if not self.block_started:
             self.protocol_floatlayout.add_widget(self.block_label)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Text Displayed', 'Block Instruction', '', '',
+                [(time.time() - self.start_time), 'Text Displayed', 'Block Instruction', '', '',
                  '', '', '', ''])
             self.block_start = time.time()
             self.block_started = True
-            Clock.schedule_interval(self.block_screen, 0.01)
+            self.block_clock = Clock.schedule_interval(self.block_screen, 0.5)
         if (time.time() - self.block_start) > self.block_min_rest_duration:
-            Clock.unschedule(self.block_screen)
+            Clock.unschedule(self.block_clock)
             self.protocol_floatlayout.add_widget(self.continue_button)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Button Displayed', 'Continue Button', '', '',
+                [(time.time() - self.start_time), 'Button Displayed', 'Continue Button', '', '',
                  '', '', '', ''])
 
     def block_end(self, *args):
         self.block_started = False
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Removed', 'Block Instruction', '', '',
+            [(time.time() - self.start_time), 'Text Removed', 'Block Instruction', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Removed', 'Continue Button', '', '',
+            [(time.time() - self.start_time), 'Button Removed', 'Continue Button', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Hold Button', '', '',
              '', '', '', ''])
 
     # End Staging #
@@ -374,11 +380,11 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_widget(self.end_label)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Displayed', 'End Instruction', '', '',
+            [(time.time() - self.start_time), 'Text Displayed', 'End Instruction', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.return_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Return Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
 
     def return_to_main(self, *args):
@@ -400,7 +406,7 @@ class ProtocolBase(Screen):
 
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Hold Button', '', '',
              '', '', '', ''])
         self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
         self.hold_button.bind(on_press=self.iti)
@@ -412,13 +418,13 @@ class ProtocolBase(Screen):
             self.start_iti = time.time()
             self.iti_active = True
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Stage Change', 'ITI Start', '', '',
+                [(time.time() - self.start_time), 'Stage Change', 'ITI Start', '', '',
                  '', '', '', ''])
 
             if self.feedback_string == self.feedback_dict['wait']:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_string = ''
 
@@ -426,7 +432,7 @@ class ProtocolBase(Screen):
                 self.feedback_label.text = self.feedback_string
                 self.protocol_floatlayout.add_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Displayed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_start_time = time.time()
                 self.feedback_on_screen = True
@@ -434,23 +440,28 @@ class ProtocolBase(Screen):
                     self.feedback_length > 0:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_on_screen = False
-            Clock.schedule_interval(self.iti, 0.01)
+            #self.iti_clock = Clock.schedule_interval(self.iti, 0)
+            self.iti_clock.schedule_once(self.iti, self.feedback_length)
         if self.iti_active:
-            if (((time.time() - self.start_iti) > self.feedback_length) or (
-                    (time.time() - self.feedback_start_time) > self.feedback_length)) and self.feedback_on_screen:
+            if (((time.time() - self.start_iti) >= self.feedback_length) or (
+                    (time.time() - self.feedback_start_time) >= self.feedback_length)) and self.feedback_on_screen:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_on_screen = False
+                self.iti_clock.schedule_once(self.iti, (self.iti_length - self.feedback_length))
+            else:
+                self.iti_clock.schedule_once(self.iti, (self.iti_length - self.feedback_length))
+
             if (time.time() - self.start_iti) > self.iti_length:
-                Clock.unschedule(self.iti)
+                # Clock.unschedule(self.iti_clock)
                 self.iti_active = False
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Stage Change', 'ITI End', '', '',
+                    [(time.time() - self.start_time), 'Stage Change', 'ITI End', '', '',
                      '', '', '', ''])
                 self.hold_button.unbind(on_release=self.premature_response)
                 self.hold_active = True
@@ -464,13 +475,7 @@ class ProtocolBase(Screen):
 
     def start_clock(self, *args):
         self.start_time = time.time()
-        Clock.schedule_interval(self.clock_monitor, 0.01)
+        self.session_clock.schedule_once(self.clock_monitor, self.session_length_max)
 
     def clock_monitor(self, *args):
-        self.current_time = time.time()
-        self.elapsed_time = self.current_time - self.start_time
-        self.protocol_floatlayout.elapsed_time = self.elapsed_time
-
-        if self.elapsed_time > self.session_length_max:
-            Clock.unschedule(self.clock_monitor)
-            self.protocol_end()
+        Clock.unschedule(self.session_clock)

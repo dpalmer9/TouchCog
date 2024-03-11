@@ -193,13 +193,13 @@ class ProtocolScreen(ProtocolBase):
         self.hold_button.source = self.hold_button_image_path
 
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
+        self.center_stimulus = ImageButton(source = self.center_stimulus_image_path)
 
         self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus = ImageButton(source = self.left_stimulus_image_path)
 
         self.right_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus = ImageButton(source = self.right_stimulus_image_path)
 
     def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
@@ -314,17 +314,17 @@ class ProtocolScreen(ProtocolBase):
         self.hold_button.source = self.hold_button_image_path
 
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
+        self.center_stimulus.source = self.center_stimulus_image_path
         self.center_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.6}
         self.center_stimulus.name = 'Center Stimulus'
         self.center_stimulus.bind(on_press=self.center_pressed)
 
         self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus.source = self.left_stimulus_image_path
         self.left_stimulus.pos_hint = {"center_x": 0.2, "center_y": 0.6}
 
         self.right_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus.source = self.right_stimulus_image_path
         self.right_stimulus.pos_hint = {"center_x": 0.8, "center_y": 0.6}
 
         self.present_instructions()
@@ -344,23 +344,24 @@ class ProtocolScreen(ProtocolBase):
             [0, 'Button Removed', 'Task Start Button', '', '',
              '', '', '', ''])
         self.start_clock()
-
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Hold Button', '', '',
              '', '', '', ''])
         self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
         self.hold_button.bind(on_press=self.iti)
 
     def stimulus_presentation(self, *args):
         if not self.stimulus_on_screen:
-            self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Stage Change', 'Display Stimulus', '', '',
-                 '', '', '', ''])
-            self.protocol_floatlayout.add_widget(self.center_stimulus)
+            self.start_stimulus_clock = (time.time() - self.start_time)
             self.start_stimulus = time.time()
+            print('Self Tracked:' + str(self.start_stimulus - self.start_time) + ',Clock Tracked:' + str((time.time() - self.start_time)))
+            self.protocol_floatlayout.add_widget(self.center_stimulus)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '1',
+                [(time.time() - self.start_time), 'Stage Change', 'Display Stimulus', '', '',
+                 '', '', '', ''])
+            self.protocol_floatlayout.add_event(
+                [(time.time() - self.start_time), 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                  'Y Position', '1', 'Image Name', self.center_image])
             if self.stage_index == 3:
                 self.protocol_floatlayout.add_widget(self.left_stimulus)
@@ -368,24 +369,24 @@ class ProtocolScreen(ProtocolBase):
                 self.protocol_floatlayout.add_widget(self.right_stimulus)
                 self.right_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
                 self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Image Displayed', 'Left Stimulus', 'X Position', '0',
+                [(time.time() - self.start_time), 'Image Displayed', 'Left Stimulus', 'X Position', '0',
                  'Y Position', '1', 'Image Name', self.distractor])
                 self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Image Displayed', 'Right Stimulus', 'X Position', '2',
+                [(time.time() - self.start_time), 'Image Displayed', 'Right Stimulus', 'X Position', '2',
                  'Y Position', '1', 'Image Name', self.distractor])
             self.center_stimulus.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
             self.hold_button.bind(on_press=self.hold_returned_stim)
             self.hold_button.bind(on_release=self.hold_removed_stim)
 
             self.stimulus_on_screen = True
-            Clock.schedule_interval(self.stimulus_presentation, 0.01)
+            self.stimulus_presentation_clock = Clock.schedule_interval(self.stimulus_presentation, 0)
 
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
                 self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
                 self.center_stimulus.source = self.center_stimulus_image_path
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Displayed', 'Center Stimulus', 'X Position', '1',
+                    [(time.time() - self.start_time), 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.mask_image])
                 if self.stage_index == 3:
                     self.left_stimulus_image_path = self.image_folder + self.mask_image + '.png'
@@ -394,26 +395,26 @@ class ProtocolScreen(ProtocolBase):
                     self.right_stimulus.source = self.right_stimulus_image_path
                     
                     self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Displayed', 'Left Stimulus', 'X Position', '0',
+                    [(time.time() - self.start_time), 'Image Displayed', 'Left Stimulus', 'X Position', '0',
                     'Y Position', '1', 'Image Name', self.mask_image])
                     self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Displayed', 'Right Stimulus', 'X Position', '2',
+                    [(time.time() - self.start_time), 'Image Displayed', 'Right Stimulus', 'X Position', '2',
                     'Y Position', '1', 'Image Name', self.mask_image])
                 self.limited_hold_started = True
             if (time.time() - self.start_stimulus) > self.limited_hold:
-                Clock.unschedule(self.stimulus_presentation)
+                Clock.unschedule(self.stimulus_presentation_clock)
                 self.protocol_floatlayout.remove_widget(self.center_stimulus)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Removed', 'Center Stimulus', 'X Position', '1',
+                    [(time.time() - self.start_time), 'Image Removed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.center_image])
                 if self.stage_index == 3:
                     self.protocol_floatlayout.remove_widget(self.left_stimulus)
                     self.protocol_floatlayout.remove_widget(self.right_stimulus)
                     self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Removed', 'Left Stimulus', 'X Position', '0',
+                    [(time.time() - self.start_time), 'Image Removed', 'Left Stimulus', 'X Position', '0',
                     'Y Position', '1', 'Image Name', self.left_stimulus])
                     self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Image Removed', 'Right Stimulus', 'X Position', '2',
+                    [(time.time() - self.start_time), 'Image Removed', 'Right Stimulus', 'X Position', '2',
                     'Y Position', '1', 'Image Name', self.right_stimulus])
                 self.center_notpressed()
                 self.stimulus_on_screen = False
@@ -423,22 +424,22 @@ class ProtocolScreen(ProtocolBase):
         if self.stimulus_on_screen:
             return None
 
-        Clock.unschedule(self.iti)
+        Clock.unschedule(self.iti_clock)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Stage Change', 'Premature Response', '', '',
+            [(time.time() - self.start_time), 'Stage Change', 'Premature Response', '', '',
              '', '', '', ''])
         self.feedback_string = self.feedback_dict['wait']
         contingency = '2'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Contingency', 'Value', str(contingency),
              '', '', '', ''])
         response = '1'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(response),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Response', 'Value', str(response),
              '', '', '', ''])
         self.trial_outcome = '5'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
         self.write_trial(response, contingency)
         self.response_lat = 0
@@ -447,7 +448,7 @@ class ProtocolScreen(ProtocolBase):
         if not self.feedback_on_screen:
             self.protocol_floatlayout.add_widget(self.feedback_label)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                [(time.time() - self.start_time), 'Text Displayed', 'Feedback', '', '',
                  '', '', '', ''])
             self.feedback_on_screen = True
         self.hold_button.unbind(on_release=self.premature_response)
@@ -459,56 +460,57 @@ class ProtocolScreen(ProtocolBase):
 
     # Contingency Stages #
     def center_pressed(self, *args):
-        Clock.unschedule(self.stimulus_presentation)
+        Clock.unschedule(self.stimulus_presentation_clock)
+        print('Self Tracked:' + str(time.time() - self.start_stimulus) + ', Clock Tracked:' + str((time.time() - self.start_time) - self.start_stimulus_clock))
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Stage Change', 'Stimulus Pressed', '', '',
+            [(time.time() - self.start_time), 'Stage Change', 'Stimulus Pressed', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.remove_widget(self.center_stimulus)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Image Removed', 'Center Stimulus', 'X Position', '1',
+            [(time.time() - self.start_time), 'Image Removed', 'Center Stimulus', 'X Position', '1',
              'Y Position', '1', 'Image Name', self.center_image])
         if self.stage_index == 3:
             self.protocol_floatlayout.remove_widget(self.left_stimulus)
             self.protocol_floatlayout.remove_widget(self.right_stimulus)
             self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Image Removed', 'Left Stimulus', 'X Position', '0',
+            [(time.time() - self.start_time), 'Image Removed', 'Left Stimulus', 'X Position', '0',
             'Y Position', '1', 'Image Name', self.left_stimulus])
             self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Image Removed', 'Right Stimulus', 'X Position', '2',
+            [(time.time() - self.start_time), 'Image Removed', 'Right Stimulus', 'X Position', '2',
             'Y Position', '1', 'Image Name', self.right_stimulus])
 
         self.stimulus_on_screen = False
         self.response_lat = time.time() - self.start_stimulus
         self.response = '1'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = self.feedback_dict['correct']
             self.contingency = '1'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '1'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
             self.current_hits += 1
         else:
             self.feedback_string = self.feedback_dict['incorrect']
             self.trial_outcome = '3'
             self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
              '', '', '', ''])
             self.contingency = '0'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
 
         self.feedback_label.text = self.feedback_string
         self.protocol_floatlayout.add_widget(self.feedback_label)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+            [(time.time() - self.start_time), 'Text Displayed', 'Feedback', '', '',
              '', '', '', ''])
         self.feedback_start_time = time.time()
         self.feedback_on_screen = True
@@ -524,27 +526,27 @@ class ProtocolScreen(ProtocolBase):
         self.response_lat = ''
         self.response = '0'
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Trial Response', 'Value', str(self.response),
+            [(time.time() - self.start_time), 'Variable Change', 'Trial Response', 'Value', str(self.response),
              '', '', '', ''])
         if (self.center_image in self.correct_images) or (self.center_image == self.training_image):
             self.feedback_string = ''
             self.contingency = '0'  #######
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '2'  #####
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
         else:
             self.feedback_string = ''
             self.contingency = '1'  #####
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Contingency', 'Value', str(self.contingency),
                  '', '', '', ''])
             self.trial_outcome = '4'  ######
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
+                [(time.time() - self.start_time), 'Variable Change', 'Trial Outcome', 'Value', str(self.trial_outcome),
                  '', '', '', ''])
         self.write_trial(self.response, self.contingency)
         self.trial_contingency()
@@ -577,7 +579,7 @@ class ProtocolScreen(ProtocolBase):
     def trial_contingency(self):
         self.current_trial += 1
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
+            [(time.time() - self.start_time), 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
              '', '', '', ''])
 
         if self.current_trial > self.session_trial_max:
@@ -588,27 +590,27 @@ class ProtocolScreen(ProtocolBase):
         if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.01)
+            self.block_screen()
             return
 
         if self.current_hits >= self.block_max_length:
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.01)
+            self.block_screen()
             return
 
         if self.contingency == '0' and self.response == "1":
             self.current_correction = True
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
+                [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             self.center_stimulus.source = self.center_stimulus_image_path
             return
         elif self.contingency == '2':
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
+                [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             self.center_stimulus.source = self.center_stimulus_image_path
             return
@@ -620,7 +622,7 @@ class ProtocolScreen(ProtocolBase):
                 self.center_image = np.random.choice(a=self.total_image_list, size=None, p=self.image_prob_list)
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Variable Change', 'Center Image', 'Value', str(self.center_image),
+                [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
             self.center_stimulus.source = self.center_stimulus_image_path
             
@@ -662,7 +664,7 @@ class ProtocolScreen(ProtocolBase):
         if self.feedback_on_screen == True:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
-                Clock.unschedule(self.block_contingency)
+                Clock.unschedule(self.block_clock)
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_string = ''
                 self.feedback_label.text = self.feedback_string
@@ -670,7 +672,7 @@ class ProtocolScreen(ProtocolBase):
             else:
                 return
         else:
-            Clock.unschedule(self.block_contingency)
+            Clock.unschedule(self.block_clock)
 
         self.protocol_floatlayout.clear_widgets()
 
