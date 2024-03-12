@@ -113,6 +113,8 @@ class ProtocolScreen(ProtocolBase):
 
         # Define Variables - Boolean
         self.current_correction = False
+        self.stimulus_on_screen = False
+        self.limited_hold_started = False
 
         # Define Variables - Count
         self.current_hits = 0
@@ -387,10 +389,12 @@ class ProtocolScreen(ProtocolBase):
             self.start_stimulus = time.time()
 
             self.stimulus_on_screen = True
-            Clock.schedule_interval(self.stimulus_presentation, 0.1)
+            self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation, self.stimulus_duration)
+            return
 
         else:
-            if (time.time() - self.start_stimulus) > self.stimulus_duration:
+            if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
+                self.stimulus_duration_clock.cancel()
                 self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
                 self.center_stimulus.source = self.center_stimulus_image_path
                 self.protocol_floatlayout.add_event(
@@ -408,8 +412,11 @@ class ProtocolScreen(ProtocolBase):
                     self.protocol_floatlayout.add_event(
                         [(time.time() - self.start_time), 'Image Displayed', 'Right Stimulus', 'X Position', '2',
                          'Y Position', '1', 'Image Name', self.mask_image])
-            if (time.time() - self.start_stimulus) > self.limited_hold:
-                Clock.unschedule(self.stimulus_presentation)
+                self.limited_hold_started = True
+                self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation, (self.limited_hold - self.stimulus_duration))
+                return
+            elif (time.time() - self.start_stimulus) > self.limited_hold:
+                self.stimulus_duration_clock.cancel()
                 self.protocol_floatlayout.remove_widget(self.center_stimulus)
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Image Removed', 'Center Stimulus', 'X Position', '1',
@@ -424,13 +431,19 @@ class ProtocolScreen(ProtocolBase):
                         [(time.time() - self.start_time), 'Image Removed', 'Right Stimulus', 'X Position', '2',
                          'Y Position', '1', 'Image Name', self.right_stimulus])
                 self.stimulus_on_screen = False
+                self.limited_hold_started = False
                 self.center_notpressed()
+                return
+            else:
+                self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation)
+                return
 
     def premature_response(self, *args):
         if self.stimulus_on_screen:
             return None
 
-        Clock.unschedule(self.iti_clock)
+        if self.iti_active:
+            self.iti_clock.cancel()
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Stage Change', 'Premature Response', '', '',
              '', '', '', ''])
@@ -466,7 +479,7 @@ class ProtocolScreen(ProtocolBase):
 
     # Contingency Stages #
     def center_pressed(self, *args):
-        Clock.unschedule(self.stimulus_presentation)
+        self.stimulus_duration_clock.cancel()
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Stage Change', 'Stimulus Pressed', '', '',
              '', '', '', ''])
@@ -589,20 +602,20 @@ class ProtocolScreen(ProtocolBase):
              '', '', '', ''])
 
         if self.current_trial > self.session_trial_max:
-            Clock.unschedule(self.session_clock)
+            self.session_clock.cancel()
             self.protocol_end()
             return
 
         if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.1)
+            self.block_check_clock = Clock.schedule_once(self.block_contingency)
             return
 
         if self.current_hits >= self.block_max_length:
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            Clock.schedule_interval(self.block_contingency, 0.1)
+            self.block_check_clock = Clock.schedule_once(self.block_contingency)
             return
 
         if self.contingency == '0' and self.response == "1":
@@ -673,15 +686,16 @@ class ProtocolScreen(ProtocolBase):
         if self.feedback_on_screen == True:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
-                Clock.unschedule(self.block_contingency)
+                self.block_check_clock.cancel()
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_string = ''
                 self.feedback_label.text = self.feedback_string
                 self.feedback_on_screen = False
             else:
+                self.block_check_clock = Clock.schedule_once(self.block_contingency)
                 return
         else:
-            Clock.unschedule(self.block_contingency)
+            self.block_check_clock.cancel()
 
         self.protocol_floatlayout.clear_widgets()
 
@@ -726,7 +740,7 @@ class ProtocolScreen(ProtocolBase):
                 self.block_max_length = self.flanker_block_length
 
             if self.stage_index == 4 and self.probability_probe_active == False:
-                Clock.unschedule(self.session_clock)
+                self.session_clock.cancel()
                 self.protocol_end()
                 return
             elif self.stage_index == 4 and self.probability_probe_active == True:
@@ -745,7 +759,7 @@ class ProtocolScreen(ProtocolBase):
                 self.current_substage = self.probability_stage
 
             if self.stage_index >= 5:
-                Clock.unschedule(self.session_clock)
+                self.session_clock.cancel()
                 self.protocol_end()
                 return
 
