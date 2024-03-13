@@ -131,6 +131,8 @@ class ProtocolScreen(ProtocolBase):
         
         # Define Clock
         self.stimulus_duration_clock = Clock
+        self.stimulus_duration_clock.interupt_next_only = False
+        self.stimulus_duration_event = self.stimulus_duration_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
         self.block_check_clock = Clock
 
         # Define Variables - Trial Configurations
@@ -389,12 +391,12 @@ class ProtocolScreen(ProtocolBase):
             self.start_stimulus = time.time()
 
             self.stimulus_on_screen = True
-            self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation, self.stimulus_duration)
+            #self.stimulus_duration_clock = Clock.schedule_interval(self.stimulus_presentation, 0)
+            self.stimulus_duration_event()
             return
 
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
-                self.stimulus_duration_clock.cancel()
                 self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
                 self.center_stimulus.source = self.center_stimulus_image_path
                 self.protocol_floatlayout.add_event(
@@ -413,10 +415,10 @@ class ProtocolScreen(ProtocolBase):
                         [(time.time() - self.start_time), 'Image Displayed', 'Right Stimulus', 'X Position', '2',
                          'Y Position', '1', 'Image Name', self.mask_image])
                 self.limited_hold_started = True
-                self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation, (self.limited_hold - self.stimulus_duration))
                 return
-            elif (time.time() - self.start_stimulus) > self.limited_hold:
-                self.stimulus_duration_clock.cancel()
+            
+            if (time.time() - self.start_stimulus) > self.limited_hold:
+                self.stimulus_duration_event.cancel()
                 self.protocol_floatlayout.remove_widget(self.center_stimulus)
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Image Removed', 'Center Stimulus', 'X Position', '1',
@@ -434,9 +436,7 @@ class ProtocolScreen(ProtocolBase):
                 self.limited_hold_started = False
                 self.center_notpressed()
                 return
-            else:
-                self.stimulus_duration_clock = Clock.schedule_once(self.stimulus_presentation)
-                return
+
 
     def premature_response(self, *args):
         if self.stimulus_on_screen:
@@ -479,7 +479,7 @@ class ProtocolScreen(ProtocolBase):
 
     # Contingency Stages #
     def center_pressed(self, *args):
-        self.stimulus_duration_clock.cancel()
+        self.stimulus_duration_event.cancel()
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Stage Change', 'Stimulus Pressed', '', '',
              '', '', '', ''])
@@ -609,13 +609,13 @@ class ProtocolScreen(ProtocolBase):
         if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            self.block_check_clock = Clock.schedule_once(self.block_contingency)
+            self.block_check_clock = Clock.schedule_interval(self.block_contingency, 0)
             return
 
         if self.current_hits >= self.block_max_length:
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            self.block_check_clock = Clock.schedule_once(self.block_contingency)
+            self.block_check_clock = Clock.schedule_interval(self.block_contingency, 0)
             return
 
         if self.contingency == '0' and self.response == "1":
@@ -692,7 +692,6 @@ class ProtocolScreen(ProtocolBase):
                 self.feedback_label.text = self.feedback_string
                 self.feedback_on_screen = False
             else:
-                self.block_check_clock = Clock.schedule_once(self.block_contingency)
                 return
         else:
             self.block_check_clock.cancel()
