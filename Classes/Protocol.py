@@ -142,8 +142,8 @@ class ProtocolBase(Screen):
         self.block_min_rest_duration = 0.00
         self.session_length_max = 0.00
         self.session_trial_max = 0
-        self.iti_length = 0.00
-        self.feedback_length = -1.00
+        self.iti_length = 2.00
+        self.feedback_length = 1.00
         self.hold_image = ''
         self.mask_image = ''
 
@@ -181,8 +181,14 @@ class ProtocolBase(Screen):
 
         # Define Class - Clock
         self.iti_clock = Clock
+        #self.iti_clock.interupt_next_only = False
+        self.iti_event = self.iti_clock.create_trigger(self.iti, 0, interval=True)
         self.session_clock = Clock
+        #self.session_clock.interupt_next_only = False
+        self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
         self.block_clock = Clock
+        #self.block_clock.interupt_next_only = False
+        self.block_event = self.block_clock.create_trigger(self.block_screen, 0, interval=True)
 
         # Define Dictionaries
         self.parameters_dict = {}
@@ -364,9 +370,9 @@ class ProtocolBase(Screen):
                  '', '', '', ''])
             self.block_start = time.time()
             self.block_started = True
-            self.block_clock = Clock.schedule_interval(self.block_screen, 0)
+            self.block_event()
         if (time.time() - self.block_start) > self.block_min_rest_duration:
-            self.block_clock.cancel()
+            self.block_event.cancel()
             self.protocol_floatlayout.add_widget(self.continue_button)
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Button Displayed', 'Continue Button', '', '',
@@ -457,7 +463,7 @@ class ProtocolBase(Screen):
                      '', '', '', ''])
                 self.feedback_on_screen = False
             
-            self.iti_clock = Clock.schedule_interval(self.iti, 0)
+            self.iti_event()
             return
         if self.iti_active:
             if (((time.time() - self.start_iti) > self.feedback_length) or (
@@ -469,7 +475,7 @@ class ProtocolBase(Screen):
                 self.feedback_on_screen = False  
                 return
             elif (time.time() - self.start_iti) > self.iti_length:
-                self.iti_clock.cancel()
+                self.iti_event.cancel()
                 self.iti_active = False
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Stage Change', 'ITI End', '', '',
@@ -488,11 +494,11 @@ class ProtocolBase(Screen):
 
     def start_clock(self, *args):
         self.start_time = time.time()
-        self.session_clock= Clock.schedule_once(self.clock_monitor, self.session_length_max)
+        self.session_event()
         self.protocol_floatlayout.start_time = self.start_time
         return
 
     def clock_monitor(self, *args):
-        self.session_clock.cancel()
+        self.session_event.cancel()
         self.protocol_end()
         return
