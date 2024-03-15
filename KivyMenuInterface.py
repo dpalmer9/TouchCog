@@ -229,13 +229,8 @@ class MenuApp(App):
     def add_screen(self, screen):
         self.s_manager.add_widget(screen)
 
-    def on_start(self):
-        self.profile = cProfile.Profile()
-        self.profile.enable()
-
     def on_stop(self):
-        self.profile.disable()
-        self.profile.dump_stats('touchcog.profile')
+        self.session_event_data = self.session_event_data.sort_values(by=['Time'])
         self.session_event_data.to_csv(self.session_event_path, index=False)
         self.summary_event_data.to_csv(self.summary_event_path, index=False)
 
