@@ -131,9 +131,11 @@ class ProtocolScreen(ProtocolBase):
         
         # Define Clock
         self.stimulus_duration_clock = Clock
-        self.stimulus_duration_clock.interupt_next_only = False
+        #self.stimulus_duration_clock.interupt_next_only = False
         self.stimulus_duration_event = self.stimulus_duration_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
         self.block_check_clock = Clock
+        #self.block_check_clock.interupt_next_only = False
+        self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
 
         # Define Variables - Trial Configurations
         distractor_prob = 1 - self.target_probability
@@ -294,6 +296,9 @@ class ProtocolScreen(ProtocolBase):
         # Define Variables - Time
         self.start_stimulus = 0
         self.response_lat = 0
+        
+        # Define Session Event
+        self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
 
         # Define Variables - Trial Configurations
         distractor_prob = 1 - self.target_probability
@@ -391,7 +396,6 @@ class ProtocolScreen(ProtocolBase):
             self.start_stimulus = time.time()
 
             self.stimulus_on_screen = True
-            #self.stimulus_duration_clock = Clock.schedule_interval(self.stimulus_presentation, 0)
             self.stimulus_duration_event()
             return
 
@@ -443,7 +447,7 @@ class ProtocolScreen(ProtocolBase):
             return None
 
         if self.iti_active:
-            self.iti_clock.cancel()
+            self.iti_event.cancel()
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Stage Change', 'Premature Response', '', '',
              '', '', '', ''])
@@ -498,6 +502,7 @@ class ProtocolScreen(ProtocolBase):
                  'Y Position', '1', 'Image Name', self.right_stimulus])
 
         self.stimulus_on_screen = False
+        self.limited_hold_started = False
         self.response_lat = time.time() - self.start_stimulus
         self.response = '1'
         self.protocol_floatlayout.add_event(
@@ -602,20 +607,20 @@ class ProtocolScreen(ProtocolBase):
              '', '', '', ''])
 
         if self.current_trial > self.session_trial_max:
-            self.session_clock.cancel()
+            self.session_event.cancel()
             self.protocol_end()
             return
 
         if (self.current_hits >= 10) and (self.stage_index == 0):
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            self.block_check_clock = Clock.schedule_interval(self.block_contingency, 0)
+            self.block_check_event()
             return
 
         if self.current_hits >= self.block_max_length:
             self.feedback_start = time.time()
             self.protocol_floatlayout.remove_widget(self.hold_button)
-            self.block_check_clock = Clock.schedule_interval(self.block_contingency, 0)
+            self.block_check_event()
             return
 
         if self.contingency == '0' and self.response == "1":
@@ -686,7 +691,7 @@ class ProtocolScreen(ProtocolBase):
         if self.feedback_on_screen == True:
             curr_time = time.time()
             if (curr_time - self.feedback_start) >= self.feedback_length:
-                self.block_check_clock.cancel()
+                self.block_check_event.cancel()
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.feedback_string = ''
                 self.feedback_label.text = self.feedback_string
@@ -694,7 +699,7 @@ class ProtocolScreen(ProtocolBase):
             else:
                 return
         else:
-            self.block_check_clock.cancel()
+            self.block_check_event.cancel()
 
         self.protocol_floatlayout.clear_widgets()
 
@@ -739,7 +744,7 @@ class ProtocolScreen(ProtocolBase):
                 self.block_max_length = self.flanker_block_length
 
             if self.stage_index == 4 and self.probability_probe_active == False:
-                self.session_clock.cancel()
+                self.session_event.cancel()
                 self.protocol_end()
                 return
             elif self.stage_index == 4 and self.probability_probe_active == True:
@@ -758,7 +763,7 @@ class ProtocolScreen(ProtocolBase):
                 self.current_substage = self.probability_stage
 
             if self.stage_index >= 5:
-                self.session_clock.cancel()
+                self.session_event.cancel()
                 self.protocol_end()
                 return
 
