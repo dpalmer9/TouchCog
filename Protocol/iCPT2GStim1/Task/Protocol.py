@@ -16,24 +16,10 @@ from kivy.uix.screenmanager import Screen
 from Classes.Protocol import ImageButton, ProtocolBase
 
 class ProtocolScreen(ProtocolBase):
-    def __init__(self, screen_resolution, **kwargs):
+    def __init__(self, **kwargs):
         super(ProtocolScreen, self).__init__(**kwargs)
         self.protocol_name = 'iCPT2GStim1'
         self.update_task()
-        width = screen_resolution[0]
-        height = screen_resolution[1]
-        self.size = screen_resolution
-        self.protocol_floatlayout.size = screen_resolution
-
-        if width > height:
-            self.width_adjust = height / width
-            self.height_adjust = 1
-        elif height < width:
-            self.width_adjust = 1
-            self.height_adjust = width / height
-        else:
-            self.width_adjust = 1
-            self.height_adjust = 1
 
         # Define Data Columns
         self.data_cols = ['TrialNo', 'Stage', 'Sub Stage', 'Block #', 'Trial Type', 'Correction Trial', 'Response',
@@ -131,10 +117,10 @@ class ProtocolScreen(ProtocolBase):
         
         # Define Clock
         self.stimulus_duration_clock = Clock
-        #self.stimulus_duration_clock.interupt_next_only = False
+        self.stimulus_duration_clock.interupt_next_only = False
         self.stimulus_duration_event = self.stimulus_duration_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
         self.block_check_clock = Clock
-        #self.block_check_clock.interupt_next_only = False
+        self.block_check_clock.interupt_next_only = False
         self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
 
         # Define Variables - Trial Configurations

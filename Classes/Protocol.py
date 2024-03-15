@@ -11,6 +11,7 @@ import configparser
 import sys
 import os
 import time
+import threading
 
 
 class ImageButton(ButtonBehavior, Image):
@@ -23,10 +24,15 @@ class ImageButton(ButtonBehavior, Image):
 
 
 class FloatLayoutLog(FloatLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, screen_resolution, **kwargs):
         super(FloatLayoutLog, self).__init__(**kwargs)
         self.app = App.get_running_app()
         self.touch_pos = [0, 0]
+        self.last_recorded_pos = [0,0]
+        self.width = screen_resolution[0]
+        self.height = screen_resolution[1]
+        self.width_min = self.width / 100
+        self.height_min = self.height / 100
         self.held_name = ''
         self.event_columns = ['Time', 'Event_Type', 'Event_Name', 'Arg1_Name', 'Arg1_Value',
                               'Arg2_Name', 'Arg2_Value', 'Arg3_Name', 'Arg3_Value']
@@ -51,28 +57,41 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
-                                'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+                threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                                'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],), daemon=False).start()
+                #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                                #'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
-        self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
-                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+        threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Press', 'X Position',
+                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+        #add_thread.start()
+        #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
+                        #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
-    #def on_touch_move(self, touch):
-        #self.touch_pos = touch.pos
-        #self.touch_time = time.time() - self.start_time
-        #if self.disabled:
-            #return
-        #for child in self.children:
-            #if child.dispatch('on_touch_move', touch):
-                #if isinstance(child, ImageButton):
-                    #self.held_name = child.name
-                #else:
-                    #self.held_name = ''
+    def on_touch_move(self, touch):
+        self.touch_pos = touch.pos
+        self.touch_time = time.time() - self.start_time
+        if self.disabled:
+            return
+        for child in self.children:
+            if child.dispatch('on_touch_move', touch):
+                if isinstance(child, ImageButton):
+                    self.held_name = child.name
+                else:
+                    self.held_name = ''
+                if (abs(self.touch_pos[0] - self.last_recorded_pos[0]) >= self.width_min) or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
+                    self.last_recorded_pos = self.touch_pos
+                    threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Move', 'X Position',
+                            self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
                 #self.add_event([self.touch_time, 'Screen', 'Touch Move', 'X Position',
                                 #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
-                #return True
-        #self.held_name = ''
+                return True
+        self.held_name = ''
+        if (abs(self.touch_pos[0] - self.last_recorded_pos[0]) >= self.width_min) or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
+            self.last_recorded_pos = self.touch_pos
+            threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Move', 'X Position',
+                    self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
         #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
                         #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
@@ -87,11 +106,16 @@ class FloatLayoutLog(FloatLayout):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
-                                self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+                threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                                self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+                #self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                                #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
-        self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
-                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+        self.held_name = ''
+        threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+        #self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                        #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
         if self.held_name != '':
             self.held_name = ''
 
@@ -108,7 +132,7 @@ class FloatLayoutLog(FloatLayout):
 
 
 class ProtocolBase(Screen):
-    def __init__(self, **kwargs):
+    def __init__(self, screen_resolution, **kwargs):
         super(ProtocolBase, self).__init__(**kwargs)
         self.name = 'protocolscreen'
 
@@ -116,8 +140,23 @@ class ProtocolBase(Screen):
             self.folder_mod = '/'
         elif sys.platform == 'win32':
             self.folder_mod = '\\'
+            
+        width = screen_resolution[0]
+        height = screen_resolution[1]
+        self.size = screen_resolution
 
-        self.protocol_floatlayout = FloatLayoutLog()
+        if width > height:
+            self.width_adjust = height / width
+            self.height_adjust = 1
+        elif height < width:
+            self.width_adjust = 1
+            self.height_adjust = width / height
+        else:
+            self.width_adjust = 1
+            self.height_adjust = 1
+
+        self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
+        self.protocol_floatlayout.size = screen_resolution
         self.add_widget(self.protocol_floatlayout)
         
         # Define App
@@ -126,6 +165,7 @@ class ProtocolBase(Screen):
         # Define Folders
         self.protocol_name = ''
         self.image_folder = ''
+
         self.config_path = ''
         self.file_path = ''
 
@@ -181,13 +221,13 @@ class ProtocolBase(Screen):
 
         # Define Class - Clock
         self.iti_clock = Clock
-        #self.iti_clock.interupt_next_only = False
+        self.iti_clock.interupt_next_only = False
         self.iti_event = self.iti_clock.create_trigger(self.iti, 0, interval=True)
         self.session_clock = Clock
-        #self.session_clock.interupt_next_only = False
+        self.session_clock.interupt_next_only = False
         self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
         self.block_clock = Clock
-        #self.block_clock.interupt_next_only = False
+        self.block_clock.interupt_next_only = False
         self.block_event = self.block_clock.create_trigger(self.block_screen, 0, interval=True)
 
         # Define Dictionaries
@@ -403,6 +443,7 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
+        self.app.summary_event_data = self.app.summary_event_data.sort_values(by=['Time'])
         self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
         self.protocol_floatlayout.write_data()
 
