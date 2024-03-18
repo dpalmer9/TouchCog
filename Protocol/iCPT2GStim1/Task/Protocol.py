@@ -6,6 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 import csv
+import threading
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
@@ -13,6 +14,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
+from kivy.loader import Loader
 from Classes.Protocol import ImageButton, ProtocolBase
 
 class ProtocolScreen(ProtocolBase):
@@ -47,6 +49,7 @@ class ProtocolScreen(ProtocolBase):
         self.incorrect_images = self.parameters_dict['incorrect_images']
         self.incorrect_images = self.incorrect_images.split(',')
         self.total_image_list = self.correct_images + self.incorrect_images
+        self.image_dict = {}
         self.block_max_length = int(self.parameters_dict['block_max_length'])
         self.block_max_count = int(self.parameters_dict['block_max_count'])
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
@@ -108,6 +111,8 @@ class ProtocolScreen(ProtocolBase):
 
         # Define Variables - String
         self.center_image = self.training_image
+        self.left_image = 'black'
+        self.right_image = 'black'
         self.current_stage = self.stage_list[self.stage_index]
         self.current_substage = ''
 
@@ -184,11 +189,12 @@ class ProtocolScreen(ProtocolBase):
                                                              len(self.probability_stage_list), replace=False)
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        #self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
+        #self.hold_button.source = self.hold_button_image_path
 
         self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
+        #self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
+        self.center_stimulus = ImageButton()
         self.center_stimulus.bind(on_press=self.center_pressed)
 
         self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
@@ -218,6 +224,12 @@ class ProtocolScreen(ProtocolBase):
         self.incorrect_images = self.parameters_dict['incorrect_images']
         self.incorrect_images = self.incorrect_images.split(',')
         self.total_image_list = self.correct_images + self.incorrect_images
+        self.hold_image = config_file['Hold']['hold_image']
+        self.mask_image = config_file['Mask']['mask_image']
+        loader_images = self.total_image_list + [self.training_image,self.hold_image,self.mask_image]
+        print(loader_images)
+        #threading.Thread(target=self.load_images, args=(loader_images,)).start()
+        self.load_images(loader_images)
         self.block_max_length = int(self.parameters_dict['block_max_length'])
         self.block_max_count = int(self.parameters_dict['block_max_count'])
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
@@ -257,8 +269,6 @@ class ProtocolScreen(ProtocolBase):
         self.probabilty_probe_mid = float(self.parameters_dict['probability_probe_mid'])
         self.probabilty_probe_low = float(self.parameters_dict['probability_probe_low'])
         self.probabilty_probe_length = int(self.parameters_dict['probability_probe_length'])
-        self.hold_image = config_file['Hold']['hold_image']
-        self.mask_image = config_file['Mask']['mask_image']
 
         # Define Language
         self.set_language(self.language)
@@ -312,6 +322,12 @@ class ProtocolScreen(ProtocolBase):
         self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),
                                                             len(self.distractor_stage_list), replace=False)
 
+        # Load Images - Async
+        #image_dict = {}
+        #for image_file in self.total_image_list:
+            #load_image = Loader.image((self.image_folder + image_file + '.png'))
+            #image_dict[image_file] = load_image
+
         # Define Widgets - Images
         self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
         self.hold_button.source = self.hold_button_image_path
@@ -333,6 +349,14 @@ class ProtocolScreen(ProtocolBase):
         self.present_instructions()
 
     # Protocol Staging #
+    
+    def load_images(self, image_list):
+        # Load Images - Async
+        self.image_dict = {}
+        for image_file in image_list:
+            print(image_file)
+            load_image = Loader.image((self.image_folder + image_file + '.png'))
+            self.image_dict[image_file] = load_image
 
     def start_protocol(self, *args):
         self.protocol_floatlayout.add_event(
@@ -395,8 +419,10 @@ class ProtocolScreen(ProtocolBase):
                 if self.stage_index == 3:
                     self.left_stimulus_image_path = self.image_folder + self.mask_image + '.png'
                     self.right_stimulus_image_path = self.image_folder + self.mask_image + '.png'
-                    self.left_stimulus.source = self.left_stimulus_image_path
-                    self.right_stimulus.source = self.right_stimulus_image_path
+                    #self.left_stimulus.source = self.left_stimulus_image_path
+                    #self.right_stimulus.source = self.right_stimulus_image_path
+                    self.left_stimulus.texture = self.image_dict[self.mask_image].image.texture
+                    self.right_stimulus.texture = self.image_dict[self.mask_image].image.texture
 
                     self.protocol_floatlayout.add_event(
                         [(time.time() - self.start_time), 'Image Displayed', 'Left Stimulus', 'X Position', '0',
@@ -615,14 +641,16 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            self.center_stimulus.source = self.center_stimulus_image_path
+            #self.center_stimulus.source = self.center_stimulus_image_path
+            self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
             return
         elif self.contingency == '2':
             self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            self.center_stimulus.source = self.center_stimulus_image_path
+            #self.center_stimulus.source = self.center_stimulus_image_path
+            self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
             return
         else:
             self.current_correction = False
@@ -634,7 +662,8 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            self.center_stimulus.source = self.center_stimulus_image_path
+            #center_stimulus.source = self.center_stimulus_image_path
+            self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
 
         if self.stage_index == 2:
             self.stimulus_duration = self.stimulus_duration_list[
@@ -653,9 +682,13 @@ class ProtocolScreen(ProtocolBase):
             if self.distractor_stage == 'No Distractor':
                 self.left_stimulus_image_path = self.image_folder + 'black.png'
                 self.right_stimulus_image_path = self.image_folder + 'black.png'
+                self.left_image = 'black'
+                self.right_image = 'black'
             elif self.distractor_stage == 'Congruent Distractor':
                 self.left_stimulus_image_path = self.center_stimulus_image_path
                 self.right_stimulus_image_path = self.center_stimulus_image_path
+                self.left_image = self.center_image
+                self.right_image = self.center_image
             elif self.distractor_stage == 'Incongruent Distractor':
                 if self.center_image in self.correct_images:
                     self.distractor = np.random.choice(self.incorrect_images)
@@ -663,9 +696,13 @@ class ProtocolScreen(ProtocolBase):
                     self.distractor = np.random.choice(self.correct_images)
                 self.left_stimulus_image_path = self.image_folder + self.distractor + '.png'
                 self.right_stimulus_image_path = self.image_folder + self.distractor + '.png'
+                self.left_image = self.distractor
+                self.right_image = self.distractor
 
-            self.left_stimulus.source = self.left_stimulus_image_path
-            self.right_stimulus.source = self.right_stimulus_image_path
+            #self.left_stimulus.source = self.left_stimulus_image_path
+            #self.right_stimulus.source = self.right_stimulus_image_path
+            self.left_stimulus.texture = self.image_dict[self.left_image].image.texture
+            self.right_stimulus.texture = self.image_dict[self.right_image].image.texture
             self.distractor_stage_pos += 1
             if self.distractor_stage_pos >= len(self.distractor_stage_list):
                 self.distractor_stage_index_list = np.random.choice(len(self.distractor_stage_list),

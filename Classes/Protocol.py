@@ -14,7 +14,7 @@ import time
 import threading
 
 
-class ImageButton(ButtonBehavior, AsyncImage):
+class ImageButton(ButtonBehavior, Image):
     def __init__(self, **kwargs):
         super(ImageButton, self).__init__(**kwargs)
         self.coord = None
