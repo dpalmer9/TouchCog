@@ -3,7 +3,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.label import Label
-from kivy.uix.image import Image
+from kivy.uix.image import Image, AsyncImage
 from kivy.app import App
 from kivy.clock import Clock
 import pandas as pd
@@ -14,7 +14,7 @@ import time
 import threading
 
 
-class ImageButton(ButtonBehavior, Image):
+class ImageButton(ButtonBehavior, AsyncImage):
     def __init__(self, **kwargs):
         super(ImageButton, self).__init__(**kwargs)
         self.coord = None
