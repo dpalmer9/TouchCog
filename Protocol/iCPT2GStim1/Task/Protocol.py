@@ -412,7 +412,8 @@ class ProtocolScreen(ProtocolBase):
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
                 self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
-                self.center_stimulus.source = self.center_stimulus_image_path
+                #self.center_stimulus.source = self.center_stimulus_image_path
+                self.center_stimulus.texture = self.image_dict[self.mask_image].image.texture
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.mask_image])
