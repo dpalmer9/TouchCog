@@ -6,6 +6,7 @@ from kivy.uix.label import Label
 from kivy.uix.image import Image, AsyncImage
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.loader import Loader
 import pandas as pd
 import configparser
 import sys
@@ -186,6 +187,7 @@ class ProtocolBase(Screen):
         self.feedback_length = 1.00
         self.hold_image = ''
         self.mask_image = ''
+        self.image_dict = {}
 
         # Define Language
         self.language = 'English'
@@ -276,6 +278,13 @@ class ProtocolBase(Screen):
     def update_task(self):
         self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + \
                             self.folder_mod
+    
+    def load_images(self, image_list):
+        # Load Images - Async
+        self.image_dict = {}
+        for image_file in image_list:
+            load_image = Loader.image((self.image_folder + image_file + '.png'))
+            self.image_dict[image_file] = load_image
 
     def set_language(self, language):
         self.language = language
