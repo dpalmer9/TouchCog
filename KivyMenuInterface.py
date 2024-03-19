@@ -8,6 +8,7 @@ from kivy.config import Config
 import os
 import importlib.util
 import importlib
+import cProfile
 import configparser
 main_path = os.getcwd()
 config_path = main_path + '/Screen.ini'
@@ -19,6 +20,8 @@ fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
+Config.set('kivy', 'kivy_clock', 'interrupt')
+Config.set('graphics', 'maxfps', 0)
 
 if fullscreen == 0:
     Config.set('graphics', 'width', str(x_dim))
@@ -49,6 +52,7 @@ import zipimport
 import sys
 import os
 import configparser
+import pandas as pd
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
@@ -212,6 +216,10 @@ class ProtocolMenu(Screen):
 # Class App Builder #
 class MenuApp(App):
     def build(self):
+        self.session_event_data = pd.DataFrame()
+        self.session_event_path = ''
+        self.summary_event_data = pd.DataFrame()
+        self.summary_event_path = ''
         self.s_manager = ScreenManager()
         self.main_menu = MainMenu()
         self.s_manager.add_widget(self.main_menu)
@@ -220,6 +228,11 @@ class MenuApp(App):
 
     def add_screen(self, screen):
         self.s_manager.add_widget(screen)
+
+    def on_stop(self):
+        self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+        self.session_event_data.to_csv(self.session_event_path, index=False)
+        self.summary_event_data.to_csv(self.summary_event_path, index=False)
 
 
 if __name__ == '__main__':

@@ -3,13 +3,16 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.label import Label
-from kivy.uix.image import Image
+from kivy.uix.image import Image, AsyncImage
+from kivy.app import App
 from kivy.clock import Clock
+from kivy.loader import Loader
 import pandas as pd
 import configparser
 import sys
 import os
 import time
+import threading
 
 
 class ImageButton(ButtonBehavior, Image):
@@ -22,85 +25,115 @@ class ImageButton(ButtonBehavior, Image):
 
 
 class FloatLayoutLog(FloatLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, screen_resolution, **kwargs):
         super(FloatLayoutLog, self).__init__(**kwargs)
+        self.app = App.get_running_app()
         self.touch_pos = [0, 0]
+        self.last_recorded_pos = [0,0]
+        self.width = screen_resolution[0]
+        self.height = screen_resolution[1]
+        self.width_min = self.width / 100
+        self.height_min = self.height / 100
         self.held_name = ''
         self.event_columns = ['Time', 'Event_Type', 'Event_Name', 'Arg1_Name', 'Arg1_Value',
                               'Arg2_Name', 'Arg2_Value', 'Arg3_Name', 'Arg3_Value']
         self.event_dataframe = pd.DataFrame(columns=self.event_columns)
+        self.app.session_event_data = self.event_dataframe
         self.event_index = 0
         self.save_path = ''
         self.elapsed_time = 0
         self.touch_time = 0
+        self.start_time = 0
 
+    def filter_children(self,string):
+        return
     def on_touch_down(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled and self.collide_point(*touch.pos):
             return True
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_down', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
-                                'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+                threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                                'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],), daemon=False).start()
+                #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position', self.touch_pos[0],
+                                #'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
-        self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
-                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+        threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Press', 'X Position',
+                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+        #add_thread.start()
+        #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
+                        #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
     def on_touch_move(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled:
             return
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_move', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.touch_time, 'Screen', 'Touch Move', 'X Position',
-                                self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+                if (abs(self.touch_pos[0] - self.last_recorded_pos[0]) >= self.width_min) or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
+                    self.last_recorded_pos = self.touch_pos
+                    threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Move', 'X Position',
+                            self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+                #self.add_event([self.touch_time, 'Screen', 'Touch Move', 'X Position',
+                                #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
         self.held_name = ''
-        self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
-                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+        if (abs(self.touch_pos[0] - self.last_recorded_pos[0]) >= self.width_min) or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
+            self.last_recorded_pos = self.touch_pos
+            threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Move', 'X Position',
+                    self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+        #self.add_event([self.touch_time, 'Screen', 'Touch Press', 'X Position',
+                        #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
 
     def on_touch_up(self, touch):
         self.touch_pos = touch.pos
-        self.touch_time = self.elapsed_time
+        self.touch_time = time.time() - self.start_time
         if self.disabled:
             return
-        for child in self.children[:]:
+        for child in self.children:
             if child.dispatch('on_touch_up', touch):
                 if isinstance(child, ImageButton):
                     self.held_name = child.name
                 else:
                     self.held_name = ''
-                self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
-                                self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+                threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                                self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+                #self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                                #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
                 return True
-        self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
-                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
+        self.held_name = ''
+        threading.Thread(target=self.add_event,args=([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                        self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name],)).start()
+        #self.add_event([self.touch_time, 'Screen', 'Touch Release', 'X Position',
+                        #self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', self.held_name])
         if self.held_name != '':
             self.held_name = ''
 
     def add_event(self, row):
-        self.event_dataframe.loc[self.event_index] = row
+        self.app.session_event_data.loc[self.event_index] = row
         self.event_index += 1
-        if self.save_path != '':
-            self.event_dataframe.to_csv(self.save_path, index=False)
+    
+    def write_data(self):
+        self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
 
     def update_path(self, path):
         self.save_path = path
+        self.app.session_event_path = self.save_path
 
 
 class ProtocolBase(Screen):
-    def __init__(self, **kwargs):
+    def __init__(self, screen_resolution, **kwargs):
         super(ProtocolBase, self).__init__(**kwargs)
         self.name = 'protocolscreen'
 
@@ -108,13 +141,32 @@ class ProtocolBase(Screen):
             self.folder_mod = '/'
         elif sys.platform == 'win32':
             self.folder_mod = '\\'
+            
+        width = screen_resolution[0]
+        height = screen_resolution[1]
+        self.size = screen_resolution
 
-        self.protocol_floatlayout = FloatLayoutLog()
+        if width > height:
+            self.width_adjust = height / width
+            self.height_adjust = 1
+        elif height < width:
+            self.width_adjust = 1
+            self.height_adjust = width / height
+        else:
+            self.width_adjust = 1
+            self.height_adjust = 1
+
+        self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
+        self.protocol_floatlayout.size = screen_resolution
         self.add_widget(self.protocol_floatlayout)
+        
+        # Define App
+        self.app = App.get_running_app()
 
         # Define Folders
         self.protocol_name = ''
         self.image_folder = ''
+
         self.config_path = ''
         self.file_path = ''
 
@@ -131,10 +183,11 @@ class ProtocolBase(Screen):
         self.block_min_rest_duration = 0.00
         self.session_length_max = 0.00
         self.session_trial_max = 0
-        self.iti_length = 0.00
-        self.feedback_length = -1.00
+        self.iti_length = 2.00
+        self.feedback_length = 1.00
         self.hold_image = ''
         self.mask_image = ''
+        self.image_dict = {}
 
         # Define Language
         self.language = 'English'
@@ -164,10 +217,20 @@ class ProtocolBase(Screen):
         # Define Variables - Time
         self.start_iti = 0
         self.start_time = 0
-        self.current_time = 0
         self.block_start = 0
         self.elapsed_time = 0
         self.feedback_start_time = 0
+
+        # Define Class - Clock
+        self.iti_clock = Clock
+        self.iti_clock.interupt_next_only = False
+        self.iti_event = self.iti_clock.create_trigger(self.iti, 0, interval=True)
+        self.session_clock = Clock
+        self.session_clock.interupt_next_only = False
+        self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
+        self.block_clock = Clock
+        self.block_clock.interupt_next_only = False
+        self.block_event = self.block_clock.create_trigger(self.block_screen, 0, interval=True)
 
         # Define Dictionaries
         self.parameters_dict = {}
@@ -215,6 +278,13 @@ class ProtocolBase(Screen):
     def update_task(self):
         self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + \
                             self.folder_mod
+    
+    def load_images(self, image_list):
+        # Load Images - Async
+        self.image_dict = {}
+        for image_file in image_list:
+            load_image = Loader.image((self.image_folder + image_file + '.png'))
+            self.image_dict[image_file] = load_image
 
     def set_language(self, language):
         self.language = language
@@ -300,6 +370,8 @@ class ProtocolBase(Screen):
         event_path = folder_path + self.folder_mod + self.participant_id + self.protocol_name + str(
             file_index) + '_Event_Data.csv'
         self.protocol_floatlayout.update_path(event_path)
+        self.app.summary_event_path = self.file_path
+        self.app.summary_event_data = self.session_data
 
     def metadata_output_generation(self):
         folder_path = 'Data' + self.folder_mod + self.participant_id
@@ -343,30 +415,30 @@ class ProtocolBase(Screen):
         if not self.block_started:
             self.protocol_floatlayout.add_widget(self.block_label)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Text Displayed', 'Block Instruction', '', '',
+                [(time.time() - self.start_time), 'Text Displayed', 'Block Instruction', '', '',
                  '', '', '', ''])
             self.block_start = time.time()
             self.block_started = True
-            Clock.schedule_interval(self.block_screen, 0.01)
+            self.block_event()
         if (time.time() - self.block_start) > self.block_min_rest_duration:
-            Clock.unschedule(self.block_screen)
+            self.block_event.cancel()
             self.protocol_floatlayout.add_widget(self.continue_button)
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Button Displayed', 'Continue Button', '', '',
+                [(time.time() - self.start_time), 'Button Displayed', 'Continue Button', '', '',
                  '', '', '', ''])
 
     def block_end(self, *args):
         self.block_started = False
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Removed', 'Block Instruction', '', '',
+            [(time.time() - self.start_time), 'Text Removed', 'Block Instruction', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Removed', 'Continue Button', '', '',
+            [(time.time() - self.start_time), 'Button Removed', 'Continue Button', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Hold Button', '', '',
              '', '', '', ''])
 
     # End Staging #
@@ -374,12 +446,15 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.clear_widgets()
         self.protocol_floatlayout.add_widget(self.end_label)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Text Displayed', 'End Instruction', '', '',
+            [(time.time() - self.start_time), 'Text Displayed', 'End Instruction', '', '',
              '', '', '', ''])
         self.protocol_floatlayout.add_widget(self.return_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Return Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
+        self.app.summary_event_data = self.app.summary_event_data.sort_values(by=['Time'])
+        self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
+        self.protocol_floatlayout.write_data()
 
     def return_to_main(self, *args):
         self.manager.current = 'mainmenu'
@@ -400,7 +475,7 @@ class ProtocolBase(Screen):
 
         self.protocol_floatlayout.add_widget(self.hold_button)
         self.protocol_floatlayout.add_event(
-            [self.elapsed_time, 'Button Displayed', 'Hold Button', '', '',
+            [(time.time() - self.start_time), 'Button Displayed', 'Hold Button', '', '',
              '', '', '', ''])
         self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
         self.hold_button.bind(on_press=self.iti)
@@ -412,13 +487,13 @@ class ProtocolBase(Screen):
             self.start_iti = time.time()
             self.iti_active = True
             self.protocol_floatlayout.add_event(
-                [self.elapsed_time, 'Stage Change', 'ITI Start', '', '',
+                [(time.time() - self.start_time), 'Stage Change', 'ITI Start', '', '',
                  '', '', '', ''])
 
             if self.feedback_string == self.feedback_dict['wait']:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_string = ''
 
@@ -426,7 +501,7 @@ class ProtocolBase(Screen):
                 self.feedback_label.text = self.feedback_string
                 self.protocol_floatlayout.add_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Displayed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Displayed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_start_time = time.time()
                 self.feedback_on_screen = True
@@ -434,43 +509,46 @@ class ProtocolBase(Screen):
                     self.feedback_length > 0:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
                 self.feedback_on_screen = False
-            Clock.schedule_interval(self.iti, 0.01)
+            
+            self.iti_event()
+            return
         if self.iti_active:
             if (((time.time() - self.start_iti) > self.feedback_length) or (
                     (time.time() - self.feedback_start_time) > self.feedback_length)) and self.feedback_on_screen:
                 self.protocol_floatlayout.remove_widget(self.feedback_label)
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Text Removed', 'Feedback', '', '',
+                    [(time.time() - self.start_time), 'Text Removed', 'Feedback', '', '',
                      '', '', '', ''])
-                self.feedback_on_screen = False
-            if (time.time() - self.start_iti) > self.iti_length:
-                Clock.unschedule(self.iti)
+                self.feedback_on_screen = False  
+                return
+            elif (time.time() - self.start_iti) > self.iti_length:
+                self.iti_event.cancel()
                 self.iti_active = False
                 self.protocol_floatlayout.add_event(
-                    [self.elapsed_time, 'Stage Change', 'ITI End', '', '',
+                    [(time.time() - self.start_time), 'Stage Change', 'ITI End', '', '',
                      '', '', '', ''])
                 self.hold_button.unbind(on_release=self.premature_response)
                 self.hold_active = True
                 self.stimulus_presentation()
+                return
+            
 
     def write_summary_file(self, data_row):
         data_row = pd.Series(data_row, index=self.data_cols)
-        self.session_data = pd.concat([self.session_data, data_row.to_frame().T], axis=0, ignore_index=True)
-        self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
+        self.app.summary_event_data = pd.concat([self.app.summary_event_data, data_row.to_frame().T], axis=0, ignore_index=True)
+        self.app.summary_event_data
         return
 
     def start_clock(self, *args):
         self.start_time = time.time()
-        Clock.schedule_interval(self.clock_monitor, 0.01)
+        self.session_event()
+        self.protocol_floatlayout.start_time = self.start_time
+        return
 
     def clock_monitor(self, *args):
-        self.current_time = time.time()
-        self.elapsed_time = self.current_time - self.start_time
-        self.protocol_floatlayout.elapsed_time = self.elapsed_time
-
-        if self.elapsed_time > self.session_length_max:
-            Clock.unschedule(self.clock_monitor)
-            self.protocol_end()
+        self.session_event.cancel()
+        self.protocol_end()
+        return
