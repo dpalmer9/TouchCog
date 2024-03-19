@@ -14,7 +14,6 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
-from kivy.loader import Loader
 from Classes.Protocol import ImageButton, ProtocolBase
 
 class ProtocolScreen(ProtocolBase):
@@ -49,7 +48,6 @@ class ProtocolScreen(ProtocolBase):
         self.incorrect_images = self.parameters_dict['incorrect_images']
         self.incorrect_images = self.incorrect_images.split(',')
         self.total_image_list = self.correct_images + self.incorrect_images
-        self.image_dict = {}
         self.block_max_length = int(self.parameters_dict['block_max_length'])
         self.block_max_count = int(self.parameters_dict['block_max_count'])
         self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
@@ -350,13 +348,6 @@ class ProtocolScreen(ProtocolBase):
 
     # Protocol Staging #
     
-    def load_images(self, image_list):
-        # Load Images - Async
-        self.image_dict = {}
-        for image_file in image_list:
-            print(image_file)
-            load_image = Loader.image((self.image_folder + image_file + '.png'))
-            self.image_dict[image_file] = load_image
 
     def start_protocol(self, *args):
         self.protocol_floatlayout.add_event(
