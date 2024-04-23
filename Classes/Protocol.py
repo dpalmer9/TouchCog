@@ -145,6 +145,7 @@ class ProtocolBase(Screen):
         width = screen_resolution[0]
         height = screen_resolution[1]
         self.size = screen_resolution
+        self.screen_ratio = 1
 
         if width > height:
             self.width_adjust = height / width
@@ -452,7 +453,8 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
-        self.app.summary_event_data = self.app.summary_event_data.sort_values(by=['Time'])
+        self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
+        self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
         self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
         self.protocol_floatlayout.write_data()
 
