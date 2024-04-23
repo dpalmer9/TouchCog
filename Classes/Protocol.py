@@ -121,10 +121,12 @@ class FloatLayoutLog(FloatLayout):
             self.held_name = ''
 
     def add_event(self, row):
-        self.app.session_event_data.loc[self.event_index] = row
-        self.event_index += 1
+        row_df = pd.DataFrame(columns = self.event_columns)
+        row_df.loc[0] = row
+        self.app.session_event_data = pd.concat([self.app.session_event_data,row_df])
     
     def write_data(self):
+        self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
         self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
 
     def update_path(self, path):
@@ -145,6 +147,7 @@ class ProtocolBase(Screen):
         width = screen_resolution[0]
         height = screen_resolution[1]
         self.size = screen_resolution
+        self.screen_ratio = 1
 
         if width > height:
             self.width_adjust = height / width
@@ -452,7 +455,6 @@ class ProtocolBase(Screen):
         self.protocol_floatlayout.add_event(
             [(time.time() - self.start_time), 'Button Displayed', 'Return Button', '', '',
              '', '', '', ''])
-        self.app.summary_event_data = self.app.summary_event_data.sort_values(by=['Time'])
         self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
         self.protocol_floatlayout.write_data()
 
