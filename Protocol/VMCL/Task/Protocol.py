@@ -93,7 +93,7 @@ class ProtocolScreen(ProtocolBase):
         self.sample_image_path = self.image_folder + self.trial_list[self.trial_index] + '.png'
         self.sample_image = ImageButton(source=self.sample_image_path)
 
-    def load_parameters(self, parameter_dict)
+    def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
         config_path = 'Protocol' + self.folder_mod + 'VMCL' + self.folder_mod + 'Configuration.ini'
         config_file = configparser.ConfigParser()
