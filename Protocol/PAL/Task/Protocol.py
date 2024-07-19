@@ -17,7 +17,7 @@ class ProtocolScreen(ProtocolBase):
 
         # Define Data Columns
 
-        self.data_cols = data_cols = ['TrialNo', 'Current Stage', 'Correct Image', 'Incorrect Image', 'Correct Location',
+        self.data_cols = ['TrialNo', 'Current Stage', 'Correct Image', 'Incorrect Image', 'Correct Location',
                                       'Incorrect Location', 'Correction Trial', 'Location Chosen',
                                       'Correct', 'Response Latency']
         self.metadata_cols = ['participant_id', 'training_image', 'test_images', 'iti_length', 'block_length',
