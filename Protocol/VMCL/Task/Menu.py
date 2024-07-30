@@ -9,8 +9,7 @@ class ConfigureScreen(MenuBase):
         super(ConfigureScreen,self).__init__(**kwargs)
         
         self.protocol = 'VMCL'
-        
-        self.menu_constructor(self.protocol)
+
         self.correction_dropdown = DropDown()
         self.correction_button = Button(text='Correction Trials Enabled')
         self.correction_list = ['Correction Trials Enabled', 'Correction Trials Disabled']
@@ -23,3 +22,5 @@ class ConfigureScreen(MenuBase):
         self.correction_dropdown.bind(on_select=lambda instance, x: setattr(self.correction_button, 'text', x))
         self.settings_widgets.append(Label(text='Correction Trials'))
         self.settings_widgets.append(self.correction_button)
+
+        self.menu_constructor(self.protocol)
