@@ -280,13 +280,22 @@ class ProtocolScreen(ProtocolBase):
         self.right_chosen = 0
         self.location_chosen = 'left'
         self.omission = 0
+        self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Omission', 'Value', str(self.omission),
+             '', '', '', ''])
         if self.trial_list[self.trial_index] == self.left_resp_image:
             correct = 1
+            self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correct', 'Value', str(correct),
+             '', '', '', ''])
             self.correct_location = 'left'
             self.incorrect_location = 'right'
             self.feedback_string = self.feedback_dict['correct']
         else:
             correct = 0
+            self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correct', 'Value', str(correct),
+             '', '', '', ''])
             self.correct_location = 'right'
             self.incorrect_location = 'left'
             self.feedback_string = self.feedback_dict['incorrect']
@@ -301,10 +310,16 @@ class ProtocolScreen(ProtocolBase):
             if correct == 0:
                 self.correction_trial = True
                 self.correction = 1
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
             else:
                 self.correction_trial = False
                 self.trial_contingency()
                 self.correction = 0
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
         else:
             self.correction_trial = False
             self.trial_contingency()
@@ -327,13 +342,22 @@ class ProtocolScreen(ProtocolBase):
         self.right_chosen = 1
         self.location_chosen = 'right'
         self.omission = 0
+        self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Omission', 'Value', str(self.omission),
+             '', '', '', ''])
         if self.trial_list[self.trial_index] == self.right_resp_image:
             correct = 1
+            self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correct', 'Value', str(correct),
+             '', '', '', ''])
             self.correct_location = 'right'
             self.incorrect_location = 'left'
             self.feedback_string = self.feedback_dict['correct']
         else:
             correct = 0
+            self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correct', 'Value', str(correct),
+             '', '', '', ''])
             self.correct_location = 'left'
             self.incorrect_location = 'right'
             self.feedback_string = self.feedback_dict['incorrect']
@@ -348,10 +372,16 @@ class ProtocolScreen(ProtocolBase):
             if correct == 0:
                 self.correction_trial = True
                 self.correction = 1
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
             else:
                 self.correction_trial = False
                 self.trial_contingency()
                 self.correction = 0
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
         else:
             self.correction_trial = False
             self.trial_contingency()
@@ -371,6 +401,9 @@ class ProtocolScreen(ProtocolBase):
         self.left_chosen = 0
         self.right_chosen = 0
         self.omission = 1
+        self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Omission', 'Value', str(self.omission),
+             '', '', '', ''])
         self.location_chosen = 'None'
         correct = 0
         if self.trial_list[self.trial_index] == self.right_resp_image:
@@ -402,6 +435,9 @@ class ProtocolScreen(ProtocolBase):
 
     def trial_contingency(self):
         self.current_trial += 1
+        self.protocol_floatlayout.add_event(
+            [time.time() - self.start_time, 'Variable Change', 'Current Trial', 'Value', str(self.current_trial),
+             '', '', '', ''])
 
         if self.current_trial > self.session_trial_max:
             self.session_event.cancel()
@@ -415,6 +451,9 @@ class ProtocolScreen(ProtocolBase):
 
 
         self.trial_index += 1
+        self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Stimulus Image', 'Value', str(self.trial_list[self.trial_index]),
+             '', '', '', ''])
 
     def block_contingency(self):
         self.protocol_floatlayout.clear_widgets()
@@ -422,6 +461,9 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_end()
             return
         self.trial_index += 1
+        self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Stimulus Image', 'Value', str(self.trial_list[self.trial_index]),
+             '', '', '', ''])
         self.block_screen()
 
 
