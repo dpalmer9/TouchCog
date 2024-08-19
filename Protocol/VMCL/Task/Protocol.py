@@ -16,8 +16,8 @@ class ProtocolScreen(ProtocolBase):
 
         # Define Data Columns
 
-        self.data_cols = ['TrialNo', 'Current Stage', 'Sample Image', 'Correct Location', 'Incorrect Location',
-                          'Correction Trial', 'Location Chosen', 'Correct', 'Omission', 'Correction Trial','Response Latency']
+        self.data_cols = ['TrialNo', 'Current Stage', 'Sample Image', 'Correct Location', 'Incorrect Location', 
+                            'Location Chosen', 'Correct', 'Omission', 'Correction Trial','Response Latency']
 
         self.metadata_cols = ['participant_id', 'left_resp_image', 'right_resp_image',
                               'response_image', 'iti_length', 'stimulus_duration', 'limited_hold', 'block_length',
@@ -389,6 +389,7 @@ class ProtocolScreen(ProtocolBase):
         self.hold_button.bind(on_press=self.iti)
 
     def limited_hold_end(self, *args):
+        print('miss')
         self.stimulus_on_screen = False
         self.protocol_floatlayout.remove_widget(self.left_image)
         self.protocol_floatlayout.remove_widget(self.right_image)
@@ -413,13 +414,27 @@ class ProtocolScreen(ProtocolBase):
             self.correct_location = 'left'
             self.incorrect_location = 'right'
         self.feedback_string = self.feedback_dict['incorrect']
+        self.feedback_label.text = self.feedback_string
         self.protocol_floatlayout.add_widget(self.feedback_label)
         self.protocol_floatlayout.add_event(
             [time.time() - self.start_time, 'Text Displayed', 'Feedback', '', '',
              '', '', '', ''])
         self.feedback_on_screen = True
         self.write_trial(correct)
-        self.trial_contingency()
+        if self.correction_trials_enabled:
+            if self.correction_trial:
+                self.correction = 1
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
+            else:
+                self.trial_contingency()
+                self.correction = 0
+                self.protocol_floatlayout.add_event(
+            [0, 'Variable Change', 'Trial Correction', 'Value', str(self.correction),
+             '', '', '', ''])
+        else:
+            self.trial_contingency()
         self.hold_button.bind(on_press=self.iti)
 
     def write_trial(self, correct):
