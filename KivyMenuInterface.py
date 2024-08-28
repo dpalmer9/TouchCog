@@ -40,9 +40,9 @@ y_dim = config_file['Screen']['y']
 fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
-Config.set('graphics', 'allow_screensaver', 0)
-Config.set('kivy', 'kivy_clock', 'interrupt')
-Config.set('graphics', 'maxfps', 0)
+Config.set('graphics' ,'allow_screensaver' ,0)
+Config.set('kivy' ,'kivy_clock' ,'interrupt')
+Config.set('graphics' ,'maxfps' ,0)
 
 
 
@@ -50,23 +50,23 @@ Config.set('graphics', 'maxfps', 0)
 if fullscreen == 0:
 	
 	
-	Config.set('graphics', 'width', str(x_dim))
-	Config.set('graphics', 'height', str(y_dim))
-	Config.set('graphics', 'fullscreen', '0')
-	Config.set('graphics', 'position', 'custom')
-	Config.set('graphics', 'top', 0)
-	Config.set('graphics', 'left', 0)
+	Config.set('graphics' ,'width' ,str(x_dim))
+	Config.set('graphics' ,'height' ,str(y_dim))
+	Config.set('graphics' ,'fullscreen' ,'0')
+	Config.set('graphics' ,'position' ,'custom')
+	Config.set('graphics' ,'top' ,0)
+	Config.set('graphics' ,'left' ,0)
 
 
 elif fullscreen == 1:
 	
 	
-	Config.set('graphics', 'width', str(x_dim))
-	Config.set('graphics', 'height', str(y_dim))
-	Config.set('graphics', 'position', 'custom')
-	Config.set('graphics', 'top', 0)
-	Config.set('graphics', 'left', 0)
-	Config.set('graphics', 'fullscreen', True)
+	Config.set('graphics' ,'width' ,str(x_dim))
+	Config.set('graphics' ,'height' ,str(y_dim))
+	Config.set('graphics' ,'position' ,'custom')
+	Config.set('graphics' ,'top' ,0)
+	Config.set('graphics' ,'left' ,0)
+	Config.set('graphics' ,'fullscreen' ,True)
 
 
 
@@ -74,13 +74,13 @@ elif fullscreen == 1:
 if virtual_keyboard == 0:
 	
 	
-	Config.set('kivy', 'keyboard_mode', 'system')
+	Config.set('kivy' ,'keyboard_mode' ,'system')
 
 
 elif virtual_keyboard == 1:
 	
 	
-	Config.set('kivy', 'keyboard_mode', 'systemanddock')
+	Config.set('kivy' ,'keyboard_mode' ,'systemanddock')
 
 
 
@@ -88,7 +88,7 @@ elif virtual_keyboard == 1:
 if use_mouse == 0:
 	
 	
-	Config.set('graphics','show_cursor', 0)
+	Config.set('graphics' ,'show_cursor' ,0)
 
 
 
@@ -116,7 +116,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.screenmanager import ScreenManager ,Screen
 from kivy.uix.textinput import TextInput
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.widget import Widget
@@ -130,7 +130,7 @@ from kivy.uix.widget import Widget
 
 # Window.borderless = True
 
-Window.size = (int(x_dim), int(y_dim))
+Window.size = (int(x_dim) ,int(y_dim))
 Window.borderless = '0'
 
 
@@ -143,28 +143,28 @@ def os_folder_modifier():
 	
 	os_platform = sys.platform
 	
-	if os_platform == "linux":
+	if os_platform == 'linux':
 		
 		
-		mod = "/"
+		mod = '/'
 	
 	
-	elif os_platform == "darwin":
+	elif os_platform == 'darwin':
 		
 		
-		mod = "/"
+		mod = '/'
 	
 	
-	elif os_platform == "win32":
+	elif os_platform == 'win32':
 		
 		
-		mod = "\\"
+		mod = '\\'
 	
 	
 	else:
 		
 		
-		mod = "/"
+		mod = '/'
 	
 	
 	return mod
@@ -174,14 +174,14 @@ def os_folder_modifier():
 
 # Class Objects #
 
-class ImageButton(ButtonBehavior, Image):
+class ImageButton(ButtonBehavior ,Image):
 	
 	
 	
-	def __init__(self, **kwargs):
+	def __init__(self ,**kwargs):
 		
 		
-		super(ImageButton, self).__init__(**kwargs)
+		super(ImageButton ,self).__init__(**kwargs)
 
 
 
@@ -192,10 +192,10 @@ class ScreenManager(ScreenManager):
 	
 	
 	
-	def __init__(self, **kwargs):
+	def __init__(self ,**kwargs):
 		
 		
-		super(ScreenManager, self).__init__(**kwargs)
+		super(ScreenManager ,self).__init__(**kwargs)
 
 
 
@@ -206,36 +206,36 @@ class MainMenu(Screen):
 	
 	
 	
-	def __init__(self, **kwargs):
+	def __init__(self ,**kwargs):
 		
 		
-		super(MainMenu, self).__init__(**kwargs)
+		super(MainMenu ,self).__init__(**kwargs)
 		
 		self.name = 'mainmenu'
 		self.Menu_Layout = FloatLayout()
 		self.protocol_window = ''
 		self.add_widget(self.Menu_Layout)
-		launch_button = Button(text="Start Session")
-		launch_button.size_hint = (0.3, 0.2)
-		launch_button.pos_hint = {"x": 0.35, "y": 0.6}
+		launch_button = Button(text='Start Session')
+		launch_button.size_hint = (0.3 ,0.2)
+		launch_button.pos_hint = {'x': 0.35 ,'y': 0.6}
 		launch_button.bind(on_press=self.load_protocol_menu)
 		self.Menu_Layout.add_widget(launch_button)
 		
-		exit_button = Button(text="Close Program")
-		exit_button.size_hint = (0.3, 0.2)
-		exit_button.pos_hint = {"x": 0.35, "y": 0.2}
+		exit_button = Button(text='Close Program')
+		exit_button.size_hint = (0.3 ,0.2)
+		exit_button.pos_hint = {'x': 0.35 ,'y': 0.2}
 		exit_button.bind(on_press=self.exit_program)
 		self.Menu_Layout.add_widget(exit_button)
 	
 	
 	
-	def load_protocol_menu(self, *args):
+	def load_protocol_menu(self ,*args):
 		
 		
-		if isinstance(self.protocol_window, ProtocolMenu):
+		if isinstance(self.protocol_window ,ProtocolMenu):
 			
 			
-			self.manager.current = "protocolmenu"
+			self.manager.current = 'protocolmenu'
 		
 		
 		else:
@@ -243,11 +243,11 @@ class MainMenu(Screen):
 			
 			self.protocol_window = ProtocolMenu()
 			self.manager.add_widget(self.protocol_window)
-			self.manager.current = "protocolmenu"
+			self.manager.current = 'protocolmenu'
 	
 	
 	
-	def exit_program(self, *args):
+	def exit_program(self ,*args):
 		
 		
 		App.get_running_app().stop()
@@ -262,10 +262,10 @@ class ProtocolMenu(Screen):
 	
 	
 	
-	def __init__(self, **kwargs):
+	def __init__(self ,**kwargs):
 		
 		
-		super(ProtocolMenu, self).__init__(**kwargs)
+		super(ProtocolMenu ,self).__init__(**kwargs)
 		
 		self.Protocol_Layout = FloatLayout()
 		self.Protocol_Configure_Screen = ''
@@ -274,24 +274,24 @@ class ProtocolMenu(Screen):
 		self.Protocol_Configure_Screen = MenuBase()
 		
 		protocol_list = self.search_protocols()
-		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
+		self.Protocol_List = GridLayout(rows=len(protocol_list) ,cols=1)
 		protocol_index = 0
 		
 		for protocol in protocol_list:
 			
 			
-			button_func = partial(self.set_protocol, protocol)
-			self.Protocol_List.add_widget(Button(text=protocol, on_press=button_func))
+			button_func = partial(self.set_protocol ,protocol)
+			self.Protocol_List.add_widget(Button(text=protocol ,on_press=button_func))
 			protocol_index += 1
 		
 		
-		self.Protocol_List.size_hint = (0.8, 0.7)
-		self.Protocol_List.pos_hint = {"x": 0.1, "y": 0.3}
+		self.Protocol_List.size_hint = (0.8 ,0.7)
+		self.Protocol_List.pos_hint = {'x': 0.1 ,'y': 0.3}
 		self.Protocol_Layout.add_widget(self.Protocol_List)
 		
-		cancel_button = Button(text="Cancel")
-		cancel_button.size_hint = (0.2, 0.1)
-		cancel_button.pos_hint = {"x": 0.4, "y": 0.1}
+		cancel_button = Button(text='Cancel')
+		cancel_button.size_hint = (0.2 ,0.1)
+		cancel_button.pos_hint = {'x': 0.4 ,'y': 0.1}
 		cancel_button.bind(on_press=self.cancel_protocol)
 		self.Protocol_Layout.add_widget(cancel_button)
 		
@@ -299,10 +299,10 @@ class ProtocolMenu(Screen):
 	
 	
 	
-	def set_protocol(self, label, *args):
+	def set_protocol(self ,label ,*args):
 		
 		
-		if isinstance(self.Protocol_Configure_Screen,MenuBase):
+		if isinstance(self.Protocol_Configure_Screen ,MenuBase):
 			
 			
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
@@ -315,10 +315,10 @@ class ProtocolMenu(Screen):
 	
 	
 	
-	def cancel_protocol(self, *args):
+	def cancel_protocol(self ,*args):
 		
 		
-		self.manager.current = "mainmenu"
+		self.manager.current = 'mainmenu'
 	
 	
 	
@@ -329,7 +329,7 @@ class ProtocolMenu(Screen):
 		
 # 		cwd = os.getcwd()
 # 		mod = os_folder_modifier()
-# 		folder = cwd + mod + "Protocol"
+# 		folder = cwd + mod + 'Protocol'
 # 		task_list = os.listdir(folder)
 		
 # 		task_list = list(folder.glob('*'))
@@ -359,7 +359,7 @@ class ProtocolMenu(Screen):
 	
 	
 	
-	def protocol_constructor(self, protocol):
+	def protocol_constructor(self ,protocol):
 		
 		
 		#cwd = os.getcwd()
@@ -373,13 +373,13 @@ class ProtocolMenu(Screen):
 		def lazy_import(protocol):
 			
 			
-			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
+			working = pathlib.Path('Protocol' ,protocol ,'Task' ,'Menu.py')
 			
 # 			cwd = os.getcwd()
 # 			working = cwd + '\\Protocol\\' + protocol + '\\Task\\Menu.py'
 			
 			mod_name = 'Menu'
-			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
+			mod_spec = importlib.util.spec_from_file_location(mod_name ,working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
 			mod_spec.loader = mod_loader
 			module = importlib.util.module_from_spec(mod_spec)
@@ -417,7 +417,7 @@ class MenuApp(App):
 	
 	
 	
-	def add_screen(self, screen):
+	def add_screen(self ,screen):
 		
 		
 		self.s_manager.add_widget(screen)
@@ -428,8 +428,8 @@ class MenuApp(App):
 		
 		
 		self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-		self.session_event_data.to_csv(self.session_event_path, index=False)
-		self.summary_event_data.to_csv(self.summary_event_path, index=False)
+		self.session_event_data.to_csv(self.session_event_path ,index=False)
+		self.summary_event_data.to_csv(self.summary_event_path ,index=False)
 
 
 
