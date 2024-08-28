@@ -1,19 +1,5 @@
 # TouchCog
 
-## Revisions from Master
-
-This is an experimental fork of the TouchCog repository (https://github.com/dpalmer9/TouchCog) and should not be considered stable; one or more features may be incomplete or non-functional at any given time, and are subject to change without notice.
-
-This code incorporates a number of changes to the CPT task, including:
-- A different CPT stimulus set using Fribbles [Visual Cognition, 7(1/2/3), 2000, 297-322].
-- Dynamic creation of multiple stimulus sets.
-- Dynamic creation of CPT task lists.
-- Independent parameter selection for each paradigm within CPT.
-- Separate training blocks for each paradigm within CPT.
-- Separate task and training instruction sets for each paradigm within CPT, including presentation of target images to improve learning of the task.
-
-Note that this is an incomplete list and is subject to change without notice. For a stable release, please see the original TouchCog repository (https://github.com/dpalmer9/TouchCog).
-
 ## Hardware Requirements
 Computer with 64-bit Windows, MacOS, or Linux Distribution (Debian, Ubuntu, Raspbian, etc.). ChromeOS Linux also supported.
 
