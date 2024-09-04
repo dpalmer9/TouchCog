@@ -567,6 +567,7 @@ class ProtocolBase(Screen):
 		
 		
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		print(self.image_folder)
 		
 # 		self.image_folder = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Image' + \
 # 							self.folder_mod
@@ -586,15 +587,15 @@ class ProtocolBase(Screen):
 			if pathlib.Path(image_file).exists():
 				
 				
-				load_image = Loader.image(image_file)
+				load_image = Loader.image(str(image_file))
 				
 				self.image_dict[str(image_file.stem)] = load_image
 			
 			
 			else:
 			
-			
-				load_image = Loader.image((self.image_folder + image_file + '.png'))
+				image_path = pathlib.Path(self.image_folder,image_file + '.png')
+				load_image = Loader.image(str(image_path))
 				
 				self.image_dict[image_file] = load_image
 	
@@ -703,7 +704,6 @@ class ProtocolBase(Screen):
 		folder_path = pathlib.Path('Data', self.participant_id)
 		
 # 		folder_path = 'Data' + self.folder_mod + self.participant_id
-		
 		if not folder_path.is_dir():
 			
 			
@@ -723,7 +723,7 @@ class ProtocolBase(Screen):
 		
 		
 		self.session_data = pd.DataFrame(columns=self.data_cols)
-		self.session_data.to_csv(path_or_buf=self.file_path, sep=', ', index=False)
+		self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
 		
 		event_path = pathlib.Path(folder_path, temp_filename + '_Event_Data.csv')
 		
@@ -767,7 +767,7 @@ class ProtocolBase(Screen):
 		
 		
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
-		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=', ', index=False)
+		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
 	
 	
 	

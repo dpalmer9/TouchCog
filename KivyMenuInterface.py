@@ -228,7 +228,6 @@ class MainMenu(Screen):
 		self.Menu_Layout.add_widget(exit_button)
 	
 	
-	
 	def load_protocol_menu(self, *args):
 		
 		
