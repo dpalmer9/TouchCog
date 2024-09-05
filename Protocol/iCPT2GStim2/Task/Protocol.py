@@ -1,20 +1,9 @@
 # Imports #
-import sys
-import os
 import pathlib
 import configparser
 import time
 import numpy as np
-import pandas as pd
-import csv
-import threading
-from kivy.uix.button import Button
-from kivy.uix.image import Image
-from kivy.uix.label import Labels
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.uix.screenmanager import Screen
 from kivy.loader import Loader
 from Classes.Protocol import ImageButton, ProtocolBase
 
@@ -190,11 +179,8 @@ class ProtocolScreen(ProtocolBase):
                                                              len(self.probability_stage_list), replace=False)
 
         # Define Widgets - Images
-        #self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        #self.hold_button.source = self.hold_button_image_path
 
         self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
-        #self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
         self.center_stimulus = ImageButton()
         self.center_stimulus.bind(on_press=self.center_pressed)
 
@@ -351,13 +337,13 @@ class ProtocolScreen(ProtocolBase):
 
     # Protocol Staging #
     
-    def load_images(self, image_list):
+    #def load_images(self, image_list):
         # Load Images - Async
-        self.image_dict = {}
-        for image_file in image_list:
-            print(image_file)
-            load_image = Loader.image((self.image_folder + image_file + '.png'))
-            self.image_dict[image_file] = load_image
+        #self.image_dict = {}
+        #for image_file in image_list:
+            #print(image_file)
+            #load_image = Loader.image(str(self.image_folder + image_file + '.png'))
+            #self.image_dict[image_file] = load_image
 
     def start_protocol(self, *args):
         self.protocol_floatlayout.add_event(
@@ -413,7 +399,6 @@ class ProtocolScreen(ProtocolBase):
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
                 self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
-                #self.center_stimulus.source = self.center_stimulus_image_path
                 self.center_stimulus.texture = self.image_dict[self.mask_image].image.texture
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Image Displayed', 'Center Stimulus', 'X Position', '1',
@@ -421,8 +406,6 @@ class ProtocolScreen(ProtocolBase):
                 if self.stage_index == 3:
                     self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
                     self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
-                    #self.left_stimulus.source = self.left_stimulus_image_path
-                    #self.right_stimulus.source = self.right_stimulus_image_path
                     self.left_stimulus.texture = self.image_dict[self.mask_image].image.texture
                     self.right_stimulus.texture = self.image_dict[self.mask_image].image.texture
 
@@ -643,7 +626,6 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            #self.center_stimulus.source = self.center_stimulus_image_path
             self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
             return
         elif self.contingency == '2':
@@ -651,7 +633,6 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            #self.center_stimulus.source = self.center_stimulus_image_path
             self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
             return
         else:
@@ -664,7 +645,6 @@ class ProtocolScreen(ProtocolBase):
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
-            #center_stimulus.source = self.center_stimulus_image_path
             self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
 
         if self.stage_index == 2:
@@ -701,8 +681,6 @@ class ProtocolScreen(ProtocolBase):
                 self.left_image = self.distractor
                 self.right_image = self.distractor
 
-            #self.left_stimulus.source = self.left_stimulus_image_path
-            #self.right_stimulus.source = self.right_stimulus_image_path
             self.left_stimulus.texture = self.image_dict[self.left_image].image.texture
             self.right_stimulus.texture = self.image_dict[self.right_image].image.texture
             self.distractor_stage_pos += 1
