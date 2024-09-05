@@ -2,6 +2,7 @@
 import configparser
 import time
 import random
+import pathlib
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from Classes.Protocol import ImageButton, ProtocolBase
@@ -24,9 +25,9 @@ class ProtocolScreen(ProtocolBase):
                          'session_trial_max']
 
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + 'vPRL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
 
         self.parameters_dict = config_file['TaskParameters']
 
@@ -88,15 +89,15 @@ class ProtocolScreen(ProtocolBase):
         self.right_chosen = 1
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_stimulus_image_path = self.image_folder + self.left_stimulus_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.left_stimulus_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
         self.left_stimulus.bind(on_press=self.left_stimulus_pressed)
 
-        self.right_stimulus_image_path = self.image_folder + self.right_stimulus_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.right_stimulus_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
         self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
 
         # Define Widgets - Text
@@ -108,9 +109,9 @@ class ProtocolScreen(ProtocolBase):
         
     def load_parameters(self,parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
 
         self.participant_id = self.parameters_dict['participant_id']
 
@@ -186,16 +187,16 @@ class ProtocolScreen(ProtocolBase):
         self.right_chosen = 1
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_stimulus_image_path = self.image_folder + self.left_stimulus_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.left_stimulus_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
         self.left_stimulus.pos_hint = {"center_x": 0.3, "center_y": 0.6}
         self.left_stimulus.bind(on_press=self.left_stimulus_pressed)
 
-        self.right_stimulus_image_path = self.image_folder + self.right_stimulus_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.right_stimulus_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
         self.right_stimulus.pos_hint = {"center_x": 0.7, "center_y": 0.6}
         self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
 
