@@ -1,6 +1,7 @@
 import configparser
 import time
 import random
+import pathlib
 from Classes.Protocol import ImageButton, ProtocolBase
 
 
@@ -11,7 +12,7 @@ class ProtocolScreen(ProtocolBase):
         self.update_task()
 
         # Define Variables - Folder Path
-        self.image_folder = 'Protocol' + self.folder_mod + 'VMCL' + self.folder_mod + 'Image' + self.folder_mod
+        self.image_folder = pathlib.Path('Protocol', self.protocol_name ,'Image')
         self.data_output_path = None
 
         # Define Data Columns
@@ -24,9 +25,10 @@ class ProtocolScreen(ProtocolBase):
                               'block_count', 'session_length_max','session_trial_max']
 
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + 'VMCL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
+
 
         self.parameters_dict = config_file['TaskParameters']
 
@@ -87,23 +89,23 @@ class ProtocolScreen(ProtocolBase):
         self.block_threshold = self.block_length
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_image_path = self.image_folder + self.response_image + '.png'
-        self.left_image = ImageButton(source=self.left_image_path)
+        self.left_image_path = pathlib.Path(self.image_folder, self.response_image + '.png')
+        self.left_image = ImageButton(source=str(self.left_image_path))
 
-        self.right_image_path = self.image_folder + self.response_image + '.png'
-        self.right_image = ImageButton(source=self.right_image_path)
+        self.right_image_path = pathlib.Path(self.image_folder, self.response_image + '.png')
+        self.right_image = ImageButton(source=str(self.right_image_path))
 
-        self.sample_image_path = self.image_folder + self.trial_list[self.trial_index] + '.png'
-        self.sample_image = ImageButton(source=self.sample_image_path)
+        self.sample_image_path = pathlib.Path(self.image_folder, self.trial_list[self.trial_index] + '.png')
+        self.sample_image = ImageButton(source=str(self.sample_image_path))
 
     def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'VMCL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
         self.participant_id = self.parameters_dict['participant_id']
         self.language = self.parameters_dict['language']
 
@@ -153,21 +155,21 @@ class ProtocolScreen(ProtocolBase):
              '', '', '', ''])
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_image_path = self.image_folder + self.response_image + '.png'
-        self.left_image = ImageButton(source=self.left_image_path)
+        self.left_image_path = pathlib.Path(self.image_folder, self.response_image + '.png')
+        self.left_image = ImageButton(source=str(self.left_image_path))
         self.left_image.pos_hint = {"center_x": 0.2, "center_y": 0.6}
         self.left_image.bind(on_press=self.left_choice_press)
 
-        self.right_image_path = self.image_folder + self.response_image + '.png'
-        self.right_image = ImageButton(source=self.right_image_path)
+        self.right_image_path = pathlib.Path(self.image_folder, self.response_image + '.png')
+        self.right_image = ImageButton(source=str(self.right_image_path))
         self.right_image.pos_hint = {"center_x": 0.8, "center_y": 0.6}
         self.right_image.bind(on_press=self.right_choice_press)
 
-        self.sample_image_path = self.image_folder + self.trial_list[self.trial_index] + '.png'
-        self.sample_image = ImageButton(source=self.sample_image_path)
+        self.sample_image_path = pathlib.Path(self.image_folder, self.trial_list[self.trial_index] + '.png')
+        self.sample_image = ImageButton(source=str(self.sample_image_path))
         self.sample_image.pos_hint = {"center_x": 0.5, "center_y": 0.6}
         self.sample_image.bind(on_press=self.sample_pressed)
 
@@ -180,8 +182,8 @@ class ProtocolScreen(ProtocolBase):
             [time.time() - self.start_time, 'Stage Change', 'Display Sample', '', '',
              '', '', '', ''])
         self.sample_image.texture = self.image_dict[self.trial_list[self.trial_index]].image.texture
-        self.left_image.source = self.image_folder + self.response_image + '.png'
-        self.right_image.source = self.image_folder + self.response_image + '.png'
+        self.left_image.source = pathlib.Path(self.image_folder, self.response_image + '.png')
+        self.right_image.source = pathlib.Path(self.image_folder, self.response_image + '.png')
 
         self.protocol_floatlayout.add_widget(self.sample_image)
         self.sample_image.size_hint = ((0.4 * self.width_adjust), (0.4 * self.height_adjust))
@@ -220,8 +222,8 @@ class ProtocolScreen(ProtocolBase):
             return
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
-                self.left_image.source = self.image_folder + 'black.png'
-                self.right_image.source = self.image_folder + 'black.png'
+                self.left_image.source = str(pathlib.path(self.image_folder, 'black.png'))
+                self.right_image.source = str(pathlib.path(self.image_folder, 'black.png'))
                 self.protocol_floatlayout.add_event(
                     [time.time() - self.start_time, 'Stage Change', 'Remove Choice Windows', '', '',
                      '', '', '', ''])
