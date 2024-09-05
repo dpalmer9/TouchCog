@@ -1,6 +1,7 @@
 # Imports #
 import configparser
 import time
+import pathlib
 from Classes.Protocol import ImageButton, ProtocolBase
 import random
 
@@ -12,7 +13,7 @@ class ProtocolScreen(ProtocolBase):
         self.update_task()
         
         # Define Variables - Folder Path
-        self.image_folder = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Image' + self.folder_mod
+        self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
         self.data_output_path = None
 
         # Define Data Columns
@@ -25,7 +26,7 @@ class ProtocolScreen(ProtocolBase):
                               'session_length_max', 'session_trial_max', 'pal_type']
 
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini')
         config_file = configparser.ConfigParser()
         config_file.read(config_path)
 
@@ -90,23 +91,23 @@ class ProtocolScreen(ProtocolBase):
         self.block_threshold = 10 + self.block_length
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder, self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_stimulus_image_path = self.image_folder + self.l1_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder, self.l1_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
 
-        self.center_stimulus_image_path = self.image_folder + self.l2_image + '.png'
-        self.center_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.center_stimulus_image_path = pathlib.Path(self.image_folder, self.l2_image + '.png')
+        self.center_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
 
-        self.right_stimulus_image_path = self.image_folder + self.l3_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder, self.l3_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
 
     # Initialization Functions #
         
     def load_parameters(self,parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'PAL' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini')
         config_file = configparser.ConfigParser()
         config_file.read(config_path)
         self.participant_id = self.parameters_dict['participant_id']
@@ -158,21 +159,21 @@ class ProtocolScreen(ProtocolBase):
         self.block_threshold = 10 + self.block_length
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder, self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.left_stimulus_image_path = self.image_folder + self.l1_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder, self.l1_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
         self.left_stimulus.pos_hint = {"center_x": 0.2, "center_y": 0.6}
         self.left_stimulus.bind(on_press=self.left_stimulus_pressed)
 
-        self.center_stimulus_image_path = self.image_folder + self.l2_image + '.png'
-        self.center_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.center_stimulus_image_path = pathlib.Path(self.image_folder, self.l2_image + '.png')
+        self.center_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
         self.center_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.6}
         self.center_stimulus.bind(on_press=self.center_stimulus_pressed)
 
-        self.right_stimulus_image_path = self.image_folder + self.l3_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder, self.l3_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
         self.right_stimulus.width = self.right_stimulus.height
         self.right_stimulus.pos_hint = {"center_x": 0.8, "center_y": 0.6}
         self.right_stimulus.bind(on_press=self.right_stimulus_pressed)
@@ -328,9 +329,6 @@ class ProtocolScreen(ProtocolBase):
                 self.l2_image = self.incorrect_image
                 self.l1_image = self.mask_image
                 
-        #self.left_stimulus_image_path = self.image_folder + self.l1_image + '.png'
-        #self.center_stimulus_image_path = self.image_folder + self.l2_image + '.png'
-        #self.right_stimulus_image_path = self.image_folder + self.l3_image + '.png'
         self.protocol_floatlayout.add_event(
             [0, 'Variable Change', 'Correct Image', 'Value', str(self.correct_image),
              '', '', '', ''])
@@ -347,9 +345,6 @@ class ProtocolScreen(ProtocolBase):
     # Protocol Staging #
 
     def stimulus_presentation(self,*args):
-        #self.left_stimulus.source = self.left_stimulus_image_path
-        #self.center_stimulus.source = self.center_stimulus_image_path
-        #self.right_stimulus.source = self.right_stimulus_image_path
         self.left_stimulus.texture = self.image_dict[self.l1_image].image.texture
         self.center_stimulus.texture = self.image_dict[self.l2_image].image.texture
         self.right_stimulus.texture = self.image_dict[self.l3_image].image.texture
