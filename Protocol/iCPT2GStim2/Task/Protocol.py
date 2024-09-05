@@ -1,6 +1,7 @@
 # Imports #
 import sys
 import os
+import pathlib
 import configparser
 import time
 import numpy as np
@@ -32,9 +33,9 @@ class ProtocolScreen(ProtocolBase):
                               'block_max_length', 'block_max_count', 'block_min_rest_duration',
                               'session_length_max', 'session_trial_max']
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
 
         self.parameters_dict = config_file['TaskParameters']
 
@@ -192,22 +193,22 @@ class ProtocolScreen(ProtocolBase):
         #self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
         #self.hold_button.source = self.hold_button_image_path
 
-        self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
+        self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
         #self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
         self.center_stimulus = ImageButton()
         self.center_stimulus.bind(on_press=self.center_pressed)
 
-        self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
 
-        self.right_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
 
     def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'iCPT2GStim2' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
         self.participant_id = self.parameters_dict['participant_id']
         self.language = self.parameters_dict['language']
         self.stimulus_duration = float(self.parameters_dict['stimulus_duration'])
@@ -329,21 +330,21 @@ class ProtocolScreen(ProtocolBase):
             #image_dict[image_file] = load_image
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
-        self.center_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.center_stimulus = ImageButton(source=self.center_stimulus_image_path)
+        self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
+        self.center_stimulus = ImageButton(source=str(self.center_stimulus_image_path))
         self.center_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.6}
         self.center_stimulus.bind(on_press=self.center_pressed)
         self.center_stimulus.name = 'Center Stimulus'
 
-        self.left_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.left_stimulus = ImageButton(source=self.left_stimulus_image_path)
+        self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
+        self.left_stimulus = ImageButton(source=str(self.left_stimulus_image_path))
         self.left_stimulus.pos_hint = {"center_x": 0.2, "center_y": 0.6}
 
-        self.right_stimulus_image_path = self.image_folder + self.training_image + '.png'
-        self.right_stimulus = ImageButton(source=self.right_stimulus_image_path)
+        self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.training_image + '.png')
+        self.right_stimulus = ImageButton(source=str(self.right_stimulus_image_path))
         self.right_stimulus.pos_hint = {"center_x": 0.8, "center_y": 0.6}
 
         self.present_instructions()
@@ -411,15 +412,15 @@ class ProtocolScreen(ProtocolBase):
 
         else:
             if ((time.time() - self.start_stimulus) > self.stimulus_duration) and not self.limited_hold_started:
-                self.center_stimulus_image_path = self.image_folder + self.mask_image + '.png'
+                self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
                 #self.center_stimulus.source = self.center_stimulus_image_path
                 self.center_stimulus.texture = self.image_dict[self.mask_image].image.texture
                 self.protocol_floatlayout.add_event(
                     [(time.time() - self.start_time), 'Image Displayed', 'Center Stimulus', 'X Position', '1',
                      'Y Position', '1', 'Image Name', self.mask_image])
                 if self.stage_index == 3:
-                    self.left_stimulus_image_path = self.image_folder + self.mask_image + '.png'
-                    self.right_stimulus_image_path = self.image_folder + self.mask_image + '.png'
+                    self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
+                    self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.mask_image + '.png')
                     #self.left_stimulus.source = self.left_stimulus_image_path
                     #self.right_stimulus.source = self.right_stimulus_image_path
                     self.left_stimulus.texture = self.image_dict[self.mask_image].image.texture
@@ -638,7 +639,7 @@ class ProtocolScreen(ProtocolBase):
 
         if self.contingency == '0' and self.response == "1":
             self.current_correction = True
-            self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
+            self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.center_image + '.png')
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
@@ -646,7 +647,7 @@ class ProtocolScreen(ProtocolBase):
             self.center_stimulus.texture = self.image_dict[self.center_image].image.texture
             return
         elif self.contingency == '2':
-            self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
+            self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.center_image + '.png')
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
@@ -659,7 +660,7 @@ class ProtocolScreen(ProtocolBase):
                 self.center_image = self.training_image
             elif self.stage_index >= 1:
                 self.center_image = np.random.choice(a=self.total_image_list, size=None, p=self.image_prob_list)
-            self.center_stimulus_image_path = self.image_folder + self.center_image + '.png'
+            self.center_stimulus_image_path = pathlib.Path(self.image_folder,self.center_image + '.png')
             self.protocol_floatlayout.add_event(
                 [(time.time() - self.start_time), 'Variable Change', 'Center Image', 'Value', str(self.center_image),
                  '', '', '', ''])
@@ -681,8 +682,8 @@ class ProtocolScreen(ProtocolBase):
                 self.distractor_stage_index_list[self.distractor_stage_pos]]
             self.current_substage = self.distractor_stage
             if self.distractor_stage == 'No Distractor':
-                self.left_stimulus_image_path = self.image_folder + 'black.png'
-                self.right_stimulus_image_path = self.image_folder + 'black.png'
+                self.left_stimulus_image_path = pathlib.Path(self.image_folder, 'black.png')
+                self.right_stimulus_image_path = pathlib.Path(self.image_folder, 'black.png')
                 self.left_image = 'black'
                 self.right_image = 'black'
             elif self.distractor_stage == 'Congruent Distractor':
@@ -695,8 +696,8 @@ class ProtocolScreen(ProtocolBase):
                     self.distractor = np.random.choice(self.incorrect_images)
                 else:
                     self.distractor = np.random.choice(self.correct_images)
-                self.left_stimulus_image_path = self.image_folder + self.distractor + '.png'
-                self.right_stimulus_image_path = self.image_folder + self.distractor + '.png'
+                self.left_stimulus_image_path = pathlib.Path(self.image_folder,self.distractor + '.png')
+                self.right_stimulus_image_path = pathlib.Path(self.image_folder,self.distractor + '.png')
                 self.left_image = self.distractor
                 self.right_image = self.distractor
 
