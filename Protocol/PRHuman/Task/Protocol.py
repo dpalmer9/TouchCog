@@ -2,6 +2,7 @@
 
 import configparser
 import time
+import pathlib
 import numpy as np
 import random
 from kivy.uix.button import Button
@@ -26,9 +27,9 @@ class ProtocolScreen(ProtocolBase):
                               'block_count', 'reward_type', 'iti_length', 'session_length_max', 'session_trial_max']
 
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + 'PRHuman' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
 
         self.parameters_dict = config_file['TaskParameters']
         self.participant_id = 'Default'
@@ -104,14 +105,14 @@ class ProtocolScreen(ProtocolBase):
         self.y_pos_mod = random.randint(0, 7)
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
         self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
-        self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
-        self.mask_image_path = self.image_folder + self.mask_image + '.png'
+        self.stimulus_image_path = pathlib.Path(self.image_folder, self.stimulus_image + '.png')
+        self.mask_image_path = pathlib.Path(self.image_folder, self.mask_image + '.png')
         self.background_grid_list = [Image() for _ in range(64)]
         x_pos = 0
         y_pos = 0
@@ -122,10 +123,10 @@ class ProtocolScreen(ProtocolBase):
                 x_pos = 0
                 y_pos = y_pos + 1
             cell.pos_hint = {"center_x": self.x_dim_hint[x_pos], "center_y": self.y_dim_hint[y_pos]}
-            cell.source = self.mask_image_path
+            cell.source = str(self.mask_image_path)
             x_pos = x_pos + 1
 
-        self.stimulus_image_button = ImageButton(source=self.stimulus_image_path)
+        self.stimulus_image_button = ImageButton(source=str(self.stimulus_image_path))
         self.stimulus_image_button.bind(on_press=self.stimulus_pressed)
 
 
@@ -133,9 +134,9 @@ class ProtocolScreen(ProtocolBase):
         
     def load_parameters(self,parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'PRHuman' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
         self.participant_id = self.parameters_dict['participant_id']
 
         self.session_length_max = float(self.parameters_dict['session_length_max'])
@@ -194,15 +195,15 @@ class ProtocolScreen(ProtocolBase):
         self.y_pos_mod = random.randint(0, 7)
 
         # Define Widgets - Images
-        self.hold_button_image_path = self.image_folder + self.hold_image + '.png'
-        self.hold_button.source = self.hold_button_image_path
+        self.hold_button_image_path = pathlib.Path(self.image_folder,self.hold_image + '.png')
+        self.hold_button.source = str(self.hold_button_image_path)
         self.hold_button.pos_hint = {"center_x": 0.5, "center_y": 0.001}
 
         self.x_dim_hint = np.linspace(0.3, 0.7, 8)
         self.x_dim_hint = self.x_dim_hint.tolist()
         self.y_dim_hint = [0.915, 0.815, 0.715, 0.615, 0.515, 0.415, 0.315, 0.215]
-        self.stimulus_image_path = self.image_folder + self.stimulus_image + '.png'
-        self.mask_image_path = self.image_folder + self.mask_image + '.png'
+        self.stimulus_image_path = pathlib.Path(self.image_folder, self.stimulus_image + '.png')
+        self.mask_image_path = pathlib.Path(self.image_folder, self.mask_image + '.png')
         self.background_grid_list = [Image() for _ in range(64)]
         x_pos = 0
         y_pos = 0
@@ -213,10 +214,10 @@ class ProtocolScreen(ProtocolBase):
                 x_pos = 0
                 y_pos = y_pos + 1
             cell.pos_hint = {"center_x": self.x_dim_hint[x_pos], "center_y": self.y_dim_hint[y_pos]}
-            cell.source = self.mask_image_path
+            cell.source = str(self.mask_image_path)
             x_pos = x_pos + 1
 
-        self.stimulus_image_button = ImageButton(source=self.stimulus_image_path, allow_stretch=True)
+        self.stimulus_image_button = ImageButton(source=str(self.stimulus_image_path), allow_stretch=True)
         self.stimulus_image_button.pos_hint = {"center_x": self.x_dim_hint[self.x_pos_mod],
                                                "center_y": self.y_dim_hint[self.y_pos_mod]}
         self.stimulus_image_button.bind(on_press=self.stimulus_pressed)
@@ -225,29 +226,28 @@ class ProtocolScreen(ProtocolBase):
 
     def set_language(self, language):
         self.language = language
-        lang_folder_path = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Language' + \
-                           self.folder_mod + self.language + self.folder_mod
-        start_path = lang_folder_path + 'Start.txt'
-        start_open = open(start_path, 'r', encoding="utf-8")
+        lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+        start_path = pathlib.Path(lang_folder_path, 'Start.txt')
+        start_open = open(str(start_path), 'r', encoding="utf-8")
         start_label_str = start_open.read()
         start_open.close()
         self.instruction_label.text = start_label_str
 
-        break_path = lang_folder_path + 'Break.txt'
-        break_open = open(break_path, 'r', encoding="utf-8")
+        break_path = pathlib.Path(lang_folder_path, 'Break.txt')
+        break_open = open(str(break_path), 'r', encoding="utf-8")
         break_label_str = break_open.read()
         break_open.close()
         self.block_label.text = break_label_str
 
-        end_path = lang_folder_path + 'End.txt'
-        end_open = open(end_path, 'r', encoding="utf-8")
+        end_path = pathlib.Path(lang_folder_path, 'End.txt')
+        end_open = open(str(end_path), 'r', encoding="utf-8")
         end_label_str = end_open.read()
         end_open.close()
         self.end_label.text = end_label_str
 
-        button_lang_path = lang_folder_path + 'Button.ini'
+        button_lang_path = pathlib.Path(lang_folder_path, 'Button.ini')
         button_lang_config = configparser.ConfigParser()
-        button_lang_config.read(button_lang_path, encoding="utf-8")
+        button_lang_config.read(str(button_lang_path), encoding="utf-8")
 
         start_button_label_str = button_lang_config['Button']['start']
         self.start_button.text = start_button_label_str
@@ -258,9 +258,9 @@ class ProtocolScreen(ProtocolBase):
         stop_button_label_str = button_lang_config['Button']['stop']
         self.quit_button.text = stop_button_label_str
 
-        feedback_lang_path = lang_folder_path + 'Feedback.ini'
+        feedback_lang_path = pathlib.Path(lang_folder_path, 'Feedback.ini')
         feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
-        feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
+        feedback_lang_config.read(str(feedback_lang_path), encoding="utf-8")
 
         self.feedback_dict = {}
         stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
