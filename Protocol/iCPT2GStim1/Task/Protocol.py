@@ -32,9 +32,9 @@ class ProtocolScreen(ProtocolBase):
                               'block_max_length', 'block_max_count', 'block_min_rest_duration',
                               'session_length_max', 'session_trial_max']
         # Define Variables - Config
-        config_path = 'Protocol' + self.folder_mod + self.protocol_name + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
 
         self.parameters_dict = config_file['TaskParameters']
 
@@ -204,9 +204,9 @@ class ProtocolScreen(ProtocolBase):
 
     def load_parameters(self, parameter_dict):
         self.parameters_dict = parameter_dict
-        config_path = 'Protocol' + self.folder_mod + 'iCPT2GStim1' + self.folder_mod + 'Configuration.ini'
+        config_path = pathlib.Path('Protocol',self.protocol_name,'Configuration.ini')
         config_file = configparser.ConfigParser()
-        config_file.read(config_path)
+        config_file.read(str(config_path))
         self.participant_id = self.parameters_dict['participant_id']
         self.language = self.parameters_dict['language']
         self.stimulus_duration = float(self.parameters_dict['stimulus_duration'])
@@ -672,8 +672,8 @@ class ProtocolScreen(ProtocolBase):
                 self.distractor_stage_index_list[self.distractor_stage_pos]]
             self.current_substage = self.distractor_stage
             if self.distractor_stage == 'No Distractor':
-                self.left_stimulus_image_path = self.image_folder + 'black.png'
-                self.right_stimulus_image_path = self.image_folder + 'black.png'
+                self.left_stimulus_image_path = pathlib.Path(self.image_folder, 'black.png')
+                self.right_stimulus_image_path = pathlib.Path(self.image_folder, 'black.png')
                 self.left_image = 'black'
                 self.right_image = 'black'
             elif self.distractor_stage == 'Congruent Distractor':
