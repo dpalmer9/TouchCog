@@ -31,16 +31,16 @@ class MenuBase(Screen):
 		self.name = 'menuscreen'
 		self.main_layout = FloatLayout()
 		
-		if sys.platform == 'linux' or sys.platform == 'darwin':
+		# if sys.platform == 'linux' or sys.platform == 'darwin':
 			
 			
-			self.folder_mod = '/'
+		# 	self.folder_mod = '/'
 		
 		
-		elif sys.platform == 'win32':
+		# elif sys.platform == 'win32':
 			
 			
-			self.folder_mod = '\\'
+		# 	self.folder_mod = '\\'
 		
 		
 		self.protocol_name = ''
@@ -66,7 +66,7 @@ class MenuBase(Screen):
 		
 		self.id_grid = GridLayout(cols=2, rows=1)
 		self.id_label = Label(text='Participant ID')
-		self.id_entry = TextInput(text='')
+		self.id_entry = TextInput(text='Default')
 		self.id_grid.add_widget(self.id_label)
 		self.id_grid.add_widget(self.id_entry)
 		self.id_grid.size_hint = (0.85, 0.05)
@@ -182,19 +182,24 @@ class MenuBase(Screen):
 	
 	def menu_constructor(self, protocol_name):
 		
-		
 		self.protocol_name = protocol_name
 		
 		self.protocol_path = pathlib.Path('Protocol', self.protocol_name)
 		config_path = self.protocol_path / 'Configuration.ini'
 		
-# 		self.protocol_path = os.getcwd() + self.folder_mod + 'Protocol' + self.folder_mod + self.protocol_name
-# 		config_path = self.protocol_path + self.folder_mod + 'Configuration.ini'
-		
-		
 		config_file = configparser.ConfigParser()
 		config_file.read(config_path)
-		self.parameters_config = config_file['TaskParameters']
+
+		if ('DebugParameters' in config_file) \
+			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+
+			self.parameters_config = config_file['DebugParameters']
+			self.debug_mode = True
+
+		else:
+			self.parameters_config = config_file['TaskParameters']
+			self.debug_mode = False
+
 		num_parameters = len(self.parameters_config)
 		self.setting_gridlayout.rows = (num_parameters + int(len(self.settings_widgets) / 2))
 		self.setting_gridlayout.cols = 2

@@ -1,0 +1,9 @@
+This is a test of attention.
+
+In this test, you will be shown a series of images. 
+Your task is to respond only to a target image (shown
+on the following screen).
+
+The difficulty will increase during the task.
+
+Please press "Continue" below for further instructions.
