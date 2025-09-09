@@ -191,6 +191,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_press_time = 0.0
 		self.response_latency = 0.0
 		self.trial_end_time = 0.0
+		self.tutorial_video_duration = 0.0
 		
 		self.iti_range = list()
 		self.iti_length = 0.0
@@ -385,6 +386,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_latency = 0.0
 		self.trial_end_time = 0.0
 		self.recall_target_screen_start_time = 0.0
+		self.tutorial_video_duration = 0.0
 		
 		self.iti_range = [float(iNum) for iNum in iti_import]
 		self.iti_length = self.iti_range[0]
@@ -1255,14 +1257,13 @@ class ProtocolScreen(ProtocolBase):
 		
 		except KeyboardInterrupt:
 			
-			# print('Program terminated by user.')
+			print('Program terminated by user.')
 			self.protocol_end()
 		
 		except:
 			
-			# print('Error; program terminated.')
-			if not self.debug_mode:
-				self.protocol_end()
+			print('Error; program terminated.')
+			self.protocol_end()
 	
 	
 	
@@ -1542,33 +1543,14 @@ class ProtocolScreen(ProtocolBase):
 
 		if self.current_stage == 'Recall':
 			self.tutorial_video.source = self.tutorial_video_PA_path
-			video_length = self.tutorial_video_duration_PA
+			self.tutorial_video_duration = self.tutorial_video_duration_PA
 		
 		else:
 			self.tutorial_video.source = self.tutorial_video_PAL_path
-			video_length = self.tutorial_video_duration_PAL
-
-		self.protocol_floatlayout.add_widget(self.tutorial_video)
-				
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Video'
-			, 'Section'
-			, self.tutorial_video.source
-			])
-
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, video_length)
-		self.start_tutorial_video()
-
-	
-	
-	def start_tutorial_video(self, *args):
-
-		self.tutorial_video.state = 'stop'
+			self.tutorial_video_duration = self.tutorial_video_duration_PAL
 
 		self.text_button_size = [0.4, 0.15]
-		
+				
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
 		self.tutorial_start_button.pos_hint = {"center_x": 0.75, "center_y": 0.08}
@@ -1578,9 +1560,34 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_restart.size_hint = self.text_button_size
 		self.tutorial_restart.pos_hint = {"center_x": 0.25, "center_y": 0.08}
 		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
+		
+		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+				
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, self.tutorial_video.source
+			])
+
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
+
+		self.tutorial_video.state = 'stop'
+
+		
+		
+	def start_tutorial_video(self, *args):
 
 		self.tutorial_video.state = 'play'
+		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 	
+		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
 
 	def present_tutorial_video_start_button(self, *args):
@@ -1890,11 +1897,10 @@ class ProtocolScreen(ProtocolBase):
 		
 		except KeyboardInterrupt:
 			
-			# print('Program terminated by user.')
+			print('Program terminated by user.')
 			self.protocol_end()
 		
 		except:
 			
-			# print('Error; program terminated.')
-			if not self.debug_mode:
-				self.protocol_end()
+			print('Error; program terminated.')
+			self.protocol_end()
