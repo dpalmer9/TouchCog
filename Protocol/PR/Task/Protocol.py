@@ -140,22 +140,16 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Clock
 		
-		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
+		self.block_check_clock = Clock
+		self.block_check_clock.interupt_next_only = False
+		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
 		
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = False
-
-		self.stimulus_present_event = self.task_clock.schedule_once(self.stimulus_presentation, 0.4)
-		self.stimulus_present_event.cancel()
-
-		self.display_hold_button_event = self.task_clock.schedule_once(self.display_hold_button, self.hold_button_delay)
-		self.display_hold_button_event.cancel()
-
-		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
-		self.no_response_event.cancel()
-
-		self.tutorial_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, 0)
-		self.tutorial_end_event.cancel()
+		self.stimulus_present_event = self.task_clock.create_trigger(self.stimulus_presentation, 0.4)
+		self.display_hold_button_event = self.task_clock.create_trigger(self.display_hold_button, self.hold_button_delay)
+		self.no_response_event = self.task_clock.create_trigger(self.protocol_end, self.timeout_duration)
+		self.tutorial_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 0)
 
 
 		# Define Widgets - Buttons
@@ -209,8 +203,12 @@ class ProtocolScreen(ProtocolBase):
 		self.target_x_pos = 0
 		self.target_y_pos = 1
 
-		self.x_boundaries = [0.04, 0.96]
-		self.y_boundaries = [0.18, 0.95]
+		self.cell_size = ((.07 * self.width_adjust), (.07 * self.height_adjust))
+
+		min_y_pos = float(self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2) + (self.cell_size[1]/2) + 0.01)
+
+		self.x_boundaries = [(0.005 + (self.cell_size[0]/2)), (0.995 - (self.cell_size[0]/2))]
+		self.y_boundaries = [min_y_pos, (0.99 + (self.cell_size[1]/2))]
 
 		self.x_dim_hint = np.linspace(self.x_boundaries[0], self.x_boundaries[1], self.grid_squares_x).tolist()
 		self.y_dim_hint = np.linspace(self.y_boundaries[0], self.y_boundaries[1], self.grid_squares_y).tolist()
@@ -338,6 +336,10 @@ class ProtocolScreen(ProtocolBase):
 
 
 		# Define Widgets - Buttons
+
+		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 		self.quit_button = Button(text='STOP', font_size='24sp')
 		self.quit_button.size_hint = (0.2, 0.1)
@@ -471,12 +473,12 @@ class ProtocolScreen(ProtocolBase):
 
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
 		
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 			
@@ -498,19 +500,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-		if self.skip_tutorial_video == 1:
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_instructions, 0)
-			self.protocol_floatlayout.clear_widgets()
-
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Section'
-				, 'Instructions'
-				])
-			
-		else:
 			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
 			self.protocol_floatlayout.add_event([
@@ -575,15 +564,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.generate_output_files()
 		self.metadata_output_generation()
-		self.start_protocol()
 
-
-	
-	def start_protocol(self, *args):
-		
-		self.protocol_floatlayout.clear_widgets()
 		self.start_clock()
-		self.block_contingency()
+		self.block_check_event()
 
 
 
@@ -846,7 +829,7 @@ class ProtocolScreen(ProtocolBase):
 					, self.hit_target
 					])
 				
-				self.block_contingency()
+				self.block_check_event()
 			
 
 			else:
@@ -965,6 +948,7 @@ class ProtocolScreen(ProtocolBase):
 	def start_block(self, *args):
 
 		self.protocol_floatlayout.remove_widget(self.feedback_label)
+		self.feedback_label.text = ''
 		
 		self.protocol_floatlayout.add_event([
 			(time.time() - self.start_time)
@@ -1011,6 +995,22 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.unbind(on_press=self.iti)
 			self.hold_button.unbind(on_release=self.premature_response)
 			
+			if self.feedback_on_screen:
+				
+				if (time.time() - self.feedback_start_time) >= self.feedback_length:
+					# print('Feedback over')
+					self.block_check_event.cancel()
+					self.protocol_floatlayout.clear_widgets()
+					self.feedback_label.text = ''
+					self.feedback_on_screen = False
+
+				else:
+					return
+
+			else:
+				# print('Block check event cancel')
+				self.block_check_event.cancel()
+			
 			# print('Block contingency')
 
 			self.protocol_floatlayout.clear_widgets()
@@ -1042,7 +1042,7 @@ class ProtocolScreen(ProtocolBase):
 						, 'Start'
 						])
 
-					self.display_hold_button_event = self.task_clock.schedule_once(self.display_hold_button, self.hold_button_delay)
+					self.display_hold_button_event()
 				
 				else:
 					self.feedback_label.text = 'Block complete!\n\nPress and hold the white button to start the next \ntrial, or press "End Task" to end the task.'
@@ -1061,7 +1061,7 @@ class ProtocolScreen(ProtocolBase):
 						, 'Start'
 						])
 					
-					self.display_hold_button_event = self.task_clock.schedule_once(self.display_hold_button, self.hold_button_delay)
+					self.display_hold_button_event()
 			
 			# Set ITI
 
@@ -1102,7 +1102,7 @@ class ProtocolScreen(ProtocolBase):
 				, self.stimulus_button.pos_hint
 				])
 
-			self.current_block_trial = 0
+			self.current_block_trial = 1
 
 			# print('Block contingency end\n\n\n')
 			# print('*************')

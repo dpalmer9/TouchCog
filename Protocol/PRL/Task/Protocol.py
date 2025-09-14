@@ -102,11 +102,11 @@ class ProtocolScreen(ProtocolBase):
 		if ('DebugParameters' in config_file) \
 			and (int(config_file['DebugParameters']['debug_mode']) == 1):
 
-			self.parameters_config = config_file['DebugParameters']
+			self.parameters_dict = config_file['DebugParameters']
 			self.debug_mode = True
 
 		else:
-			self.parameters_config = config_file['TaskParameters']
+			self.parameters_dict = config_file['TaskParameters']
 			self.debug_mode = False
 
 		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
@@ -427,6 +427,10 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.source = self.hold_image_path
 		self.hold_button.bind(on_press=self.iti)
 
+		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
+
 		self.stimulus_size = (0.4 * self.width_adjust, 0.4 * self.height_adjust)
 		self.stimulus_pos_l = {'center_x': 0.25, 'center_y': 0.55}
 		self.stimulus_pos_r = {'center_x': 0.75, 'center_y': 0.55}
@@ -442,7 +446,7 @@ class ProtocolScreen(ProtocolBase):
 		self.right_stimulus.bind(on_press=self.right_pressed)
 
 		self.instruction_button = Button(font_size='60sp')
-		self.instruction_button.size_hint = [0.4, 0.15]
+		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  {"center_x": 0.5, "center_y": 0.9}
 		self.instruction_button.bind(on_press=self.section_start)
 		
@@ -505,12 +509,12 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
 		
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 			
@@ -532,19 +536,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-		if self.skip_tutorial_video == 1:
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_instructions, 0)
-			self.protocol_floatlayout.clear_widgets()
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Section'
-				, 'Instructions'
-				])
-		
-		else:
 			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 			
 			self.protocol_floatlayout.add_event([

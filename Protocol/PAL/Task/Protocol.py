@@ -170,19 +170,12 @@ class ProtocolScreen(ProtocolBase):
 		self.block_check_clock = Clock
 		self.block_check_clock.interupt_next_only = False
 		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
-		# self.block_check_event.cancel()
-
 		self.stage_screen_event = self.block_check_clock.create_trigger(self.stage_screen, 0, interval=True)
-		# self.stage_screen_event.cancel()
 
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = True
-		
 		self.recall_instruction_target_present_event = self.task_clock.create_trigger(self.recall_target_screen, 0, interval=True)
-		# self.recall_instruction_target_present_event.cancel()
 
-		self.start_protocol_event = self.task_clock.schedule_once(self.start_protocol_from_tutorial, 0.5)
-		self.start_protocol_event.cancel()
 
 
 		# Define Variables - Time
@@ -459,6 +452,9 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.bind(on_press=self.iti)
 		self.hold_button.bind(on_release=self.premature_response)
 
+		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 		# Define trial lists
 
@@ -509,13 +505,13 @@ class ProtocolScreen(ProtocolBase):
 		# Instruction - Button Widget
 		
 		self.instruction_button = Button(font_size='60sp')
-		self.instruction_button.size_hint = [0.4, 0.15]
+		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  {"center_x": 0.50, "center_y": 0.9}
 		self.instruction_button.text = 'Start Section'
 		self.instruction_button.bind(on_press=self.section_start)
 		
 		self.stage_continue_button = Button(font_size='60sp')
-		self.stage_continue_button.size_hint = [0.4, 0.15]
+		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint =  {"center_x": 0.50, "center_y": 0.9}
 		self.stage_continue_button.text = 'Continue'
 		self.stage_continue_button.bind(on_press=self.block_check_event)
@@ -1549,21 +1545,19 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video.source = self.tutorial_video_PAL_path
 			self.tutorial_video_duration = self.tutorial_video_duration_PAL
 
-		self.text_button_size = [0.4, 0.15]
-				
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = {"center_x": 0.75, "center_y": 0.08}
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial_video)
 		
 		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
 		self.tutorial_restart.size_hint = self.text_button_size
-		self.tutorial_restart.pos_hint = {"center_x": 0.25, "center_y": 0.08}
+		self.tutorial_restart.pos_hint = self.text_button_pos_LL
 		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
 		
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 				
@@ -1589,6 +1583,13 @@ class ProtocolScreen(ProtocolBase):
 	
 		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
 
 	def present_tutorial_video_start_button(self, *args):
 
@@ -1688,6 +1689,7 @@ class ProtocolScreen(ProtocolBase):
 			# print('Block contingency')
 
 			self.protocol_floatlayout.clear_widgets()
+			self.feedback_label.text = ''
 			# print('Clear widgets')
 		
 			self.protocol_floatlayout.add_event([

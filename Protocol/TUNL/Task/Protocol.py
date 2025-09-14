@@ -196,9 +196,7 @@ class ProtocolScreen(ProtocolBase):
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = True
 
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, 1)
-		self.tutorial_video_end_event.cancel()
-
+		self.tutorial_video_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 1)
 		self.stimulus_event = self.task_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
 		self.cue_present_event = self.task_clock.create_trigger(self.cue_present, 0)
 		self.delay_present_event = self.task_clock.create_trigger(self.delay_present, 0)
@@ -554,6 +552,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.video_size = (1, 1)
 		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 		self.stimulus_image_spacing = [
 			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale)
@@ -565,8 +565,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.video_pos = {"center_x": 0.5, "center_y": 0.55}
 
-		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
-		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 
 		# Instruction Import
@@ -617,7 +615,7 @@ class ProtocolScreen(ProtocolBase):
 		# Instruction - Button Widget
 		
 		self.instruction_button = Button(font_size='60sp')
-		self.instruction_button.size_hint = [0.4, 0.15]
+		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  {"center_x": 0.50, "center_y": 0.92}
 		self.instruction_button.text = ''
 		self.instruction_button.bind(on_press=self.section_start)
@@ -849,12 +847,12 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
 		
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 			
@@ -876,19 +874,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-		if self.skip_tutorial_video == 1:
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_instructions, 0)
-			self.protocol_floatlayout.clear_widgets()
-
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Section'
-				, 'Instructions'
-				])
-		
-		else:
 			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
 			self.protocol_floatlayout.add_event([
@@ -930,21 +915,14 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	
-	def start_protocol_from_tutorial_video(self, *args):
+	def start_protocol_from_tutorial(self, *args):
 
 		self.tutorial_video_end_event.cancel()
 		self.tutorial_video.state = 'stop'
 		
 		self.generate_output_files()
 		self.metadata_output_generation()
-		self.start_protocol()
 
-
-
-	def start_protocol(self, *args): # Follows layout of Classes.Protocol for consistency
-		
-		# print('Start protocol')
-		
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_event([
@@ -961,11 +939,6 @@ class ProtocolScreen(ProtocolBase):
 			, 'Section Start'
 			])
 
-		self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
-		self.hold_button.bind(on_press=self.iti)
-
-		self.protocol_floatlayout.add_widget(self.hold_button)
-		
 		self.protocol_floatlayout.add_event([
 			0
 			, 'Stage Change'
@@ -990,10 +963,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'Hold Button'
 			])
 		
-		# print('Screen resolution: ', self.screen_resolution)
-		
-		# print('Width adjust: ', self.width_adjust)
-		# print('height adjust: ', self.height_adjust)
+		self.protocol_floatlayout.add_widget(self.hold_button)
 		
 		self.start_clock()
 		

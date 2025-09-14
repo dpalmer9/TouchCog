@@ -350,6 +350,11 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Clock
 		
+		self.block_check_clock = Clock
+		self.block_check_clock.interupt_next_only = False
+		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
+		self.stage_screen_event = self.block_check_clock.create_trigger(self.stage_screen, 0, interval=True)
+		
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = True
 
@@ -362,13 +367,6 @@ class ProtocolScreen(ProtocolBase):
 		self.blur_preload_end_event = self.task_clock.create_trigger(self.blur_preload_end, 0)
 
 
-		self.block_check_clock = Clock
-		self.block_check_clock.interupt_next_only = False
-
-		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
-		self.stage_screen_event = self.block_check_clock.create_trigger(self.stage_screen, 0, interval=True)
-		
-		
 		# Define Variables
 
 		self.target_prob_list = [int(float(iProb) * self.target_prob_trial_num) for iProb in target_prob_import]
@@ -1146,7 +1144,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1) #self.text_button_size
+		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 			
@@ -1168,12 +1166,17 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 
-		if self.skip_tutorial_video == 1:
-			self.protocol_floatlayout.clear_widgets()
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.tutorial_target_present_screen, 0)
-
-		else:
 			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
+
+
 
 	def present_tutorial_video_start_button(self, *args):
 
@@ -1206,28 +1209,11 @@ class ProtocolScreen(ProtocolBase):
 	def start_protocol_from_tutorial(self, *args):
 
 		self.protocol_floatlayout.clear_widgets()
-		self.generate_output_files()
-		self.metadata_output_generation()
-		self.start_protocol()
-
-
-
-	def start_protocol_direct(self, *args):
 
 		self.generate_output_files()
 		self.metadata_output_generation()
-		self.start_protocol()
 
-
-
-	def start_protocol(self, *args):
-		
-		self.protocol_floatlayout.clear_widgets()
-		
-		# print('Stage list: ', self.stage_list)
-		
 		self.start_clock()
-		
 		self.block_contingency()
 
 
