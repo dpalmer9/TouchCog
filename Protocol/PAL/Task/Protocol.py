@@ -1322,7 +1322,7 @@ class ProtocolScreen(ProtocolBase):
 			else:
 				hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
 				self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-					+ str(round(hit_accuracy, 2) * 100) \
+					+ str(round(hit_accuracy * 100)) \
 					+ '%!'
 
 			if self.stage_index < len(self.stage_list):

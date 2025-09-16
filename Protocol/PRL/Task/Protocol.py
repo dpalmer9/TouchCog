@@ -700,6 +700,8 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.iti)
 	
+		self.protocol_floatlayout.add_widget(self.hold_button)
+	
 	
 	
 	# Left Stimulus Pressed

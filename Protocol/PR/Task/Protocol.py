@@ -203,12 +203,13 @@ class ProtocolScreen(ProtocolBase):
 		self.target_x_pos = 0
 		self.target_y_pos = 1
 
-		self.cell_size = ((.07 * self.width_adjust), (.07 * self.height_adjust))
+		self.cell_proportion = 0.07
+		self.cell_size = ((self.cell_proportion * self.width_adjust), (self.cell_proportion * self.height_adjust))
 
-		min_y_pos = float(self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2) + (self.cell_size[1]/2) + 0.01)
+		min_y_pos = float(self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2) + (self.cell_size[1]/2) + 0.005)
 
 		self.x_boundaries = [(0.005 + (self.cell_size[0]/2)), (0.995 - (self.cell_size[0]/2))]
-		self.y_boundaries = [min_y_pos, (0.99 + (self.cell_size[1]/2))]
+		self.y_boundaries = [min_y_pos, (0.995 - (self.cell_size[1]/2))]
 
 		self.x_dim_hint = np.linspace(self.x_boundaries[0], self.x_boundaries[1], self.grid_squares_x).tolist()
 		self.y_dim_hint = np.linspace(self.y_boundaries[0], self.y_boundaries[1], self.grid_squares_y).tolist()
@@ -219,7 +220,7 @@ class ProtocolScreen(ProtocolBase):
 
 		for cell in self.background_grid_list:
 			cell.fit_mode = 'fill'
-			cell.size_hint = ((.08 * self.width_adjust), (.08 * self.height_adjust))
+			cell.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
 
 			if x_pos >= self.grid_squares_x:
 				x_pos = 0
@@ -343,7 +344,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.quit_button = Button(text='STOP', font_size='24sp')
 		self.quit_button.size_hint = (0.2, 0.1)
-		self.quit_button.pos_hint = {'center_x': 0.3, 'center_y': 0.07}
+		self.quit_button.pos_hint = {'center_x': 0.25, 'y': 0.01}
 		self.quit_button.bind(on_press=self.results_screen)
 
 		self.confirm_button = Button(text='Confirm', font_size='24sp')
@@ -352,8 +353,8 @@ class ProtocolScreen(ProtocolBase):
 		self.confirm_button.color = 'grey'
 
 		self.block_start_button = Button(text='Start Task', font_size='24sp')
-		self.block_start_button.size_hint = (0.4, 0.1)
-		self.block_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.1}
+		self.block_start_button.size_hint = self.text_button_size
+		self.block_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
 		self.block_start_button.bind(on_press=self.start_block)
 
 		self.x_dim_hint = np.linspace(self.x_boundaries[0], self.x_boundaries[1], self.grid_squares_x).tolist()
@@ -387,7 +388,7 @@ class ProtocolScreen(ProtocolBase):
 
 		for cell in self.background_grid_list:
 			cell.fit_mode = 'fill'
-			cell.size_hint = ((.08 * self.width_adjust), (.08 * self.height_adjust))
+			cell.size_hint = ((self.cell_proportion * self.width_adjust), (self.cell_proportion * self.height_adjust))
 
 			if x_pos >= self.grid_squares_x:
 				x_pos = 0
@@ -407,7 +408,7 @@ class ProtocolScreen(ProtocolBase):
 			, "center_y": self.y_dim_hint[self.target_y_pos]
 			}
 		
-		self.stimulus_button.size_hint = (0.08 * self.width_adjust, 0.08 * self.height_adjust)
+		self.stimulus_button.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
 		self.stimulus_button.bind(on_press=self.target_pressed)
 
 		self.stimulus_pressed_button = ImageButton(source=self.stimulus_pressed_image_path)
@@ -417,7 +418,7 @@ class ProtocolScreen(ProtocolBase):
 			, "center_y": self.y_dim_hint[self.target_y_pos]
 			}
 		
-		self.stimulus_pressed_button.size_hint = (0.08 * self.width_adjust, 0.08 * self.height_adjust)
+		self.stimulus_pressed_button.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
 
 		self.reward_image = Image(source=self.checkmark_image_path)
 		self.reward_image.pos_hint = {"center_x": 0.5, "center_y": 0.8}

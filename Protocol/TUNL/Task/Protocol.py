@@ -563,7 +563,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_image_size = (np.array(self.stimulus_image_spacing) * (1 - self.stimulus_gap)).tolist()
 		self.stimulus_button_size = (np.array(self.stimulus_image_size) * 0.77).tolist()
 		
-		self.video_pos = {"center_x": 0.5, "center_y": 0.55}
+		self.video_pos = {"center_x": 0.5, "y": 0.125}
 
 
 
@@ -1361,8 +1361,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.last_response = 0
 		
-		self.accuracy_tracking.append(0)
-
 		self.target_touch_time = time.time()
 		self.response_latency = self.target_touch_time - self.target_start_time
 		
@@ -1471,8 +1469,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.last_response = 1
 		
-		self.accuracy_tracking.append(1)
-
 		self.target_touch_time = time.time()
 		self.response_latency = self.target_touch_time - self.target_start_time
 		
@@ -1721,7 +1717,7 @@ class ProtocolScreen(ProtocolBase):
 				# print('Target latency: ', self.response_latency)
 				# print('')
 
-				if self.last_response != np.nan:
+				if self.last_response in [0, 1]:
 					self.response_tracking.append(self.last_response)
 					self.accuracy_tracking.append(self.last_response)
 
@@ -2088,6 +2084,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
+		self.feedback_label.text = ''
 
 		if len(self.accuracy_tracking) == 0:
 			self.outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
@@ -2096,7 +2093,7 @@ class ProtocolScreen(ProtocolBase):
 			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
 			
 			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-				+ str(round(self.hit_accuracy, 2) * 100) \
+				+ str(round(self.hit_accuracy * 100)) \
 				+ '%!\n\nPlease inform the researcher that you have finished this task.'
 		
 		self.instruction_button.unbind(on_press=self.section_start)
@@ -2156,6 +2153,7 @@ class ProtocolScreen(ProtocolBase):
 			# print('\n\n\n\nBlock contingency\n\n')
 
 			self.protocol_floatlayout.clear_widgets()
+			self.feedback_label.text = ''
 
 			# print('Clear widgets')
 		
