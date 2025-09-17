@@ -14,6 +14,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen, ScreenManagerException
 from kivy.uix.scrollview import ScrollView
+from kivy.effects.scroll import ScrollEffect
 from kivy.uix.textinput import TextInput
 
 
@@ -46,24 +47,25 @@ class MenuBase(Screen):
 		self.protocol_name = ''
 		self.protocol_path = ''
 		self.parameters_config = dict()
-		self.setting_scrollview = ScrollView()
+		self.setting_scrollview = ScrollView(effect_cls=ScrollEffect)
 		self.setting_gridlayout = GridLayout()
-		
+		self.setting_gridlayout.size_hint_y = None
+		self.setting_gridlayout.size_hint_x = 1
+		self.setting_gridlayout.bind(minimum_height=self.setting_gridlayout.setter('height'))
+		self.setting_scrollview.add_widget(self.setting_gridlayout)
+
 		self.language_dropdown = DropDown()
 		self.dropdown_main = Button(text='Select Language')
 		self.language_list = ['English', 'French']
-		
+
 		for language in self.language_list:
-			
-			
 			lang_button = Button(text=language, size_hint_y=None, height=100)
 			lang_button.bind(on_release=lambda lang_button: self.language_dropdown.select(lang_button.text))
 			self.language_dropdown.add_widget(lang_button)
-		
-		
+
 		self.dropdown_main.bind(on_release=self.language_dropdown.open)
 		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.dropdown_main, 'text', x))
-		
+
 		self.id_grid = GridLayout(cols=2, rows=1)
 		self.id_label = Label(text='Participant ID')
 		self.id_entry = TextInput(text='Default')
@@ -71,18 +73,27 @@ class MenuBase(Screen):
 		self.id_grid.add_widget(self.id_entry)
 		self.id_grid.size_hint = (0.85, 0.05)
 		self.id_grid.pos_hint = {'x': 0.1, 'y': 0.3}
-		
+
 		self.back_button = Button(text='Back')
 		self.back_button.size_hint = (0.1, 0.1)
 		self.back_button.pos_hint = {'x': 0.4, 'y': 0.1}
 		self.back_button.bind(on_press=self.return_menu)
-		
+
 		self.start_button = Button(text='Start Task')
 		self.start_button.size_hint = (0.1, 0.1)
 		self.start_button.pos_hint = {'x': 0.6, 'y': 0.1}
 		self.start_button.bind(on_press=self.start_protocol)
-		
+
 		self.settings_widgets = [Label(text='Language'), self.dropdown_main]
+
+		# Add scrollview and other widgets to main_layout only once
+		self.setting_scrollview.pos_hint = {'x': 0.1, 'y': 0.4}
+		self.setting_scrollview.size_hint = (0.85, 0.6)
+		self.main_layout.add_widget(self.setting_scrollview)
+		self.main_layout.add_widget(self.id_grid)
+		self.main_layout.add_widget(self.back_button)
+		self.main_layout.add_widget(self.start_button)
+		self.add_widget(self.main_layout)
 	
 	
 	
@@ -181,48 +192,44 @@ class MenuBase(Screen):
 	
 	
 	def menu_constructor(self, protocol_name):
-		
+		# Preserve scroll position
+		prev_scroll_y = self.setting_scrollview.scroll_y if self.setting_scrollview.children else 1.0
+
 		self.protocol_name = protocol_name
-		
 		self.protocol_path = pathlib.Path('Protocol', self.protocol_name)
 		config_path = self.protocol_path / 'Configuration.ini'
-		
+
 		config_file = configparser.ConfigParser()
 		config_file.read(config_path)
 
 		if ('DebugParameters' in config_file) \
 			and (int(config_file['DebugParameters']['debug_mode']) == 1):
-
 			self.parameters_config = config_file['DebugParameters']
 			self.debug_mode = True
-
 		else:
 			self.parameters_config = config_file['TaskParameters']
 			self.debug_mode = False
 
 		num_parameters = len(self.parameters_config)
+
+		self.setting_gridlayout.clear_widgets()
 		self.setting_gridlayout.rows = (num_parameters + int(len(self.settings_widgets) / 2))
 		self.setting_gridlayout.cols = 2
-		self.setting_scrollview.size_hint = (0.85, 0.6)
-		self.setting_scrollview.pos_hint = {'x': 0.1, 'y': 0.4}
-		
+
 		for parameter in self.parameters_config:
-			
-			
-			self.setting_gridlayout.add_widget(Label(text=parameter))
-			self.setting_gridlayout.add_widget(TextInput(text=self.parameters_config[parameter]))
-		
-		
+			label = Label(text=parameter, size_hint_y=None, height=50)
+			text_input = TextInput(text=self.parameters_config[parameter], size_hint_y=None, height=50)
+			self.setting_gridlayout.add_widget(label)
+			self.setting_gridlayout.add_widget(text_input)
+
 		for wid in self.settings_widgets:
-			
-			
+			if isinstance(wid, (Label, Button)):
+				wid.size_hint_y = None
+				wid.height = 50
 			self.setting_gridlayout.add_widget(wid)
-		
-		
-		self.setting_scrollview.add_widget(self.setting_gridlayout)
-		self.main_layout.add_widget(self.setting_scrollview)
-		self.main_layout.add_widget(self.id_grid)
-		self.main_layout.add_widget(self.back_button)
-		self.main_layout.add_widget(self.start_button)
-		self.add_widget(self.main_layout)
+
+	# Height is now automatically bound to minimum_height
+
+		# Restore scroll position
+		self.setting_scrollview.scroll_y = prev_scroll_y
 
