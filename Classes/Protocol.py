@@ -436,6 +436,7 @@ class ProtocolBase(Screen):
 		self.hold_button = ImageButton()
 		self.hold_button.pos_hint = {'center_x': 0.5, 'center_y': 0.1}
 		self.hold_button.name = 'Hold Button'
+		self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
 		
 		
 		# Define Widgets - Text
@@ -836,7 +837,6 @@ class ProtocolBase(Screen):
 			, 'Hold Button'
 			])
 		
-		self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
 		self.hold_button.bind(on_press=self.iti)
 	
 
