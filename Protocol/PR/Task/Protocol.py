@@ -501,16 +501,15 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Display'
-				, 'Video'
-				, 'Section'
-				, 'Instructions'
-				])
-			
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
 
 
 	def present_tutorial_video_start_button(self, *args):
