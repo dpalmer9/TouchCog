@@ -14,7 +14,58 @@ import importlib.util
 import os
 import pathlib
 
+
+import sys
 from kivy.config import Config
+# Change current working directory to location of this file
+
+def get_refresh_rate():
+	"""
+	Returns the current display refresh rate as an integer (Hz).
+	Uses ctypes for Windows. Placeholder for Linux.
+	"""
+	if sys.platform.startswith('win'):
+		import ctypes
+		user32 = ctypes.windll.user32
+		class DEVMODE(ctypes.Structure):
+			_fields_ = [
+				("dmDeviceName", ctypes.c_wchar * 32),
+				("dmSpecVersion", ctypes.c_ushort),
+				("dmDriverVersion", ctypes.c_ushort),
+				("dmSize", ctypes.c_ushort),
+				("dmDriverExtra", ctypes.c_ushort),
+				("dmFields", ctypes.c_ulong),
+				("dmOrientation", ctypes.c_short),
+				("dmPaperSize", ctypes.c_short),
+				("dmPaperLength", ctypes.c_short),
+				("dmPaperWidth", ctypes.c_short),
+				("dmScale", ctypes.c_short),
+				("dmCopies", ctypes.c_short),
+				("dmDefaultSource", ctypes.c_short),
+				("dmPrintQuality", ctypes.c_short),
+				("dmColor", ctypes.c_short),
+				("dmDuplex", ctypes.c_short),
+				("dmYResolution", ctypes.c_short),
+				("dmTTOption", ctypes.c_short),
+				("dmCollate", ctypes.c_short),
+				("dmFormName", ctypes.c_wchar * 32),
+				("dmLogPixels", ctypes.c_ushort),
+				("dmBitsPerPel", ctypes.c_ulong),
+				("dmPelsWidth", ctypes.c_ulong),
+				("dmPelsHeight", ctypes.c_ulong),
+				("dmDisplayFlags", ctypes.c_ulong),
+				("dmDisplayFrequency", ctypes.c_ulong)
+			]
+		devmode = DEVMODE()
+		devmode.dmSize = ctypes.sizeof(DEVMODE)
+		if user32.EnumDisplaySettingsW(None, -1, ctypes.byref(devmode)):
+			return int(devmode.dmDisplayFrequency)
+		return 60  # fallback
+	elif sys.platform.startswith('linux'):
+		# Placeholder for Linux implementation
+		return None
+	else:
+		return None
 
 
 
@@ -36,7 +87,11 @@ virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
 Config.set('kivy', 'kivy_clock', 'interrupt')
-Config.set('graphics', 'maxfps', 0)
+maxfps = get_refresh_rate()
+if maxfps is not None:
+	Config.set('graphics', 'maxfps', str(maxfps))
+else:
+	Config.set('graphics', 'maxfps', 0)
 
 if fullscreen == 0:
 	Config.set('graphics', 'width', str(x_dim))
