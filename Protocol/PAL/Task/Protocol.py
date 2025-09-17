@@ -1545,6 +1545,10 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video.source = self.tutorial_video_PAL_path
 			self.tutorial_video_duration = self.tutorial_video_duration_PAL
 
+		self.tutorial_video.state = 'stop'
+		self.tutorial_video._video = None
+		self.tutorial_video.reload()
+		
 		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
 		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
