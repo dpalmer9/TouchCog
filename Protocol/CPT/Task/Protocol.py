@@ -37,7 +37,7 @@ class ProtocolScreen(ProtocolBase):
 		self.maxfps = int(Config.get('graphics', 'maxfps'))
 		
 		if self.maxfps == 0:
-			self.maxfps = 120
+			self.maxfps = 60
 
 		self.screen_resolution = (width, height)
 		self.protocol_floatlayout.size = self.screen_resolution
