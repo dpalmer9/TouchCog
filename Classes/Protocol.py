@@ -63,6 +63,7 @@ class FloatLayoutLog(FloatLayout):
 			]
 		
 		self.event_dataframe = pd.DataFrame(columns=self.event_columns)
+		self.event_dataframe.Time = self.event_dataframe.Time.astype('float64')
 		self.app.session_event_data = self.event_dataframe
 		self.event_index = 0
 		self.save_path = ''
@@ -278,7 +279,11 @@ class FloatLayoutLog(FloatLayout):
 				new_row[self.event_columns[iCol]] = ''
 			
 			else:
-				new_row[self.event_columns[iCol]] = str(row[iCol])
+				if self.event_columns[iCol] == 'Time':
+					new_row[self.event_columns[iCol]] = float(row[iCol])
+				
+				else:
+					new_row[self.event_columns[iCol]] = str(row[iCol])
 
 		row_df.loc[0] = new_row
 		
@@ -842,7 +847,7 @@ class ProtocolBase(Screen):
 
 
 	def hold_remind(self, *args):
-
+		print('reminder triggered')
 		if self.block_started:
 			self.hold_remind_event.cancel()
 			return
