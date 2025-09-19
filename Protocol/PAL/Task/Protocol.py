@@ -450,6 +450,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.hold_button.source = self.hold_image_path
 		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.text_button_size = [0.4, 0.15]
@@ -727,7 +728,6 @@ class ProtocolScreen(ProtocolBase):
 			return
 		
 		self.iti_event.cancel()
-		self.hold_remind_event.cancel()
 		
 		self.protocol_floatlayout.add_event([
 			time.time() - self.start_time
@@ -1246,9 +1246,6 @@ class ProtocolScreen(ProtocolBase):
 			self.last_response = 0
 			
 			self.trial_end_time = time.time()
-
-			if not self.block_started:
-				self.hold_remind_event()
 		
 		
 		except KeyboardInterrupt:
@@ -1311,7 +1308,6 @@ class ProtocolScreen(ProtocolBase):
 				])
 
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
 
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_on_screen = False
@@ -1667,7 +1663,6 @@ class ProtocolScreen(ProtocolBase):
 		try:
 
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
 
 			self.block_started = True
 			

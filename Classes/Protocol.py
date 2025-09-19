@@ -419,7 +419,9 @@ class ProtocolBase(Screen):
 		self.iti_clock.interupt_next_only = False
 		self.iti_event = self.iti_clock.create_trigger(self.iti, 0, interval=True)
 
-		self.hold_remind_event = self.iti_clock.create_trigger(self.hold_remind, 0, interval=True)
+		# hold_remind is managed manually with Clock.schedule_once; use a stage flag
+		# stage: 0 = initial (will schedule delayed), 1 = delayed (perform check)
+		self.hold_remind_stage = 0
 
 		self.session_clock = Clock
 		self.session_clock.interupt_next_only = False
@@ -442,6 +444,7 @@ class ProtocolBase(Screen):
 		self.hold_button.pos_hint = {'center_x': 0.5, 'center_y': 0.1}
 		self.hold_button.name = 'Hold Button'
 		self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
+		self.hold_button.bind(on_release=self.hold_remind)
 		
 		
 		# Define Widgets - Text
@@ -721,7 +724,8 @@ class ProtocolBase(Screen):
 				])
 
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
+			# reset any pending hold_remind stage
+			self.hold_remind_stage = 0
 			
 			self.block_start = time.time()
 			self.block_started = True
@@ -768,8 +772,6 @@ class ProtocolBase(Screen):
 			, 'Button Displayed'
 			, 'Hold Button'
 			])
-		
-		self.hold_remind_event()
 	
 	
 	
@@ -778,7 +780,8 @@ class ProtocolBase(Screen):
 	def protocol_end(self, *args):
 
 		self.iti_event.cancel()
-		self.hold_remind_event.cancel()
+		# reset any pending hold_remind stage
+		self.hold_remind_stage = 0
 		
 		self.protocol_floatlayout.clear_widgets()
 		self.protocol_floatlayout.add_widget(self.end_label)
@@ -847,19 +850,26 @@ class ProtocolBase(Screen):
 
 
 	def hold_remind(self, *args):
-		print('reminder triggered')
+		print('hold_remind called, stage=', self.hold_remind_stage, '', time.time() - self.start_time)
 		if self.block_started:
-			self.hold_remind_event.cancel()
+			self.hold_remind_stage = 0
 			return
 
-		elif (time.time() - self.trial_end_time) > self.hold_remind_delay:
+		# Stage 0: schedule delayed one-shot trigger and return
+		if self.hold_remind_stage == 0:
+			# schedule a one-shot trigger after hold_remind_delay
+			self.hold_remind_stage = 1
+			Clock.schedule_once(self.hold_remind, self.hold_remind_delay)
+			return
 
+		if self.hold_remind_stage == 1:
+			self.hold_remind_stage = 0
 			if self.feedback_on_screen:
-			
 				if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
-					self.hold_remind_event.cancel()
-				
+					# leave feedback as-is
+					return
 				else:
+					# remove any other feedback text
 					self.protocol_floatlayout.remove_widget(self.feedback_label)
 					self.protocol_floatlayout.add_event([
 						(time.time() - self.start_time)
@@ -867,10 +877,9 @@ class ProtocolBase(Screen):
 						, 'Feedback'
 						])
 					self.feedback_on_screen = False
-			
+
 			if not self.feedback_on_screen:
 				self.feedback_label.text = self.feedback_dict['return']
-				
 				self.protocol_floatlayout.add_widget(self.feedback_label)
 
 				self.feedback_start_time = time.time()
@@ -883,20 +892,17 @@ class ProtocolBase(Screen):
 					, 'Feedback'
 					, self.feedback_label.text
 					])
-				
-			self.hold_remind_event.cancel()
-		
-		else:
-			self.hold_remind_event()
+		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
 	
 	
 	def iti(self, *args):
 		
 		if not self.iti_active:
-			self.hold_remind_event.cancel()
+			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button.unbind(on_press=self.iti)
-			self.hold_button.bind(on_release=self.premature_response)
+			# bind release to hold_remind instead of premature_response to drive reminder logic
+
 			self.start_iti = time.time()
 			self.iti_active = True
 			
@@ -978,7 +984,7 @@ class ProtocolBase(Screen):
 					, 'ITI End'
 					])
 				
-				self.hold_button.unbind(on_release=self.premature_response)
+				self.hold_button.unbind(on_release=self.hold_remind)
 				self.hold_active = True
 				self.stimulus_presentation()
 				

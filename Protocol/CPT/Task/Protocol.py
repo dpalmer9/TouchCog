@@ -910,6 +910,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.hold_button.source = self.hold_image_path
 		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
 		
 		self.img_stimulus_C = ImageButton()
@@ -1425,8 +1426,6 @@ class ProtocolScreen(ProtocolBase):
 			and not self.limhold_started:
 
 			# print('Stimulus not on screen')
-
-			self.hold_remind_event.cancel()
 
 			self.hold_active = True
 		
@@ -3541,9 +3540,6 @@ class ProtocolScreen(ProtocolBase):
 			
 			if self.hold_active == True:
 				self.iti()
-
-			elif not self.block_started:
-				self.hold_remind_event()
 		
 		
 		except KeyboardInterrupt:
@@ -3574,7 +3570,6 @@ class ProtocolScreen(ProtocolBase):
 			self.stimdur_event.cancel()
 			self.stimulus_present_event.cancel()
 			self.stimulus_end_event.cancel()
-			self.hold_remind_event.cancel()
 
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_on_screen = False
@@ -3657,7 +3652,6 @@ class ProtocolScreen(ProtocolBase):
 			self.stimulus_end_event.cancel()
 			self.stimdur_event.cancel()
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
 			
 			if self.feedback_on_screen:
 				

@@ -198,6 +198,9 @@ class ProtocolScreen(ProtocolBase):
 		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
 		self.checkmark_image_path = str(self.image_folder / 'checkmark.png')
 
+		self.hold_button.unbind(on_release=self.hold_remind)
+		self.hold_button.bind(on_release=self.premature_response)
+
 		self.stimulus_button = ImageButton()
 
 		self.target_x_pos = 0
