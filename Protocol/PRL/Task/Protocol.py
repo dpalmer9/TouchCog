@@ -998,8 +998,6 @@ class ProtocolScreen(ProtocolBase):
 
 			# Set next trial parameters
 			
-			# self.feedback_label.text = ''
-			# print('label changed blank', time.time() - self.start_time)
 			self.side_chosen = ''
 			self.choice_rewarded = False
 			self.last_response = 0
