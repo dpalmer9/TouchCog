@@ -172,8 +172,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = False
-		self.trial_contingency_event = self.task_clock.create_trigger(self.trial_contingency, 0, interval=True)
-
 
 		# Define Variables - Time
 
@@ -221,6 +219,10 @@ class ProtocolScreen(ProtocolBase):
 
 		self.hold_image_path = str(self.image_dir_path / (self.hold_image + '.png'))
 		self.mask_image_path = str(self.image_dir_path / (self.mask_image + '.png'))
+
+		self.hold_button.unbind(on_release=self.hold_remind)
+		self.hold_button.bind(on_release=self.premature_response)
+		self.hold_button.bind(on_press=self.iti)
 
 		self.stimulus_size = (0.4 * self.width_adjust, 0.4 * self.height_adjust)
 		self.stimulus_pos_l = {'center_x': 0.25, 'center_y': 0.55}
@@ -425,7 +427,6 @@ class ProtocolScreen(ProtocolBase):
 			self.stimulus_image_source = self.mask_image_path		
 
 		self.hold_button.source = self.hold_image_path
-		self.hold_button.bind(on_press=self.iti)
 
 		self.text_button_size = [0.4, 0.15]
 		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
@@ -495,6 +496,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		else:
 			self.present_instructions()
+			self.start_button.unbind(on_press=self.start_protocol)
+			self.start_button.bind(on_press=self.start_protocol_from_tutorial)
 
 
 
@@ -866,6 +869,7 @@ class ProtocolScreen(ProtocolBase):
 
 		if self.feedback_label.text != '' \
 			and not self.feedback_on_screen:
+			print(self.feedback_label.text, time.time() - self.start_time)
 			
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 
@@ -884,7 +888,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.write_trial()
 		
-		self.trial_contingency_event()
+		self.trial_contingency()
 	
 	
 	
@@ -936,21 +940,21 @@ class ProtocolScreen(ProtocolBase):
 		
 		try:
 
-			self.iti_event.cancel()
+			# self.iti_event.cancel()
 
-			if self.feedback_on_screen:
+			# if self.feedback_on_screen:
 				
-				if (time.time() - self.feedback_start_time) >= self.feedback_length:
-					self.trial_contingency_event.cancel()
-					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.feedback_label.text = ''
-					self.feedback_on_screen = False
+			# 	if (time.time() - self.feedback_start_time) >= self.feedback_length:
+			# 		self.trial_contingency_event.cancel()
+			# 		self.protocol_floatlayout.remove_widget(self.feedback_label)
+			# 		self.feedback_label.text = ''
+			# 		self.feedback_on_screen = False
 
-				else:
-					return
+			# 	else:
+			# 		return
 				
-			else:
-				self.trial_contingency_event.cancel()
+			# else:
+			# 	self.trial_contingency_event.cancel()
 
 			if self.current_block_trial != 0:
 				
@@ -994,7 +998,8 @@ class ProtocolScreen(ProtocolBase):
 
 			# Set next trial parameters
 			
-			self.feedback_label.text = ''
+			# self.feedback_label.text = ''
+			# print('label changed blank', time.time() - self.start_time)
 			self.side_chosen = ''
 			self.choice_rewarded = False
 			self.last_response = 0
@@ -1117,9 +1122,6 @@ class ProtocolScreen(ProtocolBase):
 					self.nontarget_rewarded = True
 
 			self.trial_end_time = time.time()
-
-			if not self.block_started:
-				self.hold_remind_event()
 		
 		
 		except KeyboardInterrupt:
@@ -1218,7 +1220,6 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.unbind(on_release=self.premature_response)
 
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
 
 			self.block_started = True
 
@@ -1410,7 +1411,8 @@ class ProtocolScreen(ProtocolBase):
 
 			# print('Block contingency end')
 
-			self.trial_contingency_event()
+			#self.trial_contingency_event()
+			self.trial_contingency()
 		
 		
 		except KeyboardInterrupt:
