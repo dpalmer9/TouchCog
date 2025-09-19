@@ -874,15 +874,15 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-			self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Display'
-				, 'Video'
-				, 'Section'
-				, 'Instructions'
-				])
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
 
 
 	
@@ -971,8 +971,6 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_end_time = time.time()
 		
 		self.feedback_label.text = ''
-
-		self.hold_remind_event()
 
 
 
@@ -1176,7 +1174,6 @@ class ProtocolScreen(ProtocolBase):
 			and not self.delay_active \
 			and not self.limhold_started:
 
-			self.hold_remind_event.cancel()
 			self.cue_present_event()
 		
 		elif self.stimulus_on_screen \
@@ -1235,7 +1232,6 @@ class ProtocolScreen(ProtocolBase):
 			])
 
 		self.stimulus_event.cancel()
-		self.hold_remind_event.cancel()
 
 		self.cue_present_event.cancel()
 		self.target_present_event.cancel()
@@ -2027,9 +2023,6 @@ class ProtocolScreen(ProtocolBase):
 				])
 
 			self.trial_end_time = time.time()
-
-			if not self.block_started:
-				self.hold_remind_event()
 		
 		
 		except KeyboardInterrupt:
@@ -2080,7 +2073,6 @@ class ProtocolScreen(ProtocolBase):
 			):
 		
 		self.iti_event.cancel()
-		self.hold_remind_event.cancel()
 		
 		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
@@ -2130,7 +2122,6 @@ class ProtocolScreen(ProtocolBase):
 		try:
 
 			self.iti_event.cancel()
-			self.hold_remind_event.cancel()
 
 			self.block_started = True
 
