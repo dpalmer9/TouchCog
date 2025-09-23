@@ -288,8 +288,34 @@ class FloatLayoutLog(FloatLayout):
 		row_df.loc[0] = new_row
 		
 		self.app.session_event_data = pd.concat([self.app.session_event_data,row_df])
+
+	def add_stage_event(self, stage_name):
+		self.add_event([
+			(time.time() - self.start_time)
+			, 'Stage Change'
+			, stage_name
+			])
+		return
 	
+	def add_button_event(self, event_type, button_name):
+		self.add_event([
+			(time.time() - self.start_time)
+			, 'Button ' + event_type
+			, button_name
+			])
+		return
 	
+	def add_text_event(self, event_type, text_name):
+		self.add_event([
+			(time.time() - self.start_time)
+			, 'Text ' + event_type
+			, text_name
+			])
+		return
+	
+	def set_start_time(self, start_time):
+		self.start_time = start_time
+		return
 	
 	def write_data(self):
 		
@@ -414,10 +440,6 @@ class ProtocolBase(Screen):
 		
 		
 		# Define Class - Clock
-		
-		self.iti_clock = Clock
-		self.iti_clock.interupt_next_only = False
-		self.iti_event = self.iti_clock.create_trigger(self.iti, 0, interval=True)
 
 		# hold_remind is managed manually with Clock.schedule_once; use a stage flag
 		# stage: 0 = initial (will schedule delayed), 1 = delayed (perform check)
@@ -426,10 +448,6 @@ class ProtocolBase(Screen):
 		self.session_clock = Clock
 		self.session_clock.interupt_next_only = False
 		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
-
-		self.block_clock = Clock
-		self.block_clock.interupt_next_only = False
-		self.block_event = self.block_clock.create_trigger(self.block_screen, 0, interval=True)
 		
 		
 		# Define Dictionaries
@@ -488,7 +506,7 @@ class ProtocolBase(Screen):
 	def update_task(self):
 		
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
-		print(self.image_folder)
+		return
 	
 	
 	
@@ -514,6 +532,8 @@ class ProtocolBase(Screen):
 				image_name = str(image_file.stem)
 
 			self.image_dict[image_name] = load_image
+		
+		return
 	
 	
 	
@@ -625,6 +645,8 @@ class ProtocolBase(Screen):
 			stim_feedback_abort_str = color_text + stim_feedback_abort_str + '[/color]'
 		
 		self.feedback_dict['abort'] = stim_feedback_abort_str
+		
+		return
 	
 	
 	
@@ -652,6 +674,7 @@ class ProtocolBase(Screen):
 		self.protocol_floatlayout.update_path(event_path)
 		self.app.summary_event_path = self.file_path
 		self.app.summary_event_data = self.session_data
+		return
 	
 	
 	
@@ -678,6 +701,7 @@ class ProtocolBase(Screen):
 		
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
 		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
+		return
 	
 	
 	
@@ -686,27 +710,15 @@ class ProtocolBase(Screen):
 		self.generate_output_files()
 		self.metadata_output_generation()
 		self.protocol_floatlayout.add_widget(self.instruction_label)
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Stage Change'
-			, 'Instruction Presentation'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Text Displayed'
-			, 'Task Instruction'
-			])
+
+		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
+
+		self.protocol_floatlayout.add_text_event('Displayed', 'Task Instruction')
 		
 		self.protocol_floatlayout.add_widget(self.start_button)
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Button Displayed'
-			, 'Task Start Button'
-			])
-	
+
+		self.protocol_floatlayout.add_button_event('Displayed', 'Task Start Button')
+		return
 	
 	
 	# Block Staging #
@@ -717,61 +729,44 @@ class ProtocolBase(Screen):
 
 			self.protocol_floatlayout.add_widget(self.block_label)
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Text Displayed'
-				, 'Block Instruction'
-				])
+			self.protocol_floatlayout.add_text_event('Displayed', 'Block Instruction')
 
-			self.iti_event.cancel()
 			# reset any pending hold_remind stage
 			self.hold_remind_stage = 0
 			
 			self.block_start = time.time()
 			self.block_started = True
-			self.block_event()
 		
+			Clock.schedule_once(self.block_rest_end, self.block_min_rest_duration)
+			return
+		else:
+			return
 		
-		if (time.time() - self.block_start) > self.block_min_rest_duration:
-			
-			self.block_event.cancel()
-			self.protocol_floatlayout.add_widget(self.continue_button)
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Button Displayed'
-				, 'Continue Button'
-				])
-	
+
+	def block_rest_end(self, *args):
+		self.protocol_floatlayout.add_widget(self.continue_button)
+
+		self.protocol_floatlayout.add_button_event('Displayed', 'Continue Button')
+		return
 	
 	
 	def block_end(self, *args):
 		
 		self.block_started = False
 		self.protocol_floatlayout.clear_widgets()
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Text Removed'
-			, 'Block Instruction'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Button Removed'
-			, 'Continue Button'
-			])
+
+		self.protocol_floatlayout.add_text_event('Removed', 'Block Instruction')
+
+		self.protocol_floatlayout.add_button_event('Removed', 'Continue Button')
 		
 		self.block_start = time.time()
 		self.trial_end_time = time.time()
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.protocol_floatlayout.add_widget(self.hold_button)
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Button Displayed'
-			, 'Hold Button'
-			])
+
+		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
+
+		return
 	
 	
 	
@@ -779,7 +774,6 @@ class ProtocolBase(Screen):
 	
 	def protocol_end(self, *args):
 
-		self.iti_event.cancel()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
 		
@@ -793,59 +787,45 @@ class ProtocolBase(Screen):
 			])
 		
 		self.protocol_floatlayout.add_widget(self.return_button)
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Button Displayed'
-			, 'Return Button'
-			])
-		
+
+		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
+
 		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
 		self.protocol_floatlayout.write_data()
+
+		return
 	
 	
 	
 	def return_to_main(self, *args):
 		
 		self.manager.current = 'mainmenu'
+
+		return
 	
 	
 	
 	def start_protocol(self, *args):
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Stage Change'
-			, 'Instruction Presentation'
-			])
-		
+
+		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
+
 		self.protocol_floatlayout.remove_widget(self.instruction_label)
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Text Removed'
-			, 'Task Instruction'
-			])
+
+		self.protocol_floatlayout.add_text_event('Removed', 'Task Instruction')
 		
 		self.protocol_floatlayout.remove_widget(self.start_button)
-		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Button Removed'
-			, 'Task Start Button'
-			])
-		
+
+		self.protocol_floatlayout.add_button_event('Removed', 'Task Start Button')
+
 		self.start_clock()
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Button Displayed'
-			, 'Hold Button'
-			])
+		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 		
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.start_iti)
+
+		return
 	
 
 
@@ -871,11 +851,7 @@ class ProtocolBase(Screen):
 				else:
 					# remove any other feedback text
 					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Text Removed'
-						, 'Feedback'
-						])
+					self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
 					self.feedback_on_screen = False
 
 			if not self.feedback_on_screen:
@@ -892,105 +868,57 @@ class ProtocolBase(Screen):
 					, 'Feedback'
 					, self.feedback_label.text
 					])
+		return
 		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
 	
 	
-	def iti(self, *args):
-		
+	def iti_start(self, *args):	
 		if not self.iti_active:
 			# ensure no pending reminder stage remains and swap bindings
-			self.hold_button.unbind(on_press=self.iti)
+			self.hold_button.unbind(on_press=self.iti_start)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
 			self.start_iti = time.time()
 			self.iti_active = True
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Stage Change'
-				, 'ITI Start'
-				])
-			
-			if self.feedback_label.text == self.feedback_dict['wait']:
-				self.protocol_floatlayout.remove_widget(self.feedback_label)
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Text Removed'
-					, 'Feedback'
-					])
-				
-				self.feedback_label.text = ''
-			
-			
-			if not self.feedback_on_screen:
-				self.protocol_floatlayout.add_widget(self.feedback_label)
-				self.feedback_on_screen = True
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Text Displayed'
-					, 'Feedback'
-					])
-				
-				self.feedback_start_time = time.time()
-			
-			
-			if ((time.time() - self.feedback_start_time) > self.feedback_length) \
-				 and self.feedback_on_screen \
-				 and self.feedback_length > 0:
-				
-				self.protocol_floatlayout.remove_widget(self.feedback_label)
-				self.feedback_on_screen = False
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Text Removed'
-					, 'Feedback'
-					])
-			
-			self.iti_event()
-			
+
+			self.protocol_floatlayout.add_stage_event('ITI Start')
+
+			Clock.schedule_once(self.iti_end, self.iti_length)
+			if (time.time() - self.start_iti) > (time.time() - self.feedback_start_time) and self.feedback_on_screen:
+				Clock.schedule_once(self.remove_feedback, self.feedback_length - (time.time() - self.feedback_start_time))
+			else:
+				Clock.schedule_once(self.remove_feedback, self.feedback_length)			
 			return
-		
-		
+		else:
+			return
+	
+	def iti_end(self, *args):
 		if self.iti_active:
-			
-			if (((time.time() - self.start_iti) > self.feedback_length) \
-				or ((time.time() - self.feedback_start_time) > self.feedback_length)) \
-				and self.feedback_on_screen:
 				
-				self.protocol_floatlayout.remove_widget(self.feedback_label)
+			self.iti_active = False
+
+			self.protocol_floatlayout.add_stage_event('ITI End')
+
+			self.hold_button.unbind(on_release=self.hold_remind)
+			self.hold_active = True
+			self.stimulus_presentation()
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Text Removed'
-					, 'Feedback'
-					])
+			return
+		else:
+			return
+
+	def remove_feedback(self, *args):
+		if self.feedback_on_screen:
+			self.protocol_floatlayout.remove_widget(self.feedback_label)
+
+			self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
+
+			self.feedback_on_screen = False  
 				
-				self.feedback_on_screen = False  
-				
-				return
-			
-			elif (time.time() - self.start_iti) > self.iti_length:
-				
-				self.iti_event.cancel()
-				self.iti_active = False
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'ITI End'
-					])
-				
-				self.hold_button.unbind(on_release=self.hold_remind)
-				self.hold_active = True
-				self.stimulus_presentation()
-				
-				return
-	
-	
+			return
+		else:
+			return
 	
 	def write_summary_file(self, data_row):
 		
@@ -1012,7 +940,7 @@ class ProtocolBase(Screen):
 		
 		self.start_time = time.time()
 		self.session_event()
-		self.protocol_floatlayout.start_time = self.start_time
+		self.protocol_floatlayout.set_start_time(self.start_time)
 		
 		return
 	
