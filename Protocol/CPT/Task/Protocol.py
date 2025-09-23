@@ -28,34 +28,6 @@ class ProtocolScreen(ProtocolBase):
 		super(ProtocolScreen, self).__init__(**kwargs)
 		self.protocol_name = 'CPT'
 		self.update_task()
-
-
-		# Set screen size
-		
-		width = int(Config.get('graphics', 'width'))
-		height = int(Config.get('graphics', 'height'))
-		self.maxfps = int(Config.get('graphics', 'maxfps'))
-		
-		if self.maxfps == 0:
-			self.maxfps = 60
-
-		self.screen_resolution = (width, height)
-		self.protocol_floatlayout.size = self.screen_resolution
-
-		self.width_adjust = 1
-		self.height_adjust = 1
-		
-		if width > height:
-			self.width_adjust = height / width
-			# print('Width > Height')
-		
-		elif width < height:
-			self.height_adjust = width / height
-			# print('Width < Height')
-		
-		# print('Width adjust: ', self.width_adjust)
-		# print('height adjust: ', self.height_adjust)
-		
 		
 		# Define Data Columns
 
@@ -909,7 +881,7 @@ class ProtocolScreen(ProtocolBase):
 		# Define Widgets - Images
 		
 		self.hold_button.source = self.hold_image_path
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
 		
@@ -1151,7 +1123,7 @@ class ProtocolScreen(ProtocolBase):
 			
 		self.protocol_floatlayout.add_event([
 			(time.time() - self.start_time)
-			, 'State Change'
+			, 'Stage Change'
 			, 'Object Display'
 			])
 
@@ -1264,7 +1236,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_event([
 			(self.stimulus_start_time - self.start_time)
-			, 'State Change'
+			, 'Stage Change'
 			, 'Object Display'
 			])
 		
@@ -1356,7 +1328,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_event([
 			(time.time() - self.start_time)
-			, 'State Change'
+			, 'Stage Change'
 			, 'Object Remove'
 			])
 
@@ -1429,7 +1401,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.hold_active = True
 		
-			self.hold_button.unbind(on_press=self.iti)
+			self.hold_button.unbind(on_press=self.iti_start)
 			self.hold_button.unbind(on_release=self.premature_response)
 			self.hold_button.bind(on_release=self.stimulus_response)
 			
@@ -1458,9 +1430,6 @@ class ProtocolScreen(ProtocolBase):
 		if self.stimulus_on_screen:
 			return None
 		
-		if self.iti_active:
-			self.iti_event.cancel()
-		
 		self.contingency = 3
 		self.response = 1
 		self.trial_outcome = 0
@@ -1470,35 +1439,13 @@ class ProtocolScreen(ProtocolBase):
 
 		self.feedback_label.text = ''
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Premature Response'
-			])
+		self.protocol_floatlayout.add_stage_event('Premature Response')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Contingency'
-			, self.contingency
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Contingency', self.contingency)
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Response'
-			, self.response
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Response', self.response)
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Outcome'
-			, self.trial_outcome
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Outcome', self.trial_outcome)
 
 		self.write_trial()
 
@@ -1524,7 +1471,7 @@ class ProtocolScreen(ProtocolBase):
 					])
 		
 		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 	
 	
 	
@@ -1532,8 +1479,6 @@ class ProtocolScreen(ProtocolBase):
 	
 	def stimulus_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press
 										# Contingencies: 0: Incorrect; 1: Correct; 2: Response, no center touch; 3: Premature response
-		
-		self.iti_event.cancel()
 
 		self.response_time = time.time()
 		self.response_latency = self.response_time - self.stimulus_start_time
@@ -1541,11 +1486,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_made = True
 		self.hold_active = False
 
-		self.protocol_floatlayout.add_event([
-			(self.response_time - self.start_time)
-			, 'State Change'
-			, 'Stimulus Response'
-			])
+		self.protocol_floatlayout.add_stage_event('Stimulus Response')
 		
 		self.response = 1
 
@@ -1574,37 +1515,13 @@ class ProtocolScreen(ProtocolBase):
 				self.contingency = 2
 				self.trial_outcome = 6
 		
-		self.protocol_floatlayout.add_event([
-			(self.response_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Response'
-			, str(self.response)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Response', str(self.response))
 			
-		self.protocol_floatlayout.add_event([
-			(self.response_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Contingency'
-			, str(self.contingency)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Contingency', str(self.contingency))
 		
-		self.protocol_floatlayout.add_event([
-			(self.response_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Outcome'
-			, str(self.trial_outcome)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Outcome', str(self.trial_outcome))
 		
-		self.protocol_floatlayout.add_event([
-			(self.response_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Response Latency'
-			, str(self.response_latency)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Response Latency', str(self.response_latency))
 		
 		self.hold_button.bind(on_press=self.response_cancelled)
 		self.hold_button.unbind(on_release=self.stimulus_response)
@@ -1616,7 +1533,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_present_event.cancel()
 		self.stimulus_end_event.cancel()
 		self.stimdur_event.cancel()
-		self.iti_event.cancel()
 
 		self.hold_active = False
 
@@ -1642,11 +1558,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_C_mask)
 			self.stimulus_mask_on_screen = False
 		
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'State Change'
-			, 'Stimulus Press'
-			])
+		self.protocol_floatlayout.add_stage_event('Stimulus Press')
 		
 		self.protocol_floatlayout.add_event([
 			(self.stimulus_press_time - self.start_time)
@@ -1751,45 +1663,15 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.feedback_label.text = self.feedback_dict['incorrect']
 
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Response'
-			, str(self.response)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Response', str(self.response))
 		
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Contingency'
-			, str(self.contingency)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Contingency', str(self.contingency))
 		
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Trial Outcome'
-			, str(self.trial_outcome)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Outcome', str(self.trial_outcome))
 		
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Stimulus Press Latency'
-			, str(self.stimulus_press_latency)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Press Latency', str(self.stimulus_press_latency))
 		
-		self.protocol_floatlayout.add_event([
-			(self.stimulus_press_time - self.start_time)
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Movement Latency'
-			, str(self.movement_latency)
-			])
+		self.protocol_floatlayout.add_variable_event('Outcome','Movement Latency', str(self.movement_latency))
 		
 		if self.feedback_label.text != '' \
 			and not self.feedback_on_screen:
@@ -1824,7 +1706,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_present_event.cancel()
 		self.stimulus_end_event.cancel()
 		self.stimdur_event.cancel()
-		self.iti_event.cancel()
 
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
@@ -1844,11 +1725,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_press_latency = np.nan
 		self.movement_latency = np.nan
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'No Stimulus Press'
-			])
+		self.protocol_floatlayout.add_stage_event('No Stimulus Press')
 		
 		self.protocol_floatlayout.add_event([
 			(time.time() - self.start_time)
@@ -1948,45 +1825,15 @@ class ProtocolScreen(ProtocolBase):
 					self.contingency = 1
 					self.trial_outcome = 4
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Trial Response'
-				, str(self.response)
-				])
+			self.protocol_floatlayout.add_variable_event('Outcome','Trial Response', str(self.response))
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Trial Contingency'
-				, str(self.contingency)
-				])
+			self.protocol_floatlayout.add_variable_event('Outcome','Trial Contingency', str(self.contingency))
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Trial Outcome'
-				, str(self.trial_outcome)
-				])
+			self.protocol_floatlayout.add_variable_event('Outcome','Trial Outcome', str(self.trial_outcome))
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Stimulus Press Latency'
-				, str(self.stimulus_press_latency)
-				])
+			self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Press Latency', str(self.stimulus_press_latency))
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Movement Latency'
-				, str(self.movement_latency)
-				])
+			self.protocol_floatlayout.add_variable_event('Outcome','Movement Latency', str(self.movement_latency))
 
 			self.hold_button.unbind(on_release=self.stimulus_response)
 
@@ -2044,11 +1891,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.hold_active = False
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Hold Removed'
-			])
+		self.protocol_floatlayout.add_stage_event('Hold Removed')
 
 
 
@@ -2056,11 +1899,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Section Start'
-			])
+		self.protocol_floatlayout.add_stage_event('Section Start')
 		
 		self.protocol_floatlayout.add_event([
 			(time.time() - self.start_time)
@@ -2269,13 +2108,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.last_response = 0
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Outcome'
-					, 'Last Response'
-					, self.last_response
-					])
+				self.protocol_floatlayout.add_variable_event('Outcome', 'Last Response', self.last_response)
 
 				# if self.last_response != 0:
 				self.response_tracking.append(self.last_response)
@@ -2286,13 +2119,8 @@ class ProtocolScreen(ProtocolBase):
 				if self.last_response == 1:
 					# print('Last response correct.')
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Staircasing'
-						, 'Increase'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Increase')
+
 
 					if self.current_stage == 'Similarity_Scaling':
 						self.similarity_tracking.append(self.current_similarity)
@@ -2315,15 +2143,7 @@ class ProtocolScreen(ProtocolBase):
 							if (sum(self.response_tracking[-10:]) <= 4) \
 								or ((sum(self.response_tracking[-10:] >= 6)) and (statistics.mean(self.similarity_tracking[-10:]) > 0.90)):
 						
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Similarity'
-									, self.outcome_value
-									, 'Type'
-									, 'Mode'
-									])
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Type', 'Mode')
 
 								# print('Similarity Outcome Value: ', self.outcome_value)
 								
@@ -2338,29 +2158,9 @@ class ProtocolScreen(ProtocolBase):
 								else:
 									self.current_nontarget_image_list = baseline_nontarget_image_list[-(self.similarity_index_range * 2):]
 								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Similarity'
-									, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])])
-									, 'Type'
-									, 'Baseline'
-									, 'Units'
-									, 'Min'
-									])
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Baseline', 'Units', 'Min')
 								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Similarity'
-									, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])])
-									, 'Type'
-									, 'Baseline'
-									, 'Units'
-									, 'Max'
-									])
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
 
 								# print('Baseline nontarget image list: ', self.current_nontarget_image_list)
 
@@ -2377,29 +2177,9 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 							
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Similarity'
-							, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])])
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Min'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Staircasing', 'Units', 'Min')
 						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Similarity'
-							, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])])
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Max'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
 
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
 						self.blur_tracking.append(self.blur_level)
@@ -2416,30 +2196,14 @@ class ProtocolScreen(ProtocolBase):
 							else:
 								self.outcome_value = int(block_outcome[0])
 
-							self.protocol_floatlayout.add_event([
-								(time.time() - self.start_time)
-								, 'Variable Change'
-								, 'Outcome'
-								, 'Blur'
-								, self.outcome_value
-								, 'Type'
-								, 'Mode'
-								])
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Type', 'Mode')
 
 							# print('Blur Outcome Value: ', self.outcome_value)
 
 							if self.current_stage == 'Blur_Scaling':
 								self.blur_base = int(self.outcome_value * 0.9)
 
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Blur'
-									, self.blur_base
-									, 'Type'
-									, 'Baseline'
-									])
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Type', 'Baseline')
 
 							self.blur_tracking = list()
 							self.last_response = 0
@@ -2449,15 +2213,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.blur_level += self.blur_change
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Blur'
-							, self.blur_level
-							, 'Type'
-							, 'Staircasing'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Type', 'Staircasing')
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
@@ -2476,15 +2232,7 @@ class ProtocolScreen(ProtocolBase):
 							else:
 								self.outcome_value = float(block_outcome[0])
 
-							self.protocol_floatlayout.add_event([
-								(time.time() - self.start_time)
-								, 'Variable Change'
-								, 'Outcome'
-								, 'Noise'
-								, self.outcome_value
-								, 'Type'
-								, 'Mode'
-								])
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
 							
 							# print('Noise Outcome Value: ', self.outcome_value)
 							
@@ -2494,15 +2242,7 @@ class ProtocolScreen(ProtocolBase):
 								if self.noise_base < 0:
 									self.noise_base = 0
 								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Noise'
-									, self.noise_base
-									, 'Type'
-									, 'Baseline'
-									])
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_base, 'Type', 'Baseline')
 
 							self.noise_mask_index = round(self.noise_base/5) - 1
 
@@ -2525,15 +2265,7 @@ class ProtocolScreen(ProtocolBase):
 							self.img_noise_C_path = str(self.noise_mask_paths[self.noise_mask_index])
 							self.noise_mask_value = self.noise_mask_list[self.noise_mask_index]
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Noise'
-							, self.noise_mask_value
-							, 'Type'
-							, 'Staircasing'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Type', 'Staircasing')
 
 						self.img_noise_C.texture = self.image_dict[self.noise_mask_value].image.texture
 
@@ -2570,102 +2302,21 @@ class ProtocolScreen(ProtocolBase):
 
 								self.limhold = self.limhold_base
 								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Stimulus Duration'
-									, self.outcome_value
-									, 'Type'
-									, 'Mode'
-									, 'Units'
-									, 'Frames'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Stimulus Duration'
-									, str(self.outcome_value * self.frame_duration)
-									, 'Type'
-									, 'Mode'
-									, 'Units'
-									, 'Seconds'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Limited Hold'
-									, str(self.outcome_value * self.frame_duration)
-									, 'Type'
-									, 'Mode'
-									, 'Units'
-									, 'Seconds'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Stimulus Duration'
-									, self.stimdur_base
-									, 'Type'
-									, 'Baseline'
-									, 'Units'
-									, 'Frames'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Stimulus Duration'
-									, str(self.stimdur_base * self.frame_duration)
-									, 'Type'
-									, 'Baseline'
-									, 'Units'
-									, 'Seconds'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Parameter'
-									, 'Limited Hold'
-									, self.limhold
-									, 'Type'
-									, 'Baseline'
-									, 'Units'
-									, 'Seconds'
-									])
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Type', 'Baseline', 'Units', 'Frames')
+
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Type', 'Baseline', 'Units', 'Seconds')
+
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Type', 'Baseline', 'Units', 'Seconds')
 
 							else:
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Stimulus Duration'
-									, self.outcome_value
-									, 'Type'
-									, 'Mode'
-									, 'Units'
-									, 'Frames'
-									])
-								
-								self.protocol_floatlayout.add_event([
-									(time.time() - self.start_time)
-									, 'Variable Change'
-									, 'Outcome'
-									, 'Stimulus Duration'
-									, str(self.outcome_value * self.frame_duration)
-									, 'Type'
-									, 'Mode'
-									, 'Units'
-									, 'Seconds'
-									])
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
 
 							self.stimdur_frame_tracking = list()
 							
@@ -2716,55 +2367,18 @@ class ProtocolScreen(ProtocolBase):
 						if self.stimdur_current_frames < self.staircase_stimdur_frame_min:
 							self.stimdur_current_frames = self.staircase_stimdur_frame_min
 						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Outcome'
-							, 'Stimulus Duration'
-							, self.outcome_value
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Frames'
-							])
-						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Outcome'
-							, 'Stimulus Duration'
-							, str(self.outcome_value * self.frame_duration)
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Seconds'
-							])
+						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Staircasing', 'Units', 'Frames')
+						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Staircasing', 'Units', 'Seconds')
 
 						if self.current_stage == 'LimDur_Scaling':
 							self.limhold = self.stimdur_current_frames * self.frame_duration
 							
-							self.protocol_floatlayout.add_event([
-								(time.time() - self.start_time)
-								, 'Variable Change'
-								, 'Outcome'
-								, 'Limited Hold'
-								, self.limhold
-								, 'Type'
-								, 'Staircasing'
-								, 'Units'
-								, 'Seconds'
-								])
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', self.limhold, 'Type', 'Staircasing', 'Units', 'Seconds')
 				
 				elif self.last_response == -1:
 					# print('Last response incorrect.')
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Staircasing'
-						, 'Decrease'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
 
 					if self.current_stage == 'Similarity_Scaling':
 
@@ -2783,29 +2397,9 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 							
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Similarity'
-							, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])])
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Min'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Staircasing', 'Units', 'Min')
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Similarity'
-							, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])])
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Max'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
 
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
 
@@ -2823,15 +2417,7 @@ class ProtocolScreen(ProtocolBase):
 						if self.blur_level < 0:
 							self.blur_level = 0
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Blur'
-							, self.blur_level
-							, 'Type'
-							, 'Staircasing'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Type', 'Staircasing')
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
@@ -2857,15 +2443,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.img_noise_C.texture = self.image_dict[self.noise_mask_value].image.texture
 						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Noise'
-							, self.noise_mask_value
-							, 'Type'
-							, 'Staircasing'
-							])
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Type', 'Staircasing')
 					
 					elif self.current_stage in ['LimDur_Scaling', 'StimDur_Probe']:
 						self.stimdur_use_steps = False
@@ -2889,45 +2467,16 @@ class ProtocolScreen(ProtocolBase):
 							else:
 								self.stimdur_current_frames = self.stimdur_base
 						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Outcome'
-							, 'Stimulus Duration'
-							, self.outcome_value
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Frames'
-							])
-						
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Outcome'
-							, 'Stimulus Duration'
-							, str(self.outcome_value * self.frame_duration)
-							, 'Type'
-							, 'Staircasing'
-							, 'Units'
-							, 'Seconds'
-							])
-						
+						self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration', self.outcome_value,
+												   'Staircasing','Frames')
+						self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration',str(self.outcome_value * self.frame_duration),
+												   'Staircasing','Seconds')
 
 						if self.current_stage == 'LimDur_Scaling':
 							self.limhold = self.stimdur_current_frames * self.frame_duration
 							
-							self.protocol_floatlayout.add_event([
-								(time.time() - self.start_time)
-								, 'Variable Change'
-								, 'Outcome'
-								, 'Limited Hold'
-								, self.limhold
-								, 'Type'
-								, 'Staircasing'
-								, 'Units'
-								, 'Seconds'
-								])
+							self.protocol_floatlayout.add_variable_event('Outcome','Limited Hold', self.limhold,
+													   'Staircasing','Seconds')
 
 			# Set next trial parameters
 
@@ -2935,22 +2484,9 @@ class ProtocolScreen(ProtocolBase):
 
 			self.current_trial += 1
 			self.current_block_trial += 1
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Trial'
-				, self.current_trial
-				])
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Block Trial'
-				, self.current_block_trial
-				])
+		
+			self.protocol_floatlayout.add_variable_event('Parameter','Current Trial', self.current_trial)
+			self.protocol_floatlayout.add_variable_event('Parameter','Current Block Trial', self.current_block_trial)
 
 			# ITI
 			
@@ -2961,58 +2497,20 @@ class ProtocolScreen(ProtocolBase):
 				
 				else:
 					self.iti_length = random.randint(min(self.iti_frame_range), max(self.iti_frame_range)) * self.frame_duration
-
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Current ITI'
-					, self.iti_length
-					])
+				
+				self.protocol_floatlayout.add_variable_event('Parameter', 'Current ITI', self.iti_length, 'Units', 'Seconds')
 
 			# Stimulus duration/limited hold frames
 
 			if self.current_block == 0:				
 				self.stimdur_current_frames = self.stimdur_base
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Outcome'
-					, 'Stimulus Duration'
-					, self.outcome_value
-					, 'Type'
-					, 'Training'
-					, 'Units'
-					, 'Frames'
-					])
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Outcome'
-					, 'Stimulus Duration'
-					, str(self.outcome_value * self.frame_duration)
-					, 'Type'
-					, 'Training'
-					, 'Units'
-					, 'Seconds'
-					])
+			
+				self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration', self.outcome_value,'Training','Frames')
+				self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration',str(self.outcome_value * self.frame_duration),'Training','Seconds')
 
 			if self.current_stage == 'LimDur_Scaling':
 				self.limhold = self.stimdur_current_frames * self.frame_duration
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Outcome'
-					, 'Limited Hold'
-					, self.limhold
-					, 'Type'
-					, 'Training'
-					, 'Units'
-					, 'Seconds'
-					])
+				self.protocol_floatlayout.add_variable_event('Outcome','Limited Hold', self.limhold,'Training','Seconds')
 
 			self.stimdur = self.stimdur_current_frames * self.frame_duration
 
@@ -3028,30 +2526,14 @@ class ProtocolScreen(ProtocolBase):
 				
 				# print('Miss (SART)')
 				# print('Correction trial initiated...')
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Stimulus'
-					, self.center_image
-					, 'Type'
-					, 'SART Correction'
-					])
+
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','SART Correction')
 			
 			# Premature response
 			elif self.contingency == 3:
 				# print('Premature response')
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Stimulus'
-					, self.center_image
-					, 'Type'
-					, 'Premature'
-					])
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','Premature')
 			
 			# Hit or miss
 			else: # Set next stimulus image
@@ -3064,21 +2546,9 @@ class ProtocolScreen(ProtocolBase):
 					random.shuffle(self.trial_list)
 					self.trial_index = 0
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Trial Index'
-					, self.trial_index
-					])
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Trial Type'
-					, self.trial_list[self.trial_index]
-					])
+				self.protocol_floatlayout.add_variable_event('Parameter','Trial Index', self.trial_index)
+
+				self.protocol_floatlayout.add_variable_event('Parameter','Trial Type', self.trial_list[self.trial_index])
 				
 				if self.trial_list[self.trial_index] == 'Target':
 					self.center_image = self.target_image
@@ -3096,16 +2566,8 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.img_stimulus_C_image_path = str(self.image_folder / self.center_image) + '.png'
 				self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Stimulus'
-					, self.center_image
-					, 'Type'
-					, 'Novel'
-					])
+
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','Novel')
 			
 			# Flanker probe - set flankers
 
@@ -3125,28 +2587,12 @@ class ProtocolScreen(ProtocolBase):
 				if self.current_substage == 'none':
 					self.flanker_image = 'black'
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Flanker'
-						, self.flanker_image
-						, 'Type'
-						, 'Blank'
-					])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Blank')
 
 				elif self.current_substage == 'same':
 					self.flanker_image = self.center_image
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Flanker'
-						, self.flanker_image
-						, 'Type'
-						, 'Congruent'
-					])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Congruent')
 				
 				elif self.current_substage == 'diff':
 					
@@ -3156,15 +2602,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.flanker_image = self.target_image
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Flanker'
-						, self.flanker_image
-						, 'Type'
-						, 'Incongruent'
-					])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Incongruent')
 				
 				self.img_stimulus_L.texture = self.image_dict[self.flanker_image].image.texture
 				self.img_stimulus_R.texture = self.image_dict[self.flanker_image].image.texture			
@@ -3182,7 +2620,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
-					, 'State Change'
+					, 'Stage Change'
 					, 'Block End'
 					])
 				
@@ -3201,7 +2639,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
-					, 'State Change'
+					, 'Stage Change'
 					, 'Session End'
 					])
 
@@ -3217,7 +2655,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
-					, 'State Change'
+					, 'Stage Change'
 					, 'Block End'
 					])
 				
@@ -3241,15 +2679,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = max(self.similarity_tracking)
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Similarity'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Type', 'Mode')
 
 					baseline_nontarget_image_list = self.similarity_data.loc[
 						(self.similarity_data[self.target_image] <= self.outcome_value)
@@ -3258,29 +2688,9 @@ class ProtocolScreen(ProtocolBase):
 					
 					self.current_nontarget_image_list = baseline_nontarget_image_list[-self.similarity_index_range:]
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Similarity'
-						, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])])
-						, 'Type'
-						, 'Baseline'
-						, 'Units'
-						, 'Min'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Baseline', 'Units', 'Min')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Similarity'
-						, str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])])
-						, 'Type'
-						, 'Baseline'
-						, 'Units'
-						, 'Max'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
 
 					self.similarity_tracking = list()
 
@@ -3296,27 +2706,11 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Blur'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Type', 'Mode')
 
 					self.blur_base = int(self.outcome_value * 0.9)
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Blur'
-						, self.blur_base
-						, 'Type'
-						, 'Baseline'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Type', 'Baseline')
 
 					self.blur_tracking = list()
 
@@ -3332,15 +2726,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Noise'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
 
 					self.noise_base = int(self.outcome_value - 10)
 
@@ -3352,15 +2738,7 @@ class ProtocolScreen(ProtocolBase):
 					if self.noise_mask_index < 0:
 						self.noise_mask_index = 0
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Noise'
-						, str(self.noise_base)
-						, 'Type'
-						, 'Baseline'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', str(self.noise_base), 'Type', 'Baseline')
 
 					self.noise_tracking = list()
 
@@ -3384,77 +2762,17 @@ class ProtocolScreen(ProtocolBase):
 					self.limhold_base = self.stimdur_base * self.frame_duration
 					self.limhold = self.limhold_base
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Stimulus Duration'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						, 'Units'
-						, 'Frames'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Stimulus Duration'
-						, str(self.outcome_value * self.frame_duration)
-						, 'Type'
-						, 'Mode'
-						, 'Units'
-						, 'Seconds'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Limited Hold'
-						, str(self.outcome_value * self.frame_duration)
-						, 'Type'
-						, 'Mode'
-						, 'Units'
-						, 'Seconds'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Stimulus Duration'
-						, self.stimdur_base
-						, 'Type'
-						, 'Baseline'
-						, 'Units'
-						, 'Frames'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Type', 'Baseline', 'Units', 'Frames')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Stimulus Duration'
-						, str(self.stimdur_base * self.frame_duration)
-						, 'Type'
-						, 'Baseline'
-						, 'Units'
-						, 'Seconds'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Type', 'Baseline', 'Units', 'Seconds')
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Limited Hold'
-						, self.limhold
-						, 'Type'
-						, 'Baseline'
-						, 'Units'
-						, 'Seconds'
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Type', 'Baseline', 'Units', 'Seconds')
 					
 					self.stimdur_frame_tracking = list()
 
@@ -3470,15 +2788,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Noise'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
 					
 					self.noise_tracking = list()
 
@@ -3497,29 +2807,9 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = int(block_outcome[0])
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Stimulus Duration'
-						, self.outcome_value
-						, 'Type'
-						, 'Mode'
-						, 'Units'
-						, 'Frames'
-						])
-					
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Outcome'
-						, 'Stimulus Duration'
-						, str(self.outcome_value * self.frame_duration)
-						, 'Type'
-						, 'Mode'
-						, 'Units'
-						, 'Seconds'
-						])
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
 					
 					self.stimdur_frame_tracking = list()
 				
@@ -3534,12 +2824,12 @@ class ProtocolScreen(ProtocolBase):
 
 			# print('Trial contingency end')
 
-			self.hold_button.bind(on_press=self.iti)
+			self.hold_button.bind(on_press=self.iti_start)
 
 			self.trial_end_time = time.time()
 			
 			if self.hold_active == True:
-				self.iti()
+				self.iti_start()
 		
 		
 		except KeyboardInterrupt:
@@ -3562,11 +2852,10 @@ class ProtocolScreen(ProtocolBase):
 		if not self.stage_screen_started:
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
-				, 'State Change'
+				, 'Stage Change'
 				, 'Stage End'
 				])
 
-			self.iti_event.cancel()
 			self.stimdur_event.cancel()
 			self.stimulus_present_event.cancel()
 			self.stimulus_end_event.cancel()
@@ -3651,7 +2940,6 @@ class ProtocolScreen(ProtocolBase):
 			self.stimulus_present_event.cancel()
 			self.stimulus_end_event.cancel()
 			self.stimdur_event.cancel()
-			self.iti_event.cancel()
 			
 			if self.feedback_on_screen:
 				
@@ -3676,7 +2964,7 @@ class ProtocolScreen(ProtocolBase):
 		
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
-				, 'State Change'
+				, 'Stage Change'
 				, 'Block Contingency'
 				])
 
@@ -3684,7 +2972,7 @@ class ProtocolScreen(ProtocolBase):
 		
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
-				, 'State Change'
+				, 'Stage Change'
 				, 'Screen Cleared'
 				])
 
@@ -3713,7 +3001,7 @@ class ProtocolScreen(ProtocolBase):
 			
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
-					, 'State Change'
+					, 'Stage Change'
 					, 'Stage Change'
 					, 'Current Stage'
 					, self.current_stage
@@ -3737,7 +3025,7 @@ class ProtocolScreen(ProtocolBase):
 			
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
-					, 'State Change'
+					, 'Stage Change'
 					, 'Protocol End'
 					])
 				
@@ -3755,21 +3043,13 @@ class ProtocolScreen(ProtocolBase):
 				self.block_duration = 3*(self.block_trial_max)
 				self.target_probability = 1.0
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Trial List'
-					, self.current_stage
-					, 'Probability'
-					, self.target_probability
-					])
+				self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				self.block_start = time.time()
 				self.block_started = False
 				self.training_complete = True
 
-				self.hold_button.bind(on_press=self.iti)
+				self.hold_button.bind(on_press=self.iti_start)
 				
 				self.protocol_floatlayout.add_widget(self.hold_button)
 				
@@ -3836,29 +3116,13 @@ class ProtocolScreen(ProtocolBase):
 					self.block_duration = 3*(self.block_trial_max)
 					self.target_probability = 1.0
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'Similarity_Scaling':
 					self.trial_list = self.trial_list_sim
 					self.target_probability = self.target_prob_sim / self.target_prob_trial_num
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage in ['Blur_Scaling', 'Noise_Scaling', 'LimDur_Scaling', 'Noise_Probe', 'Blur_Probe', 'StimDur_Probe', 'MidProb']:
 					self.trial_list = self.trial_list_base
@@ -3867,29 +3131,13 @@ class ProtocolScreen(ProtocolBase):
 					if self.current_stage == 'MidProb':
 						self.block_duration = self.block_duration_probe
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'Flanker_Probe':
 					self.trial_list = self.trial_list_flanker
 					self.target_probability = self.target_prob_sim / self.target_prob_trial_num
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'TarProb_Probe':
 					self.block_max_count = len(self.target_prob_list)
@@ -3909,46 +3157,21 @@ class ProtocolScreen(ProtocolBase):
 						self.trial_list.append('Nontarget')
 
 					random.shuffle(self.trial_list)
-
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'SART_Probe':
 					self.trial_list = self.trial_list_SART
 					self.target_probability = self.target_prob_SART / self.target_prob_trial_num
 					self.block_duration = self.block_duration_probe
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				else:
 					# print('Unknown stage!')
 					self.trial_list = self.trial_list_base
 					self.target_probability = self.target_prob_base / self.target_prob_trial_num
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 
 
 				self.instruction_button.text = 'Press Here to Start'
@@ -4009,55 +3232,17 @@ class ProtocolScreen(ProtocolBase):
 
 					random.shuffle(self.trial_list)
 
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Trial List'
-						, self.current_stage
-						, 'Probability'
-						, self.target_probability
-						])
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				# print('Else: Block Screen')
 				self.block_started = False
 				self.block_event()
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Stimulus Duration'
-				, str(self.stimdur_current_frames)
-				, 'Type'
-				, 'Staircasing'
-				, 'Units'
-				, 'Frames'
-				])
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames), 'Type', 'Staircasing', 'Units', 'Frames')
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Stimulus Duration'
-				, str(self.stimdur_current_frames * self.frame_duration)
-				, 'Type'
-				, 'Staircasing'
-				, 'Units'
-				, 'Seconds'
-				])
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Outcome'
-				, 'Limited Hold'
-				, str(self.limhold)
-				, 'Type'
-				, 'Staircasing'
-				, 'Units'
-				, 'Seconds'
-				])
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames * self.frame_duration), 'Type', 'Staircasing', 'Units', 'Seconds')
+
+			self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.limhold), 'Type', 'Staircasing', 'Units', 'Seconds')
 
 			self.current_hits = 0
 			self.last_response = 0
@@ -4076,13 +3261,7 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.block_start = time.time()
 			
-			self.protocol_floatlayout.add_event([
-				(self.block_start - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Block Start Time'
-				, str(self.block_start)
-				])
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Block Start Time', str(self.block_start))
 			
 			# print('Block contingency end')
 
