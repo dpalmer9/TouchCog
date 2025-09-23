@@ -316,6 +316,36 @@ class FloatLayoutLog(FloatLayout):
 			])
 		return
 	
+	def add_variable_event(self, variable_class, variable_name, variable_value, variable_type=None, variable_units=None):
+		if variable_type is None and variable_units is None:
+			self.add_event([
+				(time.time() - self.start_time),
+			 	'Variable Change',
+				variable_class,
+				variable_name,
+				variable_value])
+			
+		elif variable_type is not None and variable_units is None:
+			self.add_event([
+				(time.time() - self.start_time),
+			 	'Variable Change',
+				variable_class,
+				variable_name,
+				'Type',
+				variable_type])
+		
+		else:
+			self.add_event([
+				(time.time() - self.start_time),
+			 	'Variable Change',
+				variable_class,
+				variable_name,
+				'Type',
+				variable_type,
+				'Units',
+				variable_units])
+
+	
 	def set_start_time(self, start_time):
 		self.start_time = start_time
 		return
