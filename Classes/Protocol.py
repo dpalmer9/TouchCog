@@ -17,6 +17,9 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image, AsyncImage
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+from kivy.config import Config
+
+
 
 
 
@@ -340,19 +343,25 @@ class ProtocolBase(Screen):
 		
 		self.name = 'protocolscreen'
 			
-		width = screen_resolution[0]
-		height = screen_resolution[1]
-		self.size = screen_resolution
-		self.screen_ratio = 1
+		width = int(Config.get('graphics', 'width'))
+		height = int(Config.get('graphics', 'height'))
+		self.maxfps = int(Config.get('graphics', 'maxfps'))
+		
+		if self.maxfps == 0:
+			self.maxfps = 60
+
+		self.screen_resolution = (width, height)
+		self.protocol_floatlayout.size = self.screen_resolution
 
 		self.width_adjust = 1
 		self.height_adjust = 1
-
+		
 		if width > height:
 			self.width_adjust = height / width
+			# print('Width > Height')
 		
-		elif height < width:
-			self.height_adjust = width / height		
+		elif width < height:
+			self.height_adjust = width / height
 		
 		self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
 		self.protocol_floatlayout.size = screen_resolution
