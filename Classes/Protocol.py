@@ -344,7 +344,20 @@ class FloatLayoutLog(FloatLayout):
 				variable_type,
 				'Units',
 				variable_units])
-
+			
+	def add_object_event(self, event_type, object_type, object_name, object_detail, image_name=None):
+		# Generic object event builder. This will log the standard fields and
+		# append an 'Image Name' pair only when an image_name is provided.
+		row = [
+			(time.time() - self.start_time),
+			'Object ' + event_type,
+			object_type,
+			object_name,
+			object_detail,
+		]
+		if image_name is not None:
+			row.extend(['Image Name', image_name])
+		self.add_event(row)
 	
 	def set_start_time(self, start_time):
 		self.start_time = start_time
@@ -900,13 +913,7 @@ class ProtocolBase(Screen):
 				self.feedback_start_time = time.time()
 				self.feedback_on_screen = True
 
-				self.protocol_floatlayout.add_event([
-					(self.feedback_start_time - self.start_time)
-					, 'Object Display'
-					, 'Text'
-					, 'Feedback'
-					, self.feedback_label.text
-					])
+				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		return
 		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
