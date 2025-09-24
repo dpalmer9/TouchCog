@@ -326,7 +326,6 @@ class ProtocolScreen(ProtocolBase):
 		self.block_check_clock = Clock
 		self.block_check_clock.interupt_next_only = False
 		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
-		self.stage_screen_event = self.block_check_clock.create_trigger(self.stage_screen, 0, interval=True)
 		
 		self.task_clock = Clock
 		self.task_clock.interupt_next_only = True
@@ -1858,7 +1857,7 @@ class ProtocolScreen(ProtocolBase):
 								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
 								self.current_block += 1
 								self.protocol_floatlayout.remove_widget(self.hold_button)
-								self.stage_screen_event() ######
+								self.stage_screen_start()
 
 						self.similarity_index_min = int(self.nontarget_images.index(self.center_image))
 						self.similarity_index_max = self.similarity_index_min + self.similarity_index_range
@@ -1903,7 +1902,7 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event() ##
+							self.stage_screen_start()
 
 						self.blur_level += self.blur_change
 
@@ -1952,7 +1951,7 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event() ##
+							self.stage_screen_start()
 						
 						# If the noise mask index is less than the maximum index of the noise mask list
 						if self.noise_mask_index < len(self.noise_mask_list) - 1:
@@ -2028,7 +2027,7 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event() ##
+							self.stage_screen_start() ##
 
 						# If using steps and the stimdur index is less than the maximum index of the stimdur frames list
 						elif (self.stimdur_use_steps) \
@@ -2519,11 +2518,11 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.remove_widget(self.hold_button)
 				
 				if self.current_stage == 'Training':
-					self.block_check_event()
+					self.block_contingency()
 
 				else:
 					self.current_block += 1
-					self.stage_screen_event()
+					self.stage_screen()
 
 			# print('Trial contingency end')
 
@@ -2545,82 +2544,74 @@ class ProtocolScreen(ProtocolBase):
 			print('Error; program terminated.')
 			self.protocol_end()
 
-
-
-	def stage_screen(
-		self
-		, *args
-		):		
-
-		if not self.stage_screen_started:
-			self.protocol_floatlayout.add_event([
+	def start_stage_screen(self, *args):
+		self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
 				, 'Stage Change'
 				, 'Stage End'
 				])
 
-			self.stimdur_event.cancel()
-			self.stimulus_present_event.cancel()
-			self.stimulus_end_event.cancel()
+		self.stimdur_event.cancel()
+		self.stimulus_present_event.cancel()
+		self.stimulus_end_event.cancel()
 
-			self.protocol_floatlayout.clear_widgets()
-			self.feedback_on_screen = False
+		self.protocol_floatlayout.clear_widgets()
+		self.feedback_on_screen = False
 			
-			if self.current_stage == 'Similarity_Scaling':
-				self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value*100)) + '%' + ' similarity.'
+		if self.current_stage == 'Similarity_Scaling':
+			self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value*100)) + '%' + ' similarity.'
 			
-			elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
-				self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value)) + ' pixels of blur.'
+		elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
+			self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value)) + ' pixels of blur.'
 			
-			elif self.current_stage in ['Noise_Scaling', 'Noise_Probe']:
-				self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli with \n' + str(100 - self.outcome_value) + '%' + ' of the image visible.'
+		elif self.current_stage in ['Noise_Scaling', 'Noise_Probe']:
+			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli with \n' + str(100 - self.outcome_value) + '%' + ' of the image visible.'
 
-			elif self.current_stage == 'LimDur_Scaling':
-				self.outcome_string = 'Great job!\n\nYou were able to correctly respond to stimuli\nwithin ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
+		elif self.current_stage == 'LimDur_Scaling':
+			self.outcome_string = 'Great job!\n\nYou were able to correctly respond to stimuli\nwithin ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
 			
-			elif self.current_stage == 'StimDur_Probe':
-				self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli presented\nfor ' + str(int(self.outcome_value)) + ' frames (' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds).'
+		elif self.current_stage == 'StimDur_Probe':
+			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli presented\nfor ' + str(int(self.outcome_value)) + ' frames (' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds).'
 
-			elif self.current_stage in ['TarProb_Probe', 'Flanker_Probe']:
+		elif self.current_stage in ['TarProb_Probe', 'Flanker_Probe']:
 
-				if self.block_target_total == 0:
-					self.outcome_string = 'Great job!\n\n'
+			if self.block_target_total == 0:
+				self.outcome_string = 'Great job!\n\n'
 				
-				else:
-					self.hit_accuracy = (self.block_hits / self.block_target_total)
-					self.outcome_string = 'Great job!\n\nYour accuracy on that block was ' + str(round(self.hit_accuracy, 2) * 100) + '%!\n\nYou made ' + str(self.block_false_alarms) + ' false alarms (responses to nontarget images).'
-			
 			else:
-				self.outcome_string = "Great job!\n\n"
-
-
-			if self.stage_index < len(self.stage_list):
-				self.stage_string = 'Please press "CONTINUE" to start the next block.'
-
-			else:
-				self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.' # 'Please press "END SESSION" to end the session.'
-				self.session_end_button.pos_hint = self.text_button_pos_UC
-				self.protocol_floatlayout.add_widget(self.session_end_button)
+				self.hit_accuracy = (self.block_hits / self.block_target_total)
+				self.outcome_string = 'Great job!\n\nYour accuracy on that block was ' + str(round(self.hit_accuracy, 2) * 100) + '%!\n\nYou made ' + str(self.block_false_alarms) + ' false alarms (responses to nontarget images).'
 			
-			self.stage_results_label.text = self.outcome_string + '\n\n' + self.stage_string
-			self.protocol_floatlayout.add_widget(self.stage_results_label)
+		else:
+			self.outcome_string = "Great job!\n\n"
+
+
+		if self.stage_index < len(self.stage_list):
+			self.stage_string = 'Please press "CONTINUE" to start the next block.'
+
+		else:
+			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.' # 'Please press "END SESSION" to end the session.'
+			self.session_end_button.pos_hint = self.text_button_pos_UC
+			self.protocol_floatlayout.add_widget(self.session_end_button)
 			
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
+		self.stage_results_label.text = self.outcome_string + '\n\n' + self.stage_string
+		self.protocol_floatlayout.add_widget(self.stage_results_label)
+			
+		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
-			self.stage_screen_time = time.time()
-			self.stage_screen_started = True
-			self.block_started = True
+		self.stage_screen_time = time.time()
+		self.stage_screen_started = True
+		self.block_started = True
 
-			self.stage_screen_event()
+		Clock.schedule_once(self.stage_screen_end, 1.0)
 
-		if (time.time() - self.stage_screen_time) >= 1.0:
-			self.stage_screen_event.cancel()
-			self.stage_screen_started = False
+	def stage_screen_end(self, *args):
+		self.stage_screen_started = False
 
-			if self.stage_index < (len(self.stage_list)):
-				self.protocol_floatlayout.add_widget(self.stage_continue_button)
+		if self.stage_index < (len(self.stage_list)):
+			self.protocol_floatlayout.add_widget(self.stage_continue_button)
 				
-				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
+			self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
 	
 	
 	
