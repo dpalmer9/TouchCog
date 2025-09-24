@@ -7,6 +7,7 @@ import pathlib
 import random
 import statistics
 import time
+from collections import Counter
 
 from Classes.Protocol import ImageButton, ProtocolBase
 
@@ -563,6 +564,7 @@ class ProtocolScreen(ProtocolBase):
 
 		
 		# Convert parameters to useable types
+
 		
 		# General properties
 		
@@ -570,7 +572,7 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_base = list()
 
 		self.target_prob_list = [int(float(iProb) * self.target_prob_trial_num) for iProb in target_prob_import]
-		random.shuffle(self.target_prob_list)
+		self.target_prob_list = self.constrained_shuffle(self.target_prob_list, max_run=3)
 
 		self.nontarget_prob_base = self.target_prob_trial_num - self.target_prob_base
 		
@@ -580,7 +582,7 @@ class ProtocolScreen(ProtocolBase):
 		for iTrial in range(self.nontarget_prob_base):
 			self.trial_list_base.append('Nontarget')
 		
-		random.shuffle(self.trial_list_base)
+		self.trial_list_base = self.constrained_shuffle(self.trial_list_base, max_run=3)
 		
 		self.trial_list = self.trial_list_base
 		# print('Trial list mid prob: ', self.trial_list)
@@ -591,11 +593,11 @@ class ProtocolScreen(ProtocolBase):
 		
 			for iTrial in range(self.target_prob_sim):
 				self.trial_list_sim.append('Target')
-			
+				
 			for iTrial in range(self.nontarget_prob_sim):
 				self.trial_list_sim.append('Nontarget')
 			
-			random.shuffle(self.trial_list_sim)
+			self.trial_list_sim = self.constrained_shuffle(self.trial_list_sim, max_run=3)
 		
 		if 'SART_Probe' in self.stage_list:
 			self.trial_list_SART = list()
@@ -604,11 +606,11 @@ class ProtocolScreen(ProtocolBase):
 		
 			for iTrial in range(self.target_prob_SART):
 				self.trial_list_SART.append('Target')
-			
+				
 			for iTrial in range(self.nontarget_prob_SART):
 				self.trial_list_SART.append('Nontarget')
 			
-			random.shuffle(self.trial_list_SART)
+			self.trial_list_SART = self.constrained_shuffle(self.trial_list_SART, max_run=3)
 		
 		if 'Flanker_Probe' in self.stage_list:
 			self.trial_list_flanker = list()
@@ -616,15 +618,15 @@ class ProtocolScreen(ProtocolBase):
 		
 			for iTrial in range(self.target_prob_flanker):
 				self.trial_list_flanker.append('Target')
-			
+				
 			for iTrial in range(self.nontarget_prob_flanker):
 				self.trial_list_flanker.append('Nontarget')
 			
-			random.shuffle(self.trial_list_flanker)
+			self.trial_list_flanker = self.constrained_shuffle(self.trial_list_flanker, max_run=3)
 			
 			self.flanker_stage_index = 0
 			self.flanker_stage_list = ['none', 'same', 'diff', 'none', 'same', 'diff']
-			random.shuffle(self.flanker_stage_list)
+			self.flanker_stage_list = self.constrained_shuffle(self.flanker_stage_list, max_run=3)
 			self.current_substage = ''
 			self.flanker_image = ''
 		
@@ -1343,7 +1345,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	# Contingency Stages #
-	
+	# Tracks contingencies and outcomes based on removal of hold from hold_button
 	def stimulus_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press
 										# Contingencies: 0: Incorrect; 1: Correct; 2: Response, no center touch; 3: Premature response
 
@@ -1394,7 +1396,7 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.stimulus_response)
 	
 	
-	
+	# Tracks contingencies based on responses direectly to the stimulus image
 	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Premature,6-Dual Image, wrong side
 		
 		self.stimulus_present_event.cancel()
@@ -1721,95 +1723,109 @@ class ProtocolScreen(ProtocolBase):
 		try:
 
 			self.trial_contingency_event.cancel()
-
-			if self.current_block_trial != 0:			
+			## ENCODE TRIAL OUTCOME AS last_response FOR EACH CONTINGENCY ##
+			# Check that current block trial is not the first trial of the block
+			if self.current_block_trial != 0:
+				# Determine if the stage is Training or the first block index			
 				if (self.current_stage == 'Training') \
 					or (self.current_block == 0):
-					
+					#Encode previous trial as current hit=hit
 					if self.trial_outcome == 1:
 						self.last_response = 1
 					
 					else:
 						self.last_response = 0
 				
+				# Check if stage is Similarity Scaling Task - Only CR gets a positive outcome. Miss FAR get negative. Everything else neutral
 				elif self.current_stage == 'Similarity_Scaling':
-					
+					#Encode previous trial as current
 					if self.trial_outcome == 4:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a miss or false alarm
 					elif self.trial_outcome in [2, 3]:
 						self.last_response = -1
-					
+					# If not miss, false alarm, or correct rejection, encoded as 0
 					else:
 						self.last_response = 0
 				
+				# Check if stage is blur scaling, noise scaling, blur probe, or noise probe
 				elif self.current_stage in ['Blur_Scaling', 'Noise_Scaling', 'Blur_Probe', 'Noise_Probe']:
-					
+					# Encode last_response as 1 if trial outcome is a hit
 					if self.trial_outcome == 1:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a miss or false alarm
 					elif self.trial_outcome in [2, 3]:
 						self.last_response = -1
-					
+					# If not miss, false alarm, or hit, encoded as 0
 					else:
 						self.last_response = 0
 				
+				# Check if stage is limited duration scaling
 				elif self.current_stage == 'LimDur_Scaling':
-					
+					# Encode last_response as 1 if trial outcome is a hit
 					if self.trial_outcome == 1:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a miss, false alarm, hit no center, false alarm no center
 					elif self.trial_outcome in [2, 3, 5, 6]:
 						self.last_response = -1
-					
+					# Encode correct rejection as 0
 					else:
 						self.last_response = 0
 				
-				elif self.current_stage == 'StimDur_Probe':
-					
+				# Check if stage is stimulus duration probe
+				elif self.current_stage == 'StimDur_Probe': # Counts if hit or lift for a hit. Negative if miss or FA with or without press.
+					# Encode last_response as 1 if trial outcome is a hit or hit no center
 					if self.trial_outcome in [1, 5]:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a miss, false alarm, or false alarm no center
 					elif self.trial_outcome in [2, 3, 6]:
 						self.last_response = -1
-					
+					# Encode correct rejection as 0
 					else:
 						self.last_response = 0
 				
+				# Check if stage is target probability probe with target probability >= 75% or sustained attention to response task
 				elif (self.current_stage == 'SART_Probe') \
 					or ((self.current_stage == 'TarProb_Probe') and (self.target_probability >= 0.75)):
-					
+					# Encode last_response as 1 if trial outcome is a correct rejection
 					if self.trial_outcome == 4:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a false alarm or false alarm no center
 					elif self.trial_outcome in [3, 6]:
 						self.last_response = -1
-					
+					# If not false alarm or correct rejection, encoded as 0
 					else:
 						self.last_response = 0
-
+				# Check for any other stage non-specific
 				else:
-
+					# Encode last_response as 1 if trial outcome is a hit
 					if self.trial_outcome == 1:
 						self.last_response = 1
-					
+					# Encode last_response as -1 if trial outcome is a false alarm or false alarm no center
 					elif self.trial_outcome in [3, 6]:
 						self.last_response = -1
-					
+					# If not false alarm or hit, encoded as 0
 					else:
 						self.last_response = 0
 				
 				self.protocol_floatlayout.add_variable_event('Outcome', 'Last Response', self.last_response)
 
-				# if self.last_response != 0:
 				self.response_tracking.append(self.last_response)		
+				# If current/last_response was equal to 1
+				## CONDUCT STAIRCASE ADJUSTMENTS FOR POSITIVE OUTCOME ##
 				if self.last_response == 1:
+
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Increase')
+					# If the current stage is a similarity scaling probe
 					if self.current_stage == 'Similarity_Scaling':
+						# add current similarity to list of similarity tracking
 						self.similarity_tracking.append(self.current_similarity)
+						# If tracking list is greater than or equal to 20 trials and block change on duration is not equal to 1
 						if len(self.similarity_tracking) >= 20 \
 							and self.block_change_on_duration != 1:
+							# If the length of similarity_tracking is equal to 0
 							if len(self.similarity_tracking) == 0:
+								# Take a float value of the similarity of the last nontarget image in the current nontarget image list
 								self.outcome_value = float(
 									self.similarity_data.loc[
 										self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1]
@@ -1818,8 +1834,9 @@ class ProtocolScreen(ProtocolBase):
 									)
 								
 							else:
+								# Take the maximum value of the similarity tracking list
 								self.outcome_value = max(self.similarity_tracking)
-				
+							# If the sum of the last 10 responses is less than or equal to 4 or the sum of the last 10 responses is greater than or equal to 6 and the mean of the last 10 similarity tracking values is greater than 0.90
 							if (sum(self.response_tracking[-10:]) <= 4) \
 								or ((sum(self.response_tracking[-10:] >= 6)) and (statistics.mean(self.similarity_tracking[-10:]) > 0.90)):
 						
@@ -1829,6 +1846,7 @@ class ProtocolScreen(ProtocolBase):
 									, 'Nontarget'
 									].tolist()
 								
+								# If the length of the baseline nontarget image list is less than two times the similarity index range
 								if len(baseline_nontarget_image_list) < (self.similarity_index_range * 2):
 									self.current_nontarget_image_list = self.similarity_data.loc[0:(self.similarity_index_range * 2), 'Nontarget']
 
@@ -1840,7 +1858,7 @@ class ProtocolScreen(ProtocolBase):
 								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
 								self.current_block += 1
 								self.protocol_floatlayout.remove_widget(self.hold_button)
-								self.stage_screen_event()
+								self.stage_screen_event() ######
 
 						self.similarity_index_min = int(self.nontarget_images.index(self.center_image))
 						self.similarity_index_max = self.similarity_index_min + self.similarity_index_range
@@ -1855,15 +1873,18 @@ class ProtocolScreen(ProtocolBase):
 						
 						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
 
+					# Adjust Staircasing for Blur Scaling or Blur Probe
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
 						self.blur_tracking.append(self.blur_level)
 
+						# If the length of the blur tracking list is greater than or equal to 20 and the difference between the maximum and minimum of the last 6 values in the blur tracking list is less than or equal to 2 and block change on duration is not equal to 1
 						if (len(self.blur_tracking) >= 20) \
 							and ((max(self.blur_tracking[-6:]) - min(self.blur_tracking[-6:])) <= 2) \
 							and (self.block_change_on_duration != 1):
 
 							block_outcome = statistics.multimode(self.blur_tracking)
 
+							# If the length of the block outcome is not equal to 1
 							if len(block_outcome) != 1:
 								self.outcome_value = max(block_outcome)
 
@@ -1872,6 +1893,7 @@ class ProtocolScreen(ProtocolBase):
 
 							self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Type', 'Mode')
 
+							# If the current stage is Blur Scaling
 							if self.current_stage == 'Blur_Scaling':
 								self.blur_base = int(self.outcome_value * 0.9)
 
@@ -1881,7 +1903,7 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event()
+							self.stage_screen_event() ##
 
 						self.blur_level += self.blur_change
 
@@ -1889,15 +1911,18 @@ class ProtocolScreen(ProtocolBase):
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
+					# Adjust Staircasing for Noise Scaling or Noise Probe
 					elif self.current_stage in ['Noise_Scaling', 'Noise_Probe']:
 						self.noise_tracking.append(int(self.noise_mask_value))
 
+						# If the length of noise_tracking is greater than 20 and the difference between the maximum and minimum of the last 6 values in the noise tracking list is less than or equal to 15 and block change on duration is not equal to 1
 						if len(self.noise_tracking) >= 20 \
 							and ((max(self.noise_tracking[-6:]) - min(self.noise_tracking[-6:])) <= 15) \
 							and self.block_change_on_duration != 1:
 
-							block_outcome = statistics.multimode(self.noise_tracking)
+							block_outcome = statistics.multimode(self.noise_tracking) # Gets a vector of the most common values
 
+							# If block_outcome has multiple mode values, take the maximum
 							if len(block_outcome) != 1:
 								self.outcome_value = max(block_outcome)
 							
@@ -1906,9 +1931,11 @@ class ProtocolScreen(ProtocolBase):
 
 							self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
 							
+							# If the current stage is Noise Scaling
 							if self.current_stage == 'Noise_Scaling':
 								self.noise_base = int(self.outcome_value) - 10
 
+								# Ensure noise base is not less than 0
 								if self.noise_base < 0:
 									self.noise_base = 0
 								
@@ -1916,6 +1943,7 @@ class ProtocolScreen(ProtocolBase):
 
 							self.noise_mask_index = round(self.noise_base/5) - 1
 
+							# Ensure noise mask index is within bounds of noise mask list
 							if self.noise_mask_index < 0:
 								self.noise_mask_index = 0
 
@@ -1924,11 +1952,13 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event()
+							self.stage_screen_event() ##
 						
+						# If the noise mask index is less than the maximum index of the noise mask list
 						if self.noise_mask_index < len(self.noise_mask_list) - 1:
 							self.noise_mask_index += self.noise_mask_index_change
 
+							# If the noise mask index is greater than the maximum index of the noise mask list
 							if self.noise_mask_index >= len(self.noise_mask_list):
 								self.noise_mask_index = len(self.noise_mask_list) - 1
 
@@ -1939,30 +1969,37 @@ class ProtocolScreen(ProtocolBase):
 
 						self.img_noise_C.texture = self.image_dict[self.noise_mask_value].image.texture
 
+					# Adjust Staircasing for Limited Duration Scaling or Stimulus Duration Probe
 					elif self.current_stage in ['LimDur_Scaling', 'StimDur_Probe']:
 						self.stimdur_frame_tracking.append(self.stimdur_current_frames)
 
+						# If the length of stimdur_frame_tracking is greater than 20 and the difference between the maximum and minimum of the last 10 values in the stimdur_frame_tracking list is less than or equal to 12 and block change on duration is not equal to 1
 						if (len(self.stimdur_frame_tracking) > 20) \
 							and ((max(self.stimdur_frame_tracking[-10:]) - min(self.stimdur_frame_tracking[-10:])) <= 12) \
 							and self.block_change_on_duration != 1:
 
 							block_outcome = statistics.multimode(self.stimdur_frame_tracking)
 
+							# If the length of stimdur_frame_tracking is equal to 0
 							if len(self.stimdur_frame_tracking) == 0:
 								self.outcome_value = 240
 
+							# If the length of block_outcome is equal to 0
 							elif len(block_outcome) == 0:
 								self.outcome_value = min(self.stimdur_frame_tracking)
 
+							# If block_outcome has multiple mode values, take the minimum. Outcome value mapped twice if == 0
 							elif len(block_outcome) != 1:
 								self.outcome_value = min(block_outcome)
 							
 							else:
 								self.outcome_value = float(block_outcome[0])
 
+							# If current stage is Limited Duration Scaling
 							if self.current_stage == 'LimDur_Scaling':
 								self.stimdur_base = self.outcome_value + round(0.100/self.frame_duration)
 
+								# Ensure stimdur_base is not greater than the maximum stimdur frame value
 								if self.stimdur_base > self.staircase_stimdur_frame_max:
 									self.stimdur_base = self.staircase_stimdur_frame_max
 
@@ -1991,8 +2028,9 @@ class ProtocolScreen(ProtocolBase):
 							self.last_response = 0
 							self.current_block += 1
 							self.protocol_floatlayout.remove_widget(self.hold_button)
-							self.stage_screen_event()
+							self.stage_screen_event() ##
 
+						# If using steps and the stimdur index is less than the maximum index of the stimdur frames list
 						elif (self.stimdur_use_steps) \
 							and (self.stimdur_index < len(self.stimdur_frames) - 1):
 							
@@ -2000,6 +2038,7 @@ class ProtocolScreen(ProtocolBase):
 							self.stimdur_current_frames = self.stimdur_frames[self.stimdur_index]
 							self.stimdur_change = self.stimdur_frames[self.stimdur_index - 1] - self.stimdur_frames[self.stimdur_index]
 						
+						# If not using steps
 						else:
 							
 							if (len(self.response_tracking) >= 3) \
@@ -2041,11 +2080,14 @@ class ProtocolScreen(ProtocolBase):
 							
 							self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', self.limhold, 'Type', 'Staircasing', 'Units', 'Seconds')
 				
+				# If current/last_response was equal to -1
+				## CONDUCT STAIRCASE ADJUSTMENTS FOR NEGATIVE OUTCOME ##
 				elif self.last_response == -1:
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
 
+					# If the current stage is a similarity scaling probe
 					if self.current_stage == 'Similarity_Scaling':
-
+						# if center image is not equal to target image
 						if self.center_image != self.target_image:
 							self.similarity_index_max = int(self.nontarget_images.index(self.center_image))
 							self.similarity_index_min = self.similarity_index_max - self.similarity_index_range
@@ -2054,7 +2096,7 @@ class ProtocolScreen(ProtocolBase):
 							self.similarity_index_max -= int(self.similarity_index_range//2)
 							self.similarity_index_min = self.similarity_index_max - self.similarity_index_range
 						
-
+						# Ensure similarity index min and max are within bounds of nontarget images list
 						if self.similarity_index_min < 0:
 							self.similarity_index_min = 0
 							self.similarity_index_max = self.similarity_index_range
@@ -2065,19 +2107,23 @@ class ProtocolScreen(ProtocolBase):
 
 						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
 
+					# Adjust Staircasing for Blur Scaling or Blur Probe
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
 
+						# If the length of the response tracking list is greater than or equal to 2 and the second to last response was a correct response
 						if (len(self.response_tracking) >= 2) \
 							and (self.response_tracking[-2] in [0, 1]):
 
+							# If the blur change is greater than 1
 							if self.blur_change > 1:
-								self.blur_change //= 2
-
+								self.blur_change //= 2 # Integer division to ensure blur change is an integer
+								# Ensure blur change is not less than 1
 								if self.blur_change < 1:
 									self.blur_change = 1
 
 						self.blur_level -= self.blur_change
 
+						# Ensure blur level is not less than 0
 						if self.blur_level < 0:
 							self.blur_level = 0
 
@@ -2085,9 +2131,10 @@ class ProtocolScreen(ProtocolBase):
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
-
+					# Adjust Staircasing for Noise Scaling or Noise Probe
 					if self.current_stage in ['Noise_Scaling', 'Noise_Probe']:
 
+						# If the length of the response tracking list is greater than or equal to 2 and the second to last response was a correct response
 						if (len(self.response_tracking) >= 2) \
 							and (self.response_tracking[-2] in [0, 1]):
 
@@ -2109,9 +2156,11 @@ class ProtocolScreen(ProtocolBase):
 						
 						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Type', 'Staircasing')
 					
+					# Adjust Staircasing for Limited Duration Scaling or Stimulus Duration Probe
 					elif self.current_stage in ['LimDur_Scaling', 'StimDur_Probe']:
 						self.stimdur_use_steps = False
 						
+						# If the length of the response tracking list is greater than or equal to 2 and the second to last response was a correct response
 						if (len(self.response_tracking) >= 2) \
 							and (self.response_tracking[-2] in [0, 1]):
 							
@@ -2122,9 +2171,11 @@ class ProtocolScreen(ProtocolBase):
 						
 						self.stimdur_current_frames += self.stimdur_change
 
+						# Ensure stimdur current frames is not greater than the base stimdur or the limited hold duration
 						if (self.stimdur_current_frames > self.stimdur_base) \
 							or (self.stimdur_current_frames > (self.limhold_base/self.frame_duration)):
 
+							# If the base stimdur is greater than the limited hold duration divided by the frame duration
 							if self.stimdur_base > (self.limhold_base/self.frame_duration):
 								self.stimdur_current_frames = (self.limhold_base/self.frame_duration)
 							
@@ -2142,7 +2193,7 @@ class ProtocolScreen(ProtocolBase):
 							self.protocol_floatlayout.add_variable_event('Outcome','Limited Hold', self.limhold,
 													   'Staircasing','Seconds')
 
-			# Set next trial parameters
+			## SET NEXT TRIAL PARAMETERS ##
 
 			# Trial number and trial index
 
@@ -2152,32 +2203,33 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter','Current Trial', self.current_trial)
 			self.protocol_floatlayout.add_variable_event('Parameter','Current Block Trial', self.current_block_trial)
 
-			# ITI
+			# ITI - SET VALUE
 			
 			if len(self.iti_frame_range) > 1:
-				
+				# Randomly select ITI length from range of frames
 				if self.iti_fixed_or_range == 'fixed':
 					self.iti_length = random.choice(self.iti_frame_range) * self.frame_duration
-				
+				# Randomly select ITI length from range of frames
 				else:
 					self.iti_length = random.randint(min(self.iti_frame_range), max(self.iti_frame_range)) * self.frame_duration
 				
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Current ITI', self.iti_length, 'Units', 'Seconds')
 
 			# Stimulus duration/limited hold frames
-
+			# If first block of training, set stimdur to base value
 			if self.current_block == 0:				
 				self.stimdur_current_frames = self.stimdur_base
 			
 				self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration', self.outcome_value,'Training','Frames')
 				self.protocol_floatlayout.add_variable_event('Outcome','Stimulus Duration',str(self.outcome_value * self.frame_duration),'Training','Seconds')
-
+			# If Limited Duration Scaling stage, set limhold to stimdur
 			if self.current_stage == 'LimDur_Scaling':
 				self.limhold = self.stimdur_current_frames * self.frame_duration
 				self.protocol_floatlayout.add_variable_event('Outcome','Limited Hold', self.limhold,'Training','Seconds')
 
 			self.stimdur = self.stimdur_current_frames * self.frame_duration
 
+			# Ensure limhold is not less than stimdur
 			if self.stimdur > self.limhold:
 				self.limhold = self.stimdur
 
@@ -2197,14 +2249,16 @@ class ProtocolScreen(ProtocolBase):
 			else: # Set next stimulus image
 				self.trial_index += 1
 				
+				# If trial index is greater than or equal to the length of the trial list, reshuffle and reset index
 				if self.trial_index >= len(self.trial_list):
-					random.shuffle(self.trial_list)
+					self.trial_list = self.constrained_shuffle(self.trial_list, max_run=3)
 					self.trial_index = 0
 				
 				self.protocol_floatlayout.add_variable_event('Parameter','Trial Index', self.trial_index)
 
 				self.protocol_floatlayout.add_variable_event('Parameter','Trial Type', self.trial_list[self.trial_index])
 				
+				# Set center stimulus image and similarity value
 				if self.trial_list[self.trial_index] == 'Target':
 					self.center_image = self.target_image
 					self.current_similarity = 1.00
@@ -2229,7 +2283,7 @@ class ProtocolScreen(ProtocolBase):
 			if self.current_stage == 'Flanker_Probe':
 				
 				if self.flanker_stage_index >= len(self.flanker_stage_list):
-					random.shuffle(self.flanker_stage_list)
+					self.flanker_stage_list = self.constrained_shuffle(self.flanker_stage_list, max_run=3)
 					self.flanker_stage_index = 0
 				
 				self.current_substage = self.flanker_stage_list[self.flanker_stage_index]
@@ -2574,11 +2628,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		try:
 			
-			self.stimulus_present_event.cancel()
-			self.stimulus_end_event.cancel()
-			self.stimdur_event.cancel()
+			self.stimulus_present_event.cancel() ##
+			self.stimulus_end_event.cancel() ##
+			self.stimdur_event.cancel() ##
 			
-			if self.feedback_on_screen:
+			if self.feedback_on_screen: ## REPLACE WITH FEEDBACK REMOVAL EVENT
 				
 				if (time.time() - self.feedback_start_time) >= self.feedback_length:
 					self.block_check_event.cancel()
@@ -2613,6 +2667,7 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_active = False
 			self.block_started = True
 			
+			# Advance to next stage if current block exceeds max blocks or is -1 (initial value)
 			if (self.current_block > self.block_max_count) or (self.current_block == -1):
 				self.stage_index += 1
 				self.current_block = 1
@@ -2637,6 +2692,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.stimdur_current_frames = self.stimdur_base
 
+				# If blur scaling active, reset blur level to base
 				if 'Blur_Scaling' in self.stage_list \
 					or self.current_stage == 'Blur_Probe':
 
@@ -2657,6 +2713,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_end()
 			
 
+			# If current stage is training and tutorial video has not been skipped and training not yet complete
 			if (self.current_stage == 'Training') \
 				and (self.skip_tutorial_video == 0) \
 				and not self.training_complete:
@@ -2682,6 +2739,7 @@ class ProtocolScreen(ProtocolBase):
 					, 'Hold Button'
 					])
 
+			# If current block is 0 (instructions for block 1)
 			elif self.current_block == 0:
 				self.block_trial_max = 2*(self.training_block_max_correct)
 				self.block_duration = 3*(self.block_trial_max)
@@ -2717,6 +2775,7 @@ class ProtocolScreen(ProtocolBase):
 					'Continue'
 				])
 			
+			# If current block is 1 (instructions for block 2+)
 			elif self.current_block == 1:
 				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
 				
@@ -2817,7 +2876,7 @@ class ProtocolScreen(ProtocolBase):
 					'Type',
 					'Continue'
 				])
-			
+			# If current block is greater than 1 (normal task block)
 			else:
 
 				if self.current_stage == 'TarProb_Probe':
