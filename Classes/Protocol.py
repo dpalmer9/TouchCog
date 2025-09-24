@@ -8,6 +8,8 @@ import pathlib
 import sys
 import time
 import threading
+import random
+from collections import Counter
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -559,6 +561,48 @@ class ProtocolBase(Screen):
 		
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
 		return
+
+
+	def constrained_shuffle(self, seq, max_run=3, attempts=1000, rng=None):
+		"""
+		Instance helper: constrained shuffle that returns a pseudorandom ordering
+		of seq where no value repeats more than max_run times consecutively.
+		"""
+		if rng is None:
+			rng = random
+		if not seq:
+			return []
+		n = len(seq)
+		counts = Counter(seq)
+		for _ in range(attempts):
+			result = []
+			remaining = dict(counts)
+			while len(result) < n:
+				candidates = [k for k, v in remaining.items() if v > 0 and not (
+					len(result) >= max_run and all(x == k for x in result[-max_run:])
+				)]
+				if not candidates:
+					break
+				weights = [remaining[k] for k in candidates]
+				choice = rng.choices(candidates, weights=weights, k=1)[0]
+				result.append(choice)
+				remaining[choice] -= 1
+			if len(result) == n:
+				return result
+		# fallback: try plain shuffle
+		for _ in range(attempts):
+			tmp = list(seq)
+			rng.shuffle(tmp)
+			ok = True
+			for i in range(len(tmp) - max_run):
+				if all(tmp[i + j] == tmp[i] for j in range(max_run + 1)):
+					ok = False
+					break
+			if ok:
+				return tmp
+		tmp = list(seq)
+		rng.shuffle(tmp)
+		return tmp
 	
 	
 	
