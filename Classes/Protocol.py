@@ -387,6 +387,10 @@ class ProtocolBase(Screen):
 		super(ProtocolBase, self).__init__(**kwargs)
 		
 		self.name = 'protocolscreen'
+
+		self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
+		self.protocol_floatlayout.size = screen_resolution
+		self.add_widget(self.protocol_floatlayout)
 			
 		width = int(Config.get('graphics', 'width'))
 		height = int(Config.get('graphics', 'height'))
@@ -408,9 +412,6 @@ class ProtocolBase(Screen):
 		elif width < height:
 			self.height_adjust = width / height
 		
-		self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
-		self.protocol_floatlayout.size = screen_resolution
-		self.add_widget(self.protocol_floatlayout)
 		
 		
 		# Define App
