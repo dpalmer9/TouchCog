@@ -1197,6 +1197,13 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_start_time = time.time()
 		
 		self.stimulus_on_screen = True
+
+		if 'Noise_Scaling' in self.stage_list \
+			or self.current_stage == 'Noise_Probe':
+
+			self.protocol_floatlayout.add_widget(self.img_noise_C)
+
+			self.protocol_floatlayout.add_object_event('Display', 'Mask', 'Noise', 'Center', self.noise_mask_value)
 		
 
 		if self.display_stimulus_outline == 1:
@@ -2512,6 +2519,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				if self.current_stage == 'Training':
 					self.block_contingency()
+					return
 
 				else:
 					self.current_block += 1
@@ -2521,10 +2529,11 @@ class ProtocolScreen(ProtocolBase):
 			# print('Trial contingency end')
 
 			self.hold_button.bind(on_press=self.iti_start)
+			self.hold_button.bind(on_release=self.premature_response)
 
 			self.trial_end_time = time.time()
 			
-			if self.hold_active == True:
+			if self.hold_button_pressed == True:
 				self.iti_start()
 		
 		
