@@ -1,0 +1,2284 @@
+# Imports #
+
+import configparser
+import numpy as np
+import os
+import pathlib
+import random
+import statistics
+import time
+
+from Classes.Protocol import ImageButton, ProtocolBase
+
+from kivy.clock import Clock
+from kivy.config import Config
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.video import Video
+
+
+# environ_vars = dict(os.environ)
+
+
+
+
+class ProtocolScreen(ProtocolBase):
+	
+	def __init__(self, **kwargs):	
+		
+		super(ProtocolScreen, self).__init__(**kwargs)
+		
+		self.protocol_name = 'TUNL'
+		self.update_task()
+		
+
+		# Set screen size
+		
+		width = int(Config.get('graphics', 'width'))
+		height = int(Config.get('graphics', 'height'))
+		self.maxfps = int(Config.get('graphics', 'maxfps'))
+		
+		if self.maxfps == 0:
+			self.maxfps = 120
+
+		self.screen_resolution = (width, height)
+		self.protocol_floatlayout.size = self.screen_resolution
+
+		self.width_adjust = 1
+		self.height_adjust = 1
+		
+		if width > height:
+			self.width_adjust = height / width
+		
+		elif width < height:
+			self.height_adjust = width / height
+
+
+		# Define Data Columns
+		
+		self.data_cols = [
+			'TrialNo'
+			, 'Current Block'
+			, 'Probe Type'
+			, 'Separation'
+			, 'Delay'
+			, 'Video Time'
+			, 'Cue_X'
+			, 'Cue_Y'
+			, 'Target_X'
+			, 'Target_Y'
+			, 'Correct'
+			, 'Target Latency'
+			]
+		
+		self.metadata_cols = [
+			'participant_id'
+			, 'skip_tutorial_video'
+			, 'block_change_on_duration_only'
+			, 'iti_length'
+			, 'iti_fixed_or_range'
+			, 'feedback_length'
+			, 'block_duration'
+			, 'block_multiplier'
+			, 'session_length_max'
+			, 'screen_x_padding'
+			, 'screen_y_padding_top'
+			, 'screen_y_padding_bottom'
+			, 'stimulus_gap'
+			, 'x_boundaries'
+			, 'y_boundaries'
+			, 'stimulus_image'
+			, 'distractor_video'
+			, 'staircase_sep_initial'
+			, 'staircase_delay_initial'
+			, 'minimum_sep'
+			, 'minimum_delay'
+			, 'space_probe_sep_list'
+			, 'delay_probe_delay_list'
+			]
+		
+		
+		# Define Variables - Config
+		
+		# print('Reading configuration data...')
+		
+		config_path = pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini')
+		config_file = configparser.ConfigParser()
+		config_file.read(config_path)
+
+		self.debug_mode = False
+
+		if ('DebugParameters' in config_file) \
+			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+
+			self.parameters_dict = config_file['DebugParameters']
+			self.debug_mode = True
+
+		else:
+			self.parameters_dict = config_file['TaskParameters']
+			self.debug_mode = False
+
+		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
+		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
+
+		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
+		
+		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		
+		iti_import = self.parameters_dict['iti_length']
+		iti_import = iti_import.split(',')
+		
+		stimdur_import = self.parameters_dict['stimulus_duration']
+		stimdur_import = stimdur_import.split(',')
+		
+		limhold_import = self.parameters_dict['limited_hold']
+		limhold_import = limhold_import.split(',')
+		
+		self.feedback_length = float(self.parameters_dict['feedback_length'])
+		self.block_duration = float(self.parameters_dict['block_duration'])
+		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
+		self.session_duration = float(self.parameters_dict['session_length_max'])
+		
+		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
+
+		self.stimulus_scale = float(self.parameters_dict['stimulus_scale'])
+		
+		self.screen_x_padding = int(self.parameters_dict['screen_x_padding'])
+		self.screen_y_padding_t = int(self.parameters_dict['screen_y_padding_top'])
+		self.screen_y_padding_b = int(self.parameters_dict['screen_y_padding_bottom'])
+
+		self.stimulus_gap = float(self.parameters_dict['stimulus_gap'])
+		
+		self.x_boundaries = self.parameters_dict['x_boundaries']
+		self.x_boundaries = self.x_boundaries.split(',')
+
+		self.y_boundaries = self.parameters_dict['y_boundaries']
+		self.y_boundaries = self.y_boundaries.split(',')
+
+		self.stimulus_image = self.parameters_dict['stimulus_image']
+		self.stimulus_button_image = self.parameters_dict['stimulus_button_image']
+		self.distractor_video = self.parameters_dict['distractor_video']
+
+		self.staircase_sep_initial = int(self.parameters_dict['staircase_sep_initial'])
+		self.staircase_delay_initial = float(self.parameters_dict['staircase_delay_initial'])
+		
+		self.min_sep = int(self.parameters_dict['minimum_sep'])
+		self.max_sep = int(self.parameters_dict['maximum_sep'])
+		self.min_delay = float(self.parameters_dict['minimum_delay'])
+		self.max_delay = float(self.parameters_dict['maximum_delay'])
+		
+		self.space_probe_sep_list = self.parameters_dict['space_probe_sep_list']
+		self.space_probe_sep_list = self.space_probe_sep_list.split(',')
+
+		self.delay_probe_delay_list = self.parameters_dict['delay_probe_delay_list']
+		self.delay_probe_delay_list = self.delay_probe_delay_list.split(',')
+
+		self.hold_image = config_file['Hold']['hold_image']
+		
+		
+		# Create stage list
+		
+		self.stage_list = list()
+
+		
+		# Define Language
+		
+		self.language = 'English'
+		self.set_language(self.language)
+		
+
+		# Define Clock
+		
+		self.block_check_clock = Clock
+		self.block_check_clock.interupt_next_only = False
+		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
+
+		self.task_clock = Clock
+		self.task_clock.interupt_next_only = True
+
+		self.tutorial_video_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 1)
+		self.stimulus_event = self.task_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
+		self.cue_present_event = self.task_clock.create_trigger(self.cue_present, 0)
+		self.delay_present_event = self.task_clock.create_trigger(self.delay_present, 0)
+		self.delay_end_event = self.task_clock.create_trigger(self.delay_end, 0)
+		self.target_present_event = self.task_clock.create_trigger(self.target_present, 0)
+
+
+		# Define Variables - Time
+
+		self.frame_duration = 0
+		self.cue_start_time = 0.0
+		self.target_start_time = 0.0
+		self.response_latency = 0.0
+		self.current_delay = 0.0
+		self.video_start_time = 0.0
+		self.video_end_time = 0.0
+		self.video_position = 0.0
+		self.trial_end_time = 0.0
+
+		self.last_staircase_time_increase = self.staircase_delay_initial
+		
+		self.iti_range = [float(iNum) for iNum in iti_import]
+		self.iti_length = self.iti_range[0]
+		
+		self.stimdur_list = [float(iNum) for iNum in stimdur_import]
+		self.limhold_list = [float(iNum) for iNum in limhold_import]
+
+		self.stimdur = self.stimdur_list[0]
+		self.limhold = self.limhold_list[0]
+		
+		
+		# Define Variables - Numeric
+
+		self.x_boundaries = [float(iNum) for iNum in self.x_boundaries]
+		self.y_boundaries = [float(iNum) for iNum in self.y_boundaries]
+
+		self.current_sep = 0
+				
+		self.current_block = 1
+		self.current_block_trial = 0
+		
+		self.last_response = 0
+
+		self.response_tracking = list()
+		self.accuracy_tracking = list()
+		
+		
+		# Define Boolean
+		
+		self.hold_active = False
+		self.cue_completed = False
+		self.cue_on_screen = False
+		self.target_on_screen = False
+		self.video_on_screen = False
+		self.limhold_started = False
+		self.delay_ended = False
+
+
+		# Define String
+
+		self.staircase_change = 'non'
+		self.section_instr_string = ''
+		
+		
+# 		# Define Widgets - Background Grid
+
+		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		
+		hold_button_top_loc = self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2)
+
+		if self.y_boundaries[0] < hold_button_top_loc:
+			self.y_boundaries[0] = hold_button_top_loc
+		
+		elif self.y_boundaries[1] < hold_button_top_loc:
+			self.y_boundaries[1] = hold_button_top_loc
+		
+		self.stimulus_image_path = str(self.image_folder / (self.stimulus_image + '.png'))
+		self.stimulus_button_image_path = str(self.image_folder / (self.stimulus_button_image + '.png'))
+		
+		
+		# Define Widgets - Buttons
+		
+		self.hold_button.source = str(self.image_folder / (self.hold_image + '.png'))
+		
+		self.cue_image = ImageButton(source=self.stimulus_image_path)
+		self.target_image = ImageButton(source=self.stimulus_image_path)
+
+		self.cue_image_button = ImageButton(source=self.stimulus_button_image_path)
+		self.cue_image_button.bind(on_press=self.cue_pressed)
+		
+		self.target_image_button = ImageButton(source=self.stimulus_button_image_path)
+		self.target_image_button.bind(on_press=self.target_pressed)
+		
+		
+		# Define Widgets - Labels
+		
+		self.feedback_label.size_hint = (0.7, 0.3)
+		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
+
+
+		# Instruction - Dictionary
+		
+		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
+		
+		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
+		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
+		
+		self.instruction_dict = {}
+		self.instruction_dict['Training'] = {}
+		self.instruction_dict['Space'] = {}
+		self.instruction_dict['Delay'] = {}
+		self.instruction_dict['Combo'] = {}
+		
+		for stage in self.stage_list:
+			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
+			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
+		
+		
+		# Instruction - Button Widget
+		
+		self.instruction_button = Button()
+		self.instruction_button.bind(on_press=self.section_start)
+	
+	
+	
+	# Initialization Functions
+	
+	def load_parameters(self, parameter_dict):
+		
+		# print('Load parameters...')
+		
+		self.parameters_dict = parameter_dict
+	
+		self.participant_id = self.parameters_dict['participant_id']
+		self.language = self.parameters_dict['language']
+
+		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
+		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
+
+		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
+		
+		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		
+		iti_import = self.parameters_dict['iti_length']
+		iti_import = iti_import.split(',')
+		
+		stimdur_import = self.parameters_dict['stimulus_duration']
+		stimdur_import = stimdur_import.split(',')
+		
+		limhold_import = self.parameters_dict['limited_hold']
+		limhold_import = limhold_import.split(',')
+		
+		self.feedback_length = float(self.parameters_dict['feedback_length'])
+		self.block_duration = float(self.parameters_dict['block_duration'])
+		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
+		self.session_duration = float(self.parameters_dict['session_length_max'])
+		
+		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
+
+		self.stimulus_scale = float(self.parameters_dict['stimulus_scale'])
+		
+		self.screen_x_padding = int(self.parameters_dict['screen_x_padding'])
+		self.screen_y_padding_t = int(self.parameters_dict['screen_y_padding_top'])
+		self.screen_y_padding_b = int(self.parameters_dict['screen_y_padding_bottom'])
+
+		self.stimulus_gap = float(self.parameters_dict['stimulus_gap'])
+		
+		self.x_boundaries = self.parameters_dict['x_boundaries']
+		self.x_boundaries = self.x_boundaries.split(',')
+
+		self.y_boundaries = self.parameters_dict['y_boundaries']
+		self.y_boundaries = self.y_boundaries.split(',')
+
+		self.stimulus_image = self.parameters_dict['stimulus_image']
+		self.stimulus_button_image = self.parameters_dict['stimulus_button_image']
+		self.distractor_video = self.parameters_dict['distractor_video']
+
+		self.staircase_sep_initial = int(self.parameters_dict['staircase_sep_initial'])
+		self.staircase_delay_initial = float(self.parameters_dict['staircase_delay_initial'])
+		
+		self.min_sep = int(self.parameters_dict['minimum_sep'])
+		self.max_sep = int(self.parameters_dict['maximum_sep'])
+		self.min_delay = float(self.parameters_dict['minimum_delay'])
+		self.max_delay = float(self.parameters_dict['maximum_delay'])
+		
+		self.space_probe_sep_list = self.parameters_dict['space_probe_sep_list']
+		self.space_probe_sep_list = self.space_probe_sep_list.split(',')
+
+		self.delay_probe_delay_list = self.parameters_dict['delay_probe_delay_list']
+		self.delay_probe_delay_list = self.delay_probe_delay_list.split(',')
+		
+		
+		# Create stage list
+		
+		self.stage_list = list()
+		
+		if int(self.parameters_dict['space_probe']) == 1:
+			self.stage_list.append('Space')
+		
+		if int(self.parameters_dict['delay_probe']) == 1:
+			self.stage_list.append('Delay')
+		
+		if len(self.stage_list) > 1:
+			random.shuffle(self.stage_list)
+		
+		if int(self.parameters_dict['combined_probe']) == 1:
+			self.stage_list.append('Combo')
+
+
+		# Define Variables - Time
+
+		self.cue_start_time = 0.0
+		self.target_start_time = 0.0
+		self.response_latency = 0.0
+		self.current_delay = 0.0
+		self.video_start_time = 0.0
+		self.video_end_time = 0.0
+		self.video_position = 0.0
+		self.trial_end_time = 0.0
+
+		self.last_staircase_time_increase = self.staircase_delay_initial
+
+		self.combo_probe_max_section_dur = self.block_duration // 3
+		
+		self.iti_range = [float(iNum) for iNum in iti_import]
+		self.iti_length = self.iti_range[0]
+		
+		self.stimdur_list = [float(iNum) for iNum in stimdur_import]
+		self.limhold_list = [float(iNum) for iNum in limhold_import]
+
+		self.stimdur = self.stimdur_list[0]
+		self.limhold = self.limhold_list[0]
+
+
+		# Define Variables - Trial Lists
+		
+		self.space_probe_sep_list = [int(iNum) for iNum in self.space_probe_sep_list]
+		self.delay_probe_delay_list = [float(iNum) for iNum in self.delay_probe_delay_list]
+		self.combo_probe_sep_list = [int(iNum) for iNum in self.space_probe_sep_list]
+		self.combo_probe_sep_list.sort(reverse=True)
+
+		self.space_probe_delay_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
+		self.space_probe_staircase_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
+		self.delay_probe_sep_list = [self.staircase_sep_initial for iElem in self.delay_probe_delay_list]
+		self.combo_probe_delay_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
+		self.combo_probe_staircase_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
+
+		self.space_probe_response_list = [0 for iElem in self.space_probe_sep_list]
+		self.delay_probe_response_list = [0 for iElem in self.delay_probe_delay_list]
+		self.combo_probe_response_list = [0 for iElem in self.combo_probe_sep_list]
+
+		self.combo_probe_delay_tracking_dict = {}
+		
+		for iSep in self.combo_probe_sep_list:
+			self.combo_probe_delay_tracking_dict[iSep] = [0,0]
+
+		self.space_trial_index_list = list(range(0, len(self.space_probe_sep_list)))
+		self.delay_trial_index_list = list(range(0, len(self.delay_probe_delay_list)))
+
+		random.shuffle(self.space_trial_index_list)
+		random.shuffle(self.delay_trial_index_list)
+
+		# print(self.space_probe_sep_list)
+		# print(self.delay_probe_delay_list)
+		# print(self.combo_probe_sep_list)
+		
+		# print(self.space_trial_index_list)
+		# print(self.delay_trial_index_list)
+		
+
+		# Define Variables - Numeric
+
+		self.x_boundaries = [float(iNum) for iNum in self.x_boundaries]
+		self.y_boundaries = [float(iNum) for iNum in self.y_boundaries]
+
+		self.stage_index = 0
+
+		self.trial_index = 0
+		self.space_trial_index = self.space_trial_index_list[0]
+		self.delay_trial_index = self.delay_trial_index_list[0]
+		self.combo_trial_index = 0
+
+		self.current_sep = 0
+				
+		self.current_block = 1
+		self.current_block_trial = 0
+
+		self.max_blocks = len(self.stage_list) * self.block_multiplier
+		
+		self.last_response = 0
+
+		self.response_tracking = list()
+		self.accuracy_tracking = list()
+		
+		
+		# Define Boolean
+		
+		self.hold_active = False
+		self.cue_completed = False
+		self.cue_on_screen = False
+		self.target_on_screen = False
+		self.video_on_screen = False
+		self.limhold_started = False
+		self.delay_active = False
+		self.delay_ended = False
+
+
+		# Define String
+
+		self.staircase_change = 'non'
+		
+		
+		# Define Language
+		
+		self.set_language(self.language)
+		
+		
+		# Define Widgets - Screen Boundaries
+		
+		hold_button_top_loc = self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2)
+
+		if self.y_boundaries[0] < hold_button_top_loc:
+			self.y_boundaries[0] = hold_button_top_loc
+		
+		elif self.y_boundaries[1] < hold_button_top_loc:
+			self.y_boundaries[1] = hold_button_top_loc
+		
+
+		# Define Variables - Coordinates
+		
+		self.current_stage = self.stage_list[self.stage_index]
+		
+		if self.current_stage == 'Space':
+			self.current_sep = self.space_probe_sep_list[self.space_trial_index]
+			self.current_delay = self.space_probe_delay_list[self.space_trial_index]
+		
+		elif self.current_stage == 'Delay':
+			self.current_sep = self.delay_probe_sep_list[self.delay_trial_index]
+			self.current_delay = self.delay_probe_delay_list[self.delay_trial_index]
+		
+		elif self.current_stage == 'Combo':
+			self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
+			self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
+		
+
+		# Define Variables - Image Paths
+
+		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.stimulus_image_path = str(self.image_folder / (self.stimulus_image + '.png'))
+
+
+		# Define GUI Sizes and Pos
+
+		self.video_size = (1, 1)
+		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
+
+		self.stimulus_image_spacing = [
+			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale)
+			, ((self.cue_image.texture_size[1]/self.screen_resolution[1]) * self.stimulus_scale)
+			]
+		
+		self.stimulus_image_size = (np.array(self.stimulus_image_spacing) * (1 - self.stimulus_gap)).tolist()
+		self.stimulus_button_size = (np.array(self.stimulus_image_size) * 0.77).tolist()
+		
+		self.video_pos = {"center_x": 0.5, "y": 0.125}
+
+
+
+		# Instruction Import
+
+		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+
+		if (lang_folder_path / 'Tutorial_Video').is_dir():
+			self.tutorial_video_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
+
+			# print(self.tutorial_video_path)
+
+			self.tutorial_video = Video(
+				source = self.tutorial_video_path
+				, allow_stretch = True
+				, options = {'eos': 'stop'}
+				, state = 'stop'
+				)
+
+			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
+			self.tutorial_video.size_hint = (1, 1)
+
+
+		# Instruction - Dictionary
+		
+		self.instruction_path = str(lang_folder_path / 'Instructions.ini')
+		
+		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
+		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
+		
+		self.instruction_dict = {}
+		self.instruction_dict['Training'] = {}
+		self.instruction_dict['Space'] = {}
+		self.instruction_dict['Delay'] = {}
+		self.instruction_dict['Combo'] = {}
+		
+		for stage in self.stage_list:
+			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
+			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
+		
+		
+		# Instruction - Text Widget
+		
+		self.section_instr_string = self.instruction_label.text
+		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
+		self.section_instr_label.size_hint = {0.58, 0.4}
+		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.35}
+		
+		# Instruction - Button Widget
+		
+		self.instruction_button = Button(font_size='60sp')
+		self.instruction_button.size_hint = self.text_button_size
+		self.instruction_button.pos_hint =  {"center_x": 0.50, "center_y": 0.92}
+		self.instruction_button.text = ''
+		self.instruction_button.bind(on_press=self.section_start)
+		
+		
+		# Define Widgets - Buttons
+		
+		self.hold_button.source = str(self.image_folder / (self.hold_image + '.png'))
+		self.hold_button.bind(on_press=self.iti)
+				
+		self.cue_image = ImageButton(source=self.stimulus_image_path)
+		self.target_image = ImageButton(source=self.stimulus_image_path)
+
+		self.cue_image_button = ImageButton(source=self.stimulus_button_image_path)
+		self.target_image_button = ImageButton(source=self.stimulus_button_image_path)
+
+		# print('Cue image texture size:', self.cue_image.texture_size)
+		# print('Cue button texture size:', self.cue_image_button.texture_size)
+
+		# print('self.stimulus_image_spacing: ', self.stimulus_image_spacing)
+		# print('self.stimulus_image_size: ', self.stimulus_image_size)
+		# print('self.stimulus_button_size: ', self.stimulus_button_size)
+
+		self.cue_image.size_hint = self.stimulus_image_size
+		self.target_image.size_hint = self.stimulus_image_size
+
+		self.cue_image_button.size_hint = self.stimulus_button_size
+		self.cue_image_button.bind(on_press=self.cue_pressed)
+		self.cue_image_button.name = 'Cue Image'
+
+		self.target_image_button.size_hint = self.stimulus_button_size
+		self.target_image_button.bind(on_press=self.target_pressed)
+		self.target_image_button.name = 'Target Image'
+
+		self.trial_coord = self.generate_trial_pos_sep(
+			self.x_boundaries
+			, self.y_boundaries
+			, self.current_sep
+			, self.stimulus_image_spacing
+			, self.screen_x_padding
+			, self.screen_y_padding_t
+			, self.screen_y_padding_b
+			)
+		
+		self.cue_image.pos_hint = {
+			"center_x": self.trial_coord['Cue']['x'], 
+			"center_y": self.trial_coord['Cue']['y']
+			}
+		
+		self.target_image.pos_hint = {
+			"center_x": self.trial_coord['Target']['x'], 
+			"center_y": self.trial_coord['Target']['y']
+			}
+		
+		self.cue_image_button.pos_hint = {
+			"center_x": self.trial_coord['Cue']['x'], 
+			"center_y": self.trial_coord['Cue']['y']
+			}
+		
+		self.target_image_button.pos_hint = {
+			"center_x": self.trial_coord['Target']['x'], 
+			"center_y": self.trial_coord['Target']['y']
+			}
+
+		self.delay_video_folder = pathlib.Path('Delay_Videos')
+
+		if self.distractor_video == '':
+			self.delay_video_path_list = list(self.image_folder.glob(str(self.delay_video_folder / '*.mp4')))
+		
+		else:
+			self.delay_video_path_list = list(self.image_folder.glob(str(self.delay_video_folder / self.distractor_video)))
+			
+			if len(self.delay_video_path_list) == 0:
+				self.delay_video_path_list = list(self.image_folder.glob(str(self.delay_video_folder / '*.mp4')))
+		
+		
+		if len(self.delay_video_path_list) > 1:
+			self.delay_video_path = random.choice(self.delay_video_path_list)
+			self.delay_video_path_list.remove(self.delay_video_path)
+		
+		else:
+			self.delay_video_path = self.delay_video_path_list[0]
+		
+		self.delay_video = Video(
+			source = str(self.delay_video_path)
+			, allow_stretch = True
+			, options = {'eos': 'loop'}
+			, state = 'stop'
+			)
+
+		self.delay_video.pos_hint = self.video_pos
+		self.delay_video.size_hint = self.video_size
+
+		self.protocol_floatlayout.add_widget(self.delay_video)
+		self.delay_video.state = 'pause'
+		self.protocol_floatlayout.remove_widget(self.delay_video)
+
+
+		# Begin Task
+
+		if (lang_folder_path / 'Tutorial_Video').is_dir() \
+			and (self.skip_tutorial_video == 0):
+
+			self.protocol_floatlayout.clear_widgets()
+			self.present_tutorial_video()
+		
+		else:
+			self.present_instructions()
+
+
+
+	def generate_trial_pos_sep(
+		self
+		, x_boundaries = [0, 1]
+		, y_boundaries = [0.1, 1]
+		, sep_level = 0
+		, stimulus_size = [0.066, 0.1]
+		, x_padding = 0
+		, y_padding_t = 0
+		, y_padding_b = 0
+		):
+
+		x_lim = [
+			min(x_boundaries) + stimulus_size[0]*(x_padding + 0.5)
+			, max(x_boundaries) - stimulus_size[0]*(x_padding + 0.5)
+			]
+		
+		y_lim = [
+			min(y_boundaries) + stimulus_size[1]*(y_padding_b + 0.5)
+			, max(y_boundaries) - stimulus_size[1]*(y_padding_t + 0.5)
+			]
+		
+		# print('X lim:', x_lim)
+		# print('Y lim:', y_lim)
+
+		main_move = float(sep_level) + 1
+		
+		cue_xpos = random.uniform(min(x_lim), max(x_lim))
+		cue_ypos = random.uniform(min(y_lim), max(y_lim))
+
+		# print('Cue xpos:', cue_xpos)
+		# print('Cue ypos:', cue_ypos)
+		
+		horz_dist = random.uniform(-main_move, main_move)
+		horz_move = horz_dist * stimulus_size[0]
+
+		# print('Main move:', main_move)
+		# print('Horz move:', horz_move)
+		
+		target_xpos = cue_xpos + horz_move
+
+		vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
+		vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
+
+		# print('Vert dist:', vert_dist)
+		# print('Vert move:', vert_move)
+		
+		target_ypos = cue_ypos + vert_move
+
+		# print('Target xpos:', target_xpos)
+		# print('Target ypos:', target_ypos)
+		
+		while (target_xpos < min(x_lim)) \
+			or (target_xpos > max(x_lim)) \
+			or (target_ypos < min(y_lim)) \
+			or (target_ypos > max(y_lim)):
+
+			if (target_xpos < min(x_lim)) \
+				or (target_xpos > max(x_lim)):
+
+				horz_move *= -1
+			
+
+			if (target_ypos < min(y_lim)) \
+				or (target_ypos > max(y_lim)):
+
+				vert_move *= -1
+
+			target_xpos = cue_xpos + horz_move
+			target_ypos = cue_ypos + vert_move
+
+			if (target_xpos < min(x_lim)) \
+				or (target_xpos > max(x_lim)) \
+				or (target_ypos < min(y_lim)) \
+				or (target_ypos > max(y_lim)):
+
+				horz_dist = random.uniform(-main_move, main_move)
+				horz_move = horz_dist * stimulus_size[0]
+				target_xpos = cue_xpos + horz_move
+
+				vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
+				vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
+				target_ypos = cue_ypos + vert_move
+		
+		# print('Cue xpos: ', cue_xpos)
+		# print('Cue ypos: ', cue_ypos)
+
+		# print('Horz move: ', horz_move)
+		# print('Vert move: ', vert_move)
+		
+		# print('Target xpos: ', target_xpos)
+		# print('Target ypos: ', target_ypos)
+
+		# print('Stimulus size: ', stimulus_size)
+
+		# print('Current sep: ', self.current_sep)
+		# print('Sep level: ', sep_level)
+
+		# print('Main move: ', main_move)
+
+		cue_coord = {'x': round(cue_xpos, 4), 'y': round(cue_ypos, 4)}
+		target_coord = {'x': round(target_xpos, 4), 'y': round(target_ypos, 4)}
+		trial_coord = {'Cue': cue_coord, 'Target': target_coord}
+		
+		return trial_coord
+
+
+
+	# Protocol Staging
+
+	def present_tutorial_video(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
+		self.tutorial_restart.size_hint = self.text_button_size
+		self.tutorial_restart.pos_hint = self.text_button_pos_LL
+		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
+		
+		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
+		self.tutorial_start_button.size_hint = self.text_button_size
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
+		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
+		
+		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.size_hint = (1, 1)
+		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+			
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Object Display'
+			])
+
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
+
+		self.tutorial_video.state = 'stop'
+	
+
+
+	def start_tutorial_video(self, *args):
+
+		self.tutorial_video.state = 'play'
+		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
+		
+		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
+
+
+	
+	def present_tutorial_video_start_button(self, *args):
+
+		self.tutorial_video_end_event.cancel()
+
+		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
+		self.protocol_floatlayout.add_widget(self.tutorial_restart)
+				
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Button'
+			, 'Section'
+			, 'Instructions'
+			, 'Type'
+			, 'Section Start'
+			])
+				
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Button'
+			, 'Section'
+			, 'Instructions'
+			, 'Type'
+			, 'Video Restart'
+			])
+	
+	
+	
+	def start_protocol_from_tutorial(self, *args):
+
+		self.tutorial_video_end_event.cancel()
+		self.tutorial_video.state = 'stop'
+		
+		self.generate_output_files()
+		self.metadata_output_generation()
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Video'
+			, 'Section'
+			, 'Instructions'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Section Start'
+			])
+
+		self.protocol_floatlayout.add_event([
+			0
+			, 'Stage Change'
+			, 'Instruction Presentation'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			0
+			, 'Text Removed'
+			, 'Task Instruction'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			0
+			, 'Button Removed'
+			, 'Task Start Button'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			0
+			, 'Button Displayed'
+			, 'Hold Button'
+			])
+		
+		self.protocol_floatlayout.add_widget(self.hold_button)
+		
+		self.start_clock()
+		
+		self.block_start_time = time.time()
+		self.trial_end_time = time.time()
+		
+		self.feedback_label.text = ''
+
+
+
+	def cue_present(self, *args): # Present cue
+		
+		# print('Cue presentation')
+		
+		self.hold_button.unbind(on_press=self.iti)
+		self.hold_button.unbind(on_release=self.premature_response)
+
+		self.hold_button.bind(on_release=self.hold_released)
+		
+		self.cue_image_button.unbind(on_press=self.cue_pressed)
+		
+		self.protocol_floatlayout.add_widget(self.cue_image)
+		self.protocol_floatlayout.add_widget(self.cue_image_button)
+		
+		self.stimulus_on_screen = True
+		self.cue_completed = True
+		self.delay_active = False
+		self.delay_ended = False
+		self.limhold_started = False
+		
+		self.cue_start_time = time.time()
+		
+		self.protocol_floatlayout.add_event([
+			(self.cue_start_time - self.start_time)
+			, 'State Change'
+			, 'Cue Display'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(self.cue_start_time - self.start_time)
+			, 'Object Display'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+		
+		# print('Cue start time: ', (self.cue_start_time - self.start_time))
+		# print('Cue x coord: ', self.trial_coord['Cue']['x'])
+		# print('Cue y coord: ', self.trial_coord['Cue']['y'])
+		
+		self.stimulus_event()
+	
+
+
+	# Display Distractor During Delay
+	
+	def delay_present(self, *args):
+
+		self.cue_present_event.cancel()
+		self.stimulus_event.cancel()
+
+		self.protocol_floatlayout.clear_widgets()
+		self.protocol_floatlayout.add_widget(self.hold_button)
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Delay Start'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+		
+		self.delay_end_event = self.task_clock.schedule_once(self.delay_end, self.current_delay)
+
+		self.protocol_floatlayout.add_widget(self.delay_video)
+		self.delay_video.state = 'play'
+
+		self.video_start_time = time.time()
+
+		self.delay_active = True
+
+		self.protocol_floatlayout.add_event([
+			(self.video_start_time - self.start_time)
+			, 'State Change'
+			, 'Object Display'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.video_start_time - self.start_time)
+			, 'Object Display'
+			, 'Video'
+			, 'Delay'
+			, str(self.delay_video.source)
+			, 'Video Time'
+			, self.video_position
+			])
+
+
+
+	# Display Distractor During Delay
+	
+	def delay_end(self, *args):
+
+		self.delay_present_event.cancel()
+		self.delay_video.state = 'pause'
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.video_end_time = time.time()
+		self.video_time = self.video_end_time - self.video_start_time
+		self.video_position += self.video_time
+
+		self.delay_ended = True
+		self.delay_active = False
+		
+		self.protocol_floatlayout.add_event([
+			time.time() - self.start_time
+			, 'Stage Change'
+			, 'Delay End'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.video_end_time - self.start_time)
+			, 'State Change'
+			, 'Object Remove'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.video_end_time - self.start_time)
+			, 'Object Remove'
+			, 'Video'
+			, 'Delay'
+			, str(self.delay_video.source)
+			, 'Video Time'
+			, self.video_position
+			])
+
+		self.target_present_event()
+	
+	
+	
+	def target_present(self, *args): # Present stimulus
+
+		self.delay_end_event.cancel()
+		self.iti_event.cancel()
+		
+		# print('Target presentation')
+		
+		self.hold_button.unbind(on_release=self.hold_released)
+
+		self.cue_image_button.bind(on_press=self.cue_pressed)
+		
+		self.protocol_floatlayout.add_widget(self.cue_image)
+		self.protocol_floatlayout.add_widget(self.target_image)
+		self.protocol_floatlayout.add_widget(self.cue_image_button)
+		self.protocol_floatlayout.add_widget(self.target_image_button)
+		
+		self.target_start_time = time.time()
+		
+		self.stimulus_on_screen = True
+		self.limhold_started = True
+		self.cue_completed = False
+		self.hold_active = False
+		
+		self.feedback_label.text = ''
+			
+		# print('Start target time: ', (self.target_start_time - self.start_time))
+		# print('Delay length: ', self.current_delay)
+		# print('Target x coord: ', self.trial_coord['Target']['x'])
+		# print('Target y coord: ', self.trial_coord['Target']['y'])
+		
+		self.protocol_floatlayout.add_event([
+			(self.target_start_time - self.start_time)
+			, 'State Change'
+			, 'Target Display'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(self.target_start_time - self.start_time)
+			, 'Object Display'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(self.target_start_time - self.start_time)
+			, 'Object Display'
+			, 'Stimulus'
+			, 'Target'
+			, self.target_image.pos_hint
+			])
+			
+		self.stimulus_event()
+	
+	
+	
+	def stimulus_presentation(self, *args): # Stimulus presentation
+		
+		if not self.stimulus_on_screen \
+			and not self.cue_completed \
+			and not self.delay_active \
+			and not self.limhold_started:
+
+			self.cue_present_event()
+		
+		elif self.stimulus_on_screen \
+			and not self.limhold_started \
+			and (time.time() - self.cue_start_time) < self.stimdur \
+			and self.hold_active:
+			
+			self.stimulus_event()
+
+		elif self.stimulus_on_screen \
+			and not self.limhold_started \
+			and (time.time() - self.cue_start_time) >= self.stimdur \
+			and self.hold_active:
+
+			self.stimulus_event.cancel()
+			self.delay_present_event()
+		
+		elif self.stimulus_on_screen \
+			and self.limhold_started \
+			and (time.time() - self.target_start_time) < self.limhold:
+			
+			self.stimulus_event()
+
+		else:
+			self.stimulus_event.cancel()
+			self.target_present_event.cancel()
+			self.no_response()
+
+
+
+	def hold_released(self, *args):
+		
+		self.protocol_floatlayout.clear_widgets()
+
+		self.hold_button.unbind(on_release=self.hold_released)
+
+		self.hold_active = False
+
+		if self.stimulus_on_screen \
+			and not self.cue_completed:
+
+			return
+
+		# print('Hold released; trial aborted.')
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Hold Released'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Trial Aborted'
+			])
+
+		self.stimulus_event.cancel()
+
+		self.cue_present_event.cancel()
+		self.target_present_event.cancel()
+		self.delay_present_event.cancel()
+		self.delay_end_event.cancel()
+		
+		if self.stimulus_on_screen \
+			and self.cue_completed:
+
+			# print('Trial aborted during cue presentation.')
+
+			self.protocol_floatlayout.add_event([
+				(time.time() - self.start_time)
+				, 'Object Remove'
+				, 'Stimulus'
+				, 'Cue'
+				, self.cue_image.pos_hint
+				])
+
+		elif self.delay_active:
+			# print('Trial aborted during delay presentation.')
+			self.delay_video.state = 'pause'
+
+			self.video_end_time = time.time()
+			self.video_time = self.video_end_time - self.video_start_time
+			self.video_position += self.video_time
+
+			self.protocol_floatlayout.add_event([
+				(self.video_end_time - self.start_time)
+				, 'Object Remove'
+				, 'Video'
+				, 'Delay'
+				, str(self.delay_video.source)
+				, 'Video Time'
+				, self.video_position
+				])
+		
+		self.feedback_label.text = self.feedback_dict['abort']
+
+		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_release=self.premature_response)
+
+		self.protocol_floatlayout.add_widget(self.hold_button)
+
+		if self.feedback_on_screen is False:	
+			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.feedback_on_screen = True
+			self.feedback_start_time = time.time()
+
+			self.protocol_floatlayout.add_event([
+				(self.feedback_start_time - self.start_time)
+				, 'Object Display'
+				, 'Text'
+				, 'Feedback'
+				, self.feedback_label.text
+				])
+		
+		self.stimulus_on_screen = False
+		self.cue_completed = False
+		self.delay_active = False
+		self.delay_ended = False
+		self.limhold_started = False
+		
+		self.last_response = np.nan
+		self.response_latency = np.nan
+		
+		self.write_trial()
+		self.trial_contingency()
+		
+		return
+
+
+
+	# Hold released too early
+	
+	def premature_response(self, *args):
+		
+		# print('Premature response')
+		
+		if self.stimulus_on_screen is True:
+			return
+	
+		self.hold_active = False
+		
+		self.iti_event.cancel()
+		
+		self.protocol_floatlayout.add_event([
+			time.time() - self.start_time
+			, 'Stage Change'
+			, 'Premature Response'
+			])
+
+		self.last_response = np.nan
+		self.response_latency = np.nan
+		self.iti_active = False
+		self.feedback_label.text = self.feedback_dict['abort']
+
+		if self.feedback_on_screen is False:	
+			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.feedback_on_screen = True
+			self.feedback_start_time = time.time()
+
+			self.protocol_floatlayout.add_event([
+				(self.feedback_start_time - self.start_time)
+				, 'Object Display'
+				, 'Text'
+				, 'Feedback'
+				, self.feedback_label.text
+				])
+		
+		self.hold_button.unbind(on_release=self.premature_response)
+		self.hold_button.bind(on_press=self.iti)
+	
+	
+	
+	# Cue Stimuli Pressed during Target
+	
+	def cue_pressed(self, *args):
+		
+		# print('Cue pressed')
+
+		self.stimulus_event.cancel()
+		
+		self.last_response = 0
+		
+		self.target_touch_time = time.time()
+		self.response_latency = self.target_touch_time - self.target_start_time
+		
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.remove_widget(self.cue_image_button)
+		self.protocol_floatlayout.remove_widget(self.target_image_button)
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'State Change'
+			, 'Cue Pressed'
+			])
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'State Change'
+			, 'Incorrect Reponse'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Target'
+			, self.target_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Stimulus Chosen'
+			, 'Cue'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Last Response'
+			, self.last_response
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Response Latency'
+			, self.response_latency
+			])
+		
+		self.feedback_label.text = self.feedback_dict['incorrect']
+
+		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_release=self.premature_response)
+
+		self.protocol_floatlayout.add_widget(self.hold_button)
+
+		if self.feedback_label.text != '' \
+			and not self.feedback_on_screen:
+			
+			self.protocol_floatlayout.add_widget(self.feedback_label)
+
+			self.feedback_start_time = time.time()
+			self.feedback_on_screen = True
+
+			self.protocol_floatlayout.add_event([
+				(self.feedback_start_time - self.start_time)
+				, 'Object Display'
+				, 'Text'
+				, 'Feedback'
+				, self.feedback_label.text
+				])
+		
+		self.hold_active = False
+		self.stimulus_on_screen = False
+		self.cue_completed = False
+		self.delay_active = False
+		self.delay_ended = False
+		self.limhold_started = False
+		
+		self.write_trial()
+		
+		self.trial_contingency()
+		
+		return
+	
+	
+	
+	# Target Stimuli Pressed during Target
+	
+	def target_pressed(self, *args):
+		
+		# print('Target pressed')
+
+		self.stimulus_event.cancel()
+		
+		self.last_response = 1
+		
+		self.target_touch_time = time.time()
+		self.response_latency = self.target_touch_time - self.target_start_time
+		
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.remove_widget(self.cue_image_button)
+		self.protocol_floatlayout.remove_widget(self.target_image_button)
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'State Change'
+			, 'Target Pressed'
+			])
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'State Change'
+			, 'Correct Reponse'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Target'
+			, self.target_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Stimulus Chosen'
+			, 'Target'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Last Response'
+			, self.last_response
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Response Latency'
+			, self.response_latency
+			])
+
+		self.feedback_label.text = self.feedback_dict['correct']
+
+		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_release=self.premature_response)
+
+		self.protocol_floatlayout.add_widget(self.hold_button)
+
+		if self.feedback_label.text != '' \
+			and not self.feedback_on_screen:
+			
+			self.protocol_floatlayout.add_widget(self.feedback_label)
+
+			self.feedback_start_time = time.time()
+			self.feedback_on_screen = True
+
+			self.protocol_floatlayout.add_event([
+				(self.feedback_start_time - self.start_time)
+				, 'Object Display'
+				, 'Text'
+				, 'Feedback'
+				, self.feedback_label.text
+				])
+		
+		self.hold_active = False
+		self.stimulus_on_screen = False
+		self.cue_completed = False
+		self.delay_active = False
+		self.delay_ended = False
+		self.limhold_started = False
+		
+		self.write_trial()
+		
+		self.trial_contingency()
+		
+		return
+	
+	
+	
+	# No response during test phase limited hold
+	
+	def no_response(self, *args):
+		
+		# print('No response; limhold ended')
+
+		self.stimulus_event.cancel()
+		
+		self.last_response = np.nan
+
+		self.target_touch_time = time.time()
+		self.response_latency = np.nan
+		
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.remove_widget(self.cue_image_button)
+		self.protocol_floatlayout.remove_widget(self.target_image_button)
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'State Change'
+			, 'No Response'
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Target'
+			, self.target_image.pos_hint
+			])
+
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Stimulus Chosen'
+			, 'None'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Last Response'
+			, self.last_response
+			])
+		
+		self.protocol_floatlayout.add_event([
+			self.target_touch_time - self.start_time
+			, 'Variable Change'
+			, 'Outcome'
+			, 'Response Latency'
+			, self.response_latency
+			])
+
+		self.feedback_label.text = ''
+
+		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_release=self.premature_response)
+
+		self.protocol_floatlayout.add_widget(self.hold_button)
+		
+		self.stimulus_on_screen = False
+		self.cue_completed = False
+		self.delay_active = False
+		self.delay_ended = False
+		self.limhold_started = False
+		
+		self.write_trial()
+		
+		self.trial_contingency()
+		
+		if self.hold_active == True:
+			self.hold_active = False
+			self.iti()
+
+		return
+	
+	
+	
+	# Data Saving Function
+	
+	def write_trial(self):
+		
+		# print('Write trial')
+		
+		cue_x = self.trial_coord['Cue']['x']
+		cue_y = self.trial_coord['Cue']['y']
+		target_x = self.trial_coord['Target']['x']
+		target_y = self.trial_coord['Target']['y']
+		
+		trial_data = [
+			self.current_trial
+			, self.current_block
+			, self.current_stage
+			, self.current_sep
+			, self.current_delay
+			, self.video_position
+			, (cue_x + 1)
+			, (cue_y + 1)
+			, (target_x + 1)
+			, (target_y + 1)
+			, self.last_response
+			, self.response_latency
+			]
+		
+		self.write_summary_file(trial_data)
+		
+		return
+	
+	
+	
+	# Trial Contingency Functions
+	
+	def trial_contingency(self):
+		
+		try:
+			
+			if self.hold_active:
+				self.hold_active = False
+
+			if self.current_block_trial != 0:
+				# print('\n\n\n')
+				# print('Trial contingency start')
+				# print('')
+				# print('Current stage: ', self.current_stage)
+				# print('Current block: ', self.current_block)
+				# print('Current trial: ', self.current_trial)
+				# print('Current task time: ', (time.time() - self.start_time))
+				# print('Current block time: ', (time.time() - self.block_start_time))
+				# print('')
+				# print('ITI: ', self.iti_length)
+				# print('Separation: ', self.current_sep)
+				# print('Delay: ', self.current_delay)
+				# print('Video position: ', self.video_position)
+				
+				# print('')
+				# print('Last response: ', self.last_response)
+				# print('Target latency: ', self.response_latency)
+				# print('')
+
+				if self.last_response in [0, 1]:
+					self.response_tracking.append(self.last_response)
+					self.accuracy_tracking.append(self.last_response)
+
+
+				if self.current_delay >= self.max_delay \
+					and len(self.response_tracking) > 3:
+
+					del self.response_tracking[1]
+
+
+				if (len(self.response_tracking) >= 2) \
+					and (sum(self.response_tracking) < 0):
+
+					self.staircase_change = 'dec'
+					self.response_tracking = list()
+
+					self.protocol_floatlayout.add_event([
+						(time.time() - self.start_time)
+						, 'Variable Change'
+						, 'Parameter'
+						, 'Staircasing'
+						, 'Decrease'
+						])
+
+				elif (len(self.response_tracking) >= 2) \
+					and (sum(self.response_tracking) > 0):
+
+					self.staircase_change = 'inc'
+					self.response_tracking = list()
+
+					self.protocol_floatlayout.add_event([
+						(time.time() - self.start_time)
+						, 'Variable Change'
+						, 'Parameter'
+						, 'Staircasing'
+						, 'Increase'
+						])
+				
+				else:
+					self.staircase_change = 'non'
+
+
+				# Adjust staircasing
+				
+				if self.staircase_change == 'inc':
+					# print('Performance over chance.')
+				
+					if self.current_stage == 'Space':
+						self.space_probe_delay_list[self.space_trial_index] += self.space_probe_staircase_list[self.space_trial_index]
+						self.space_probe_response_list[self.space_trial_index] = self.last_response
+
+					elif self.current_stage == 'Delay':
+						self.delay_probe_sep_list[self.delay_trial_index] -= 1
+						self.delay_probe_response_list[self.delay_trial_index] = self.last_response
+
+						if self.delay_probe_sep_list[self.delay_trial_index] < self.min_sep:
+							self.delay_probe_sep_list[self.delay_trial_index] = self.min_sep
+
+					elif self.current_stage == 'Combo':
+						self.combo_probe_delay_tracking_dict[self.current_sep].append(self.current_delay)
+						self.combo_probe_delay_list[self.combo_trial_index] += self.combo_probe_staircase_list[self.combo_trial_index]
+
+						self.last_staircase_time_increase = self.combo_probe_staircase_list[self.combo_trial_index]
+
+						if self.combo_probe_delay_list[self.combo_trial_index] > self.max_delay:
+							self.combo_probe_delay_list[self.combo_trial_index] = self.max_delay
+						
+						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'State Change'
+							, 'Combo Staircasing'
+							])
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'Variable Change'
+							, 'Parameter'
+							, 'Delay'
+							, self.current_delay
+							])
+						
+						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
+				
+				
+				if self.staircase_change == 'dec':
+					# print('Performance under chance.')
+				
+					if self.current_stage == 'Space':
+
+						if self.space_probe_response_list[self.space_trial_index] == 1:
+							self.space_probe_staircase_list[self.space_trial_index] /= 2
+
+						self.space_probe_delay_list[self.space_trial_index] -= self.space_probe_staircase_list[self.space_trial_index]
+						self.space_probe_response_list[self.space_trial_index] = self.last_response
+
+						if self.space_probe_delay_list[self.space_trial_index] < self.min_delay:
+							self.space_probe_delay_list[self.space_trial_index] = self.min_delay
+
+					elif self.current_stage == 'Delay':
+
+						self.delay_probe_sep_list[self.delay_trial_index] += 1
+						self.delay_probe_response_list[self.delay_trial_index] = self.last_response
+
+						if self.delay_probe_sep_list[self.delay_trial_index] > self.max_sep:
+							self.delay_probe_sep_list[self.delay_trial_index] = self.max_sep
+
+					elif self.current_stage == 'Combo':
+
+						if self.combo_probe_staircase_list[self.combo_trial_index] == self.last_staircase_time_increase:
+							self.combo_probe_staircase_list[self.combo_trial_index] /= 2
+
+						self.combo_probe_delay_list[self.combo_trial_index] -= self.combo_probe_staircase_list[self.combo_trial_index]
+
+						if self.combo_probe_delay_list[self.combo_trial_index] < self.min_delay:
+							self.combo_probe_delay_list[self.combo_trial_index] = self.min_delay
+						
+						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'State Change'
+							, 'Combo Staircasing'
+							])
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'Variable Change'
+							, 'Parameter'
+							, 'Delay'
+							, self.current_delay
+							])
+
+						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
+				
+
+				if self.current_stage == 'Combo' \
+					and ((time.time() - self.block_start_time) >= (self.combo_probe_max_section_dur * (self.combo_trial_index + 1))):
+
+					self.combo_trial_index += 1
+
+					if self.combo_trial_index < len(self.combo_probe_sep_list):
+						self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
+						self.combo_probe_delay_list[self.combo_trial_index] = self.current_delay
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'State Change'
+							, 'Combo Staircasing'
+							])
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'Variable Change'
+							, 'Parameter'
+							, 'Separation'
+							, self.current_sep
+							])
+
+						self.protocol_floatlayout.add_event([
+							(time.time() - self.start_time)
+							, 'Variable Change'
+							, 'Parameter'
+							, 'Delay'
+							, self.current_delay
+							])
+
+					else:
+						self.block_check_event()
+
+
+				if (time.time() - self.block_start_time >= self.block_duration):
+					self.current_block += 1
+					self.block_check_event()
+
+			# Set next trial parameters
+
+			# Trial number and trial index
+
+			self.current_trial += 1
+			self.current_block_trial += 1
+			
+			self.protocol_floatlayout.add_event([
+				(time.time() - self.start_time)
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Current Trial'
+				, str(self.current_trial)
+				])
+			
+			self.protocol_floatlayout.add_event([
+				(time.time() - self.start_time)
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Current Block Trial'
+				, str(self.current_block_trial)
+				])
+			
+			# Set ITI
+
+			if len(self.iti_range) > 1:
+				
+				if self.iti_fixed_or_range == 'fixed':
+					self.iti_length = random.choice(self.iti_range)
+				
+				else:
+					self.iti_length = round(random.uniform(min(self.iti_range), max(self.iti_range)), 2)
+				
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'Variable Change'
+					, 'Parameter'
+					, 'Current ITI'
+					, self.iti_length
+					])
+
+
+			if self.current_stage == 'Space':
+				
+				if self.trial_index >= len(self.space_trial_index_list):
+					self.trial_index = 0
+					random.shuffle(self.space_trial_index_list)
+				
+				self.space_trial_index = self.space_trial_index_list[self.trial_index]
+				
+				self.current_sep = self.space_probe_sep_list[self.space_trial_index]
+				self.current_delay = self.space_probe_delay_list[self.space_trial_index]
+			
+			elif self.current_stage == 'Delay':
+				
+				if self.trial_index >= len(self.delay_trial_index_list):
+					self.trial_index = 0
+					random.shuffle(self.delay_trial_index_list)
+				
+				self.delay_trial_index = self.delay_trial_index_list[self.trial_index]
+				
+				self.current_sep = self.delay_probe_sep_list[self.delay_trial_index]
+				self.current_delay = self.delay_probe_delay_list[self.delay_trial_index]
+			
+			# Set cue and target coordinates
+			
+			self.trial_coord = self.generate_trial_pos_sep(
+				self.x_boundaries
+				, self.y_boundaries
+				, self.current_sep
+				, self.stimulus_image_spacing
+				, self.screen_x_padding
+				, self.screen_y_padding_t
+				, self.screen_y_padding_b
+				)
+			
+			# Set cue and target locations
+			
+			self.cue_image.pos_hint = {
+				"center_x": self.trial_coord['Cue']['x'], 
+				"center_y": self.trial_coord['Cue']['y']
+				}
+			
+			self.target_image.pos_hint = {
+				"center_x": self.trial_coord['Target']['x'], 
+				"center_y": self.trial_coord['Target']['y']
+				}
+			
+
+			self.cue_image_button.pos_hint = {
+				"center_x": self.trial_coord['Cue']['x'], 
+				"center_y": self.trial_coord['Cue']['y']
+				}
+			
+			self.target_image_button.pos_hint = {
+				"center_x": self.trial_coord['Target']['x'], 
+				"center_y": self.trial_coord['Target']['y']
+				}
+			
+
+			self.protocol_floatlayout.add_event([
+				time.time() - self.start_time
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Current Delay'
+				, str(self.current_delay)
+				])
+			
+			self.protocol_floatlayout.add_event([
+				time.time() - self.start_time
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Current Separation'
+				, str(self.current_sep)
+				])
+			
+			self.protocol_floatlayout.add_event([
+				time.time() - self.start_time
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Cue Position'
+				, self.cue_image.pos_hint
+				])
+			
+			self.protocol_floatlayout.add_event([
+				time.time() - self.start_time
+				, 'Variable Change'
+				, 'Parameter'
+				, 'Target Position'
+				, self.cue_image.pos_hint
+				])
+
+			self.trial_end_time = time.time()
+		
+		
+		except KeyboardInterrupt:
+			
+			print('Program terminated by user.')
+			self.protocol_end()
+		
+		except:
+			
+			print('Error; program terminated.')
+			self.protocol_end()
+	
+	
+	
+	def section_start(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Section Start'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Text'
+			, 'Stage'
+			, 'Instructions'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Button'
+			, 'Stage'
+			, 'Continue'
+			])
+		
+		self.block_end()
+	
+
+
+	def results_screen(
+			self
+			, *args
+			):
+		
+		self.iti_event.cancel()
+		
+		self.protocol_floatlayout.clear_widgets()
+		self.feedback_on_screen = False
+		self.feedback_label.text = ''
+
+		if len(self.accuracy_tracking) == 0:
+			self.outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
+		
+		else:
+			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
+			
+			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
+				+ str(round(self.hit_accuracy * 100)) \
+				+ '%!\n\nPlease inform the researcher that you have finished this task.'
+		
+		self.instruction_button.unbind(on_press=self.section_start)
+		self.instruction_button.bind(on_press=self.protocol_end)
+		self.instruction_button.text = 'End Task'
+
+		self.section_instr_label.text = self.outcome_string
+
+		self.protocol_floatlayout.add_widget(self.section_instr_label)
+		self.protocol_floatlayout.add_widget(self.instruction_button)
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Text'
+			, 'Stage'
+			, 'Results'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Button'
+			, 'Stage'
+			, 'Continue'
+			])
+
+
+
+	# Block Contingency Function
+	
+	def block_contingency(self, *args):
+		
+		try:
+
+			self.iti_event.cancel()
+
+			self.block_started = True
+
+			if self.feedback_on_screen:
+				
+				if (time.time() - self.feedback_start_time) >= self.feedback_length:
+					# print('Feedback over')
+					self.block_check_event.cancel()
+					self.protocol_floatlayout.remove_widget(self.feedback_label)
+					self.feedback_label.text = ''
+					self.feedback_on_screen = False
+
+				else:
+					return
+			
+			else:
+				# print('Block check event cancel')
+				self.block_check_event.cancel()
+			
+			# print('\n\n\n\nBlock contingency\n\n')
+
+			self.protocol_floatlayout.clear_widgets()
+			self.feedback_label.text = ''
+
+			# print('Clear widgets')
+		
+			self.protocol_floatlayout.add_event([
+				(time.time() - self.start_time)
+				, 'State Change'
+				, 'Block Contingency'
+				])
+		
+			self.protocol_floatlayout.add_event([
+				(time.time() - self.start_time)
+				, 'State Change'
+				, 'Screen Cleared'
+				])
+			
+			# print('Current block: ', self.current_block)
+			# print('Current task time: ', (time.time() - self.start_time))
+			
+			if (self.current_block > self.block_multiplier) or (self.current_block == -1):
+				self.stage_index += 1
+				self.current_block = 1
+				
+				# print('Stage index: ', self.stage_index)
+			
+	
+			if self.stage_index >= len(self.stage_list): # Check if all stages complete
+				# print('All stages complete')
+				self.session_event.cancel()
+				self.results_screen()
+
+				return
+			
+			else:
+				self.current_stage = self.stage_list[self.stage_index]
+				# print('Current stage: ', self.current_stage)
+		
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'State Change'
+					, 'Stage Change'
+					, 'Current Stage'
+					, self.current_stage
+					])
+
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'State Change'
+					, 'Block Change'
+					, 'Current Block'
+					, self.current_block
+					])
+			
+			
+			if self.current_stage == 'Space':
+				random.shuffle(self.space_trial_index_list)
+			
+			elif self.current_stage == 'Delay':
+				random.shuffle(self.delay_trial_index_list)
+						
+			elif self.current_stage == 'Combo':	
+				self.combo_trial_index = 0
+				self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
+				self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
+
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'Variable Change'
+					, 'Parameter'
+					, 'Separation'
+					, self.current_sep
+					])
+
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'Variable Change'
+					, 'Parameter'
+					, 'Delay'
+					, self.current_delay
+					])
+
+
+			if (self.current_block == 1) and (self.stage_index == 0):
+				# print('Section Task Instructions')
+				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
+
+				self.instruction_button.text = 'Begin Section'
+				
+				self.protocol_floatlayout.add_widget(self.section_instr_label)
+				self.protocol_floatlayout.add_widget(self.instruction_button)
+				
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'Object Display'
+					, 'Text'
+					, 'Block'
+					, 'Instructions'
+					, 'Type'
+					, 'Training'
+					])
+				
+				self.protocol_floatlayout.add_event([
+					(time.time() - self.start_time)
+					, 'Object Display'
+					, 'Button'
+					, 'Block'
+					, 'Instructions'
+					, 'Type'
+					, 'Continue'
+					])
+			
+			else:
+				# print('Else: Block Screen')
+				self.block_started = False
+				self.block_event()
+			
+
+			self.response_tracking = list()
+			self.last_response = 0
+			self.contingency = 0
+			self.trial_outcome = 0
+			self.current_block_trial = 0
+			self.trial_index = 0
+			
+			# print('Block contingency end')
+			
+			self.trial_contingency()
+		
+		
+		except KeyboardInterrupt:
+			
+			print('Program terminated by user.')
+			self.protocol_end()
+		
+		except:
+			
+			print('Error; program terminated.')
+			self.protocol_end()

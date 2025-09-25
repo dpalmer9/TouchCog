@@ -1,12 +1,9 @@
 ##############################################################################
 #                      Kivy Launcher Interface                               #
 #                      by: Daniel Palmer PhD                                 #
-#                      contributor: Filip Kosel PhD                          #
+#                      revisions: Filip Kosel PhD                            #
 #                      Version: 2.1                                          #
 ##############################################################################
-
-
-
 
 # Setup #
 
@@ -17,7 +14,58 @@ import importlib.util
 import os
 import pathlib
 
+
+import sys
 from kivy.config import Config
+# Change current working directory to location of this file
+
+def get_refresh_rate():
+	"""
+	Returns the current display refresh rate as an integer (Hz).
+	Uses ctypes for Windows. Placeholder for Linux.
+	"""
+	if sys.platform.startswith('win'):
+		import ctypes
+		user32 = ctypes.windll.user32
+		class DEVMODE(ctypes.Structure):
+			_fields_ = [
+				("dmDeviceName", ctypes.c_wchar * 32),
+				("dmSpecVersion", ctypes.c_ushort),
+				("dmDriverVersion", ctypes.c_ushort),
+				("dmSize", ctypes.c_ushort),
+				("dmDriverExtra", ctypes.c_ushort),
+				("dmFields", ctypes.c_ulong),
+				("dmOrientation", ctypes.c_short),
+				("dmPaperSize", ctypes.c_short),
+				("dmPaperLength", ctypes.c_short),
+				("dmPaperWidth", ctypes.c_short),
+				("dmScale", ctypes.c_short),
+				("dmCopies", ctypes.c_short),
+				("dmDefaultSource", ctypes.c_short),
+				("dmPrintQuality", ctypes.c_short),
+				("dmColor", ctypes.c_short),
+				("dmDuplex", ctypes.c_short),
+				("dmYResolution", ctypes.c_short),
+				("dmTTOption", ctypes.c_short),
+				("dmCollate", ctypes.c_short),
+				("dmFormName", ctypes.c_wchar * 32),
+				("dmLogPixels", ctypes.c_ushort),
+				("dmBitsPerPel", ctypes.c_ulong),
+				("dmPelsWidth", ctypes.c_ulong),
+				("dmPelsHeight", ctypes.c_ulong),
+				("dmDisplayFlags", ctypes.c_ulong),
+				("dmDisplayFrequency", ctypes.c_ulong)
+			]
+		devmode = DEVMODE()
+		devmode.dmSize = ctypes.sizeof(DEVMODE)
+		if user32.EnumDisplaySettingsW(None, -1, ctypes.byref(devmode)):
+			return int(devmode.dmDisplayFrequency)
+		return 60  # fallback
+	elif sys.platform.startswith('linux'):
+		# Placeholder for Linux implementation
+		return None
+	else:
+		return None
 
 
 
@@ -27,9 +75,6 @@ from kivy.config import Config
 os.chdir(pathlib.Path(__file__).parent.resolve())
 
 config_path = pathlib.Path('Screen.ini')
-
-# main_path = os.getcwd()
-# config_path = main_path + '/Screen.ini'
 
 config_file = configparser.ConfigParser()
 config_file.read(config_path)
@@ -42,14 +87,13 @@ virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
 Config.set('kivy', 'kivy_clock', 'interrupt')
-Config.set('graphics', 'maxfps', 0)
-
-
-
+maxfps = get_refresh_rate()
+if maxfps is not None:
+	Config.set('graphics', 'maxfps', str(maxfps))
+else:
+	Config.set('graphics', 'maxfps', 0)
 
 if fullscreen == 0:
-	
-	
 	Config.set('graphics', 'width', str(x_dim))
 	Config.set('graphics', 'height', str(y_dim))
 	Config.set('graphics', 'fullscreen', '0')
@@ -57,10 +101,7 @@ if fullscreen == 0:
 	Config.set('graphics', 'top', 0)
 	Config.set('graphics', 'left', 0)
 
-
 elif fullscreen == 1:
-	
-	
 	Config.set('graphics', 'width', str(x_dim))
 	Config.set('graphics', 'height', str(y_dim))
 	Config.set('graphics', 'position', 'custom')
@@ -69,25 +110,14 @@ elif fullscreen == 1:
 	Config.set('graphics', 'fullscreen', True)
 
 
-
-
 if virtual_keyboard == 0:
-	
-	
 	Config.set('kivy', 'keyboard_mode', 'system')
 
-
 elif virtual_keyboard == 1:
-	
-	
 	Config.set('kivy', 'keyboard_mode', 'systemanddock')
 
 
-
-
 if use_mouse == 0:
-	
-	
 	Config.set('graphics', 'show_cursor', 0)
 
 
@@ -121,10 +151,6 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.widget import Widget
 
-# from Protocol_Configure import Protocol_Select
-
-# from win32api import GetSystemMetrics
-
 
 
 
@@ -136,50 +162,11 @@ Window.borderless = '0'
 
 
 
-# General Functions #
-
-def os_folder_modifier():
-	
-	
-	os_platform = sys.platform
-	
-	if os_platform == 'linux':
-		
-		
-		mod = '/'
-	
-	
-	elif os_platform == 'darwin':
-		
-		
-		mod = '/'
-	
-	
-	elif os_platform == 'win32':
-		
-		
-		mod = '\\'
-	
-	
-	else:
-		
-		
-		mod = '/'
-	
-	
-	return mod
-
-
-
-
 # Class Objects #
 
 class ImageButton(ButtonBehavior, Image):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(ImageButton, self).__init__(**kwargs)
 
@@ -190,10 +177,7 @@ class ImageButton(ButtonBehavior, Image):
 
 class ScreenManager(ScreenManager):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(ScreenManager, self).__init__(**kwargs)
 
@@ -204,10 +188,7 @@ class ScreenManager(ScreenManager):
 
 class MainMenu(Screen):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(MainMenu, self).__init__(**kwargs)
 		
@@ -228,18 +209,13 @@ class MainMenu(Screen):
 		self.Menu_Layout.add_widget(exit_button)
 	
 	
+
 	def load_protocol_menu(self, *args):
 		
-		
 		if isinstance(self.protocol_window, ProtocolMenu):
-			
-			
 			self.manager.current = 'protocolmenu'
 		
-		
 		else:
-			
-			
 			self.protocol_window = ProtocolMenu()
 			self.manager.add_widget(self.protocol_window)
 			self.manager.current = 'protocolmenu'
@@ -247,7 +223,6 @@ class MainMenu(Screen):
 	
 	
 	def exit_program(self, *args):
-		
 		
 		App.get_running_app().stop()
 		Window.close()
@@ -259,10 +234,7 @@ class MainMenu(Screen):
 
 class ProtocolMenu(Screen):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(ProtocolMenu, self).__init__(**kwargs)
 		
@@ -277,8 +249,6 @@ class ProtocolMenu(Screen):
 		protocol_index = 0
 		
 		for protocol in protocol_list:
-			
-			
 			button_func = partial(self.set_protocol, protocol)
 			self.Protocol_List.add_widget(Button(text=protocol, on_press=button_func))
 			protocol_index += 1
@@ -300,12 +270,8 @@ class ProtocolMenu(Screen):
 	
 	def set_protocol(self, label, *args):
 		
-		
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
-			
-			
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
-		
 		
 		self.protocol_constructor(label)
 		self.Protocol_Configure_Screen.size = Window.size
@@ -316,43 +282,21 @@ class ProtocolMenu(Screen):
 	
 	def cancel_protocol(self, *args):
 		
-		
 		self.manager.current = 'mainmenu'
 	
 	
 	
 	def search_protocols(self):
 		
-		
-# 		folder = pathlib.Path('Protocol')
-		
-# 		cwd = os.getcwd()
-# 		mod = os_folder_modifier()
-# 		folder = cwd + mod + 'Protocol'
-# 		task_list = os.listdir(folder)
-		
-# 		task_list = list(folder.glob('*'))
-		
 		task_list = list(pathlib.Path().glob('Protocol/*'))
 		output_list = list()
 		
 		for task in task_list:
-			
-			
-# 			if '.py' in task:
-				
-				
-# 				task_list.remove(task)
-		
 		
 			if not task.is_dir():
-				
-				
 				continue
 			
-			
 			output_list.append(task.stem)
-		
 		
 		return output_list
 	
@@ -360,23 +304,9 @@ class ProtocolMenu(Screen):
 	
 	def protocol_constructor(self, protocol):
 		
-		
-		#cwd = os.getcwd()
-		#mod = os_folder_modifier()
-		#prot_path = cwd + mod + 'Protocol' + mod + protocol
-		#sys.path.append(prot_path)
-		#from Task.Menu import ConfigureScreen
-		#self.Protocol_Configure_Screen = ConfigureScreen()
-		#sys.path.remove(prot_path)
-		
 		def lazy_import(protocol):
 			
-			
 			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
-			
-# 			cwd = os.getcwd()
-# 			working = cwd + '\\Protocol\\' + protocol + '\\Task\\Menu.py'
-			
 			mod_name = 'Menu'
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
@@ -386,7 +316,6 @@ class ProtocolMenu(Screen):
 			mod_loader.exec_module(module)
 			
 			return module
-		
 		
 		task_module = lazy_import(protocol)
 		
@@ -399,10 +328,7 @@ class ProtocolMenu(Screen):
 
 class MenuApp(App):
 	
-	
-	
 	def build(self):
-		
 		
 		self.session_event_data = pd.DataFrame()
 		self.session_event_path = ''
@@ -418,13 +344,11 @@ class MenuApp(App):
 	
 	def add_screen(self, screen):
 		
-		
 		self.s_manager.add_widget(screen)
 	
 	
 	
 	def on_stop(self):
-		
 		
 		self.session_event_data = self.session_event_data.sort_values(by=['Time'])
 		self.session_event_data.to_csv(self.session_event_path, index=False)
@@ -432,9 +356,7 @@ class MenuApp(App):
 
 
 
-
 if __name__ == '__main__':
-	
 	
 	MenuApp().run()
 
