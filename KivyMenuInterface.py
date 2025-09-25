@@ -16,6 +16,10 @@ import pathlib
 
 
 import sys
+
+os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+os.environ['KIVY_AUDIO'] = 'ffpyplayer'
+
 from kivy.config import Config
 # Change current working directory to location of this file
 
