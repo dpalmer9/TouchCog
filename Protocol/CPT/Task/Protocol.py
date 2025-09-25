@@ -1127,16 +1127,12 @@ class ProtocolScreen(ProtocolBase):
 
 	def present_tutorial_video_start_button(self, *args):
 
-		self.tutorial_video_end_event.cancel()
-
 		self.protocol_floatlayout.add_widget(self.tutorial_continue)
 		self.protocol_floatlayout.add_widget(self.tutorial_restart)
 		return
 
 
 	def tutorial_target_present_screen(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 
 		self.tutorial_video.state = 'stop'
 
@@ -1165,25 +1161,20 @@ class ProtocolScreen(ProtocolBase):
 
 	def blur_preload_start(self, *args):
 
-		self.blur_preload_start_event.cancel()
-
 		self.img_stimulus_C.texture = self.image_dict[self.mask_image].image.texture
 
 		self.protocol_floatlayout.add_widget(self.blur_widget)
 		self.blur_widget.add_widget(self.img_stimulus_C)
 
-		self.blur_preload_end_event()
+		self.blur_preload_end()
 
 
 
 	def blur_preload_end(self, *args):
-
-		self.blur_preload_end_event.cancel()
-
 		self.protocol_floatlayout.remove_widget(self.blur_widget)
 		self.blur_widget.remove_widget(self.img_stimulus_C)
 
-		self.trial_contingency_event()
+		self.trial_contingency()
 
 
 
@@ -1214,6 +1205,8 @@ class ProtocolScreen(ProtocolBase):
 
 
 		Clock.schedule_once(self.stimulus_end, self.stimdur)
+
+		Clock.schedule_once(self.center_notpressed, self.limhold)
 
 
 
@@ -1291,11 +1284,7 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.unbind(on_release=self.premature_response)
 			self.hold_button.bind(on_release=self.stimulus_response)
 			
-			self.stimulus_present_event()
-
-			Clock.schedule_once(self.stimulus_end, self.stimdur)
-
-			Clock.schedule_once(self.center_notpressed, self.limhold)
+			self.stimulus_present()
 
 
 
@@ -1398,9 +1387,8 @@ class ProtocolScreen(ProtocolBase):
 	# Tracks contingencies based on responses direectly to the stimulus image
 	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Premature,6-Dual Image, wrong side
 		
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
-		self.stimdur_event.cancel()
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
 
 		self.hold_active = False
 
@@ -1515,18 +1503,14 @@ class ProtocolScreen(ProtocolBase):
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
 
-			self.blur_preload_start_event()
+			self.blur_preload_start()
 		
 		else:
-			self.trial_contingency_event()
+			self.trial_contingency()
 
 
 
 	def center_notpressed(self, *args):
-		
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
-		self.stimdur_event.cancel()
 
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
@@ -1638,10 +1622,10 @@ class ProtocolScreen(ProtocolBase):
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
 
-			self.blur_preload_start_event()
+			self.blur_preload_start()
 		
 		else:
-			self.trial_contingency_event()
+			self.trial_contingency()
 	
 	
 	
@@ -1720,8 +1704,6 @@ class ProtocolScreen(ProtocolBase):
 		# Trial Contingencies: 0-Incorrect; 1-Correct; 2-Response, no center touch; 3-Premature
 		# Trial Outcomes: 0-Premature; 1-Hit; 2-Miss; 3-False Alarm; 4-Correct Rejection; 5-Hit, no center touch; 6-False Alarm, no center touch
 		try:
-
-			self.trial_contingency_event.cancel()
 			## ENCODE TRIAL OUTCOME AS last_response FOR EACH CONTINGENCY ##
 			# Check that current block trial is not the first trial of the block
 			if self.current_block_trial != 0:
@@ -2337,7 +2319,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.remove_widget(self.hold_button)
 				
-				self.block_check_event()
+				self.block_contingency()
 			
 			elif (self.current_trial > self.session_trial_max) \
 				or ((time.time() - self.start_time) >= self.session_length_max):
@@ -2551,9 +2533,8 @@ class ProtocolScreen(ProtocolBase):
 				, 'Stage End'
 				])
 
-		self.stimdur_event.cancel()
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
 
 		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
@@ -2618,24 +2599,8 @@ class ProtocolScreen(ProtocolBase):
 	def block_contingency(self, *args):
 		
 		try:
-			
-			self.stimulus_present_event.cancel() ##
-			self.stimulus_end_event.cancel() ##
-			self.stimdur_event.cancel() ##
-			
-			if self.feedback_on_screen: ## REPLACE WITH FEEDBACK REMOVAL EVENT
-				
-				if (time.time() - self.feedback_start_time) >= self.feedback_length:
-					self.block_check_event.cancel()
-					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.feedback_label.text = ''
-					self.feedback_on_screen = False
-
-				else:
-					return
-				
-			else:
-				self.block_check_event.cancel()
+			Clock.unschedule(self.stimulus_end)
+			Clock.unschedule(self.center_notpressed)
 		
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
@@ -2664,7 +2629,6 @@ class ProtocolScreen(ProtocolBase):
 				self.current_block = 1
 	
 				if self.stage_index >= len(self.stage_list): # Check if all stages complete
-					self.session_event.cancel()
 					self.protocol_end()
 
 				else:
@@ -2700,7 +2664,6 @@ class ProtocolScreen(ProtocolBase):
 					, 'Stage Change'
 					, 'Protocol End'
 					])
-				self.session_event.cancel()
 				self.protocol_end()
 			
 
@@ -2892,7 +2855,6 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				self.block_started = False
-				self.block_event()
 
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames), 'Type', 'Staircasing', 'Units', 'Frames')
 
@@ -2921,10 +2883,10 @@ class ProtocolScreen(ProtocolBase):
 			if 'Blur_Scaling' in self.stage_list \
 				or self.current_stage == 'Blur_Probe':
 
-				self.blur_preload_start_event()
+				self.blur_preload_start()
 			
 			else:
-				self.trial_contingency_event()
+				self.trial_contingency()
 		
 
 		except KeyboardInterrupt:
