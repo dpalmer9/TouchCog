@@ -475,6 +475,7 @@ class ProtocolBase(Screen):
 		self.block_started = False
 		self.feedback_on_screen = False
 		self.hold_active = True
+		self.hold_button_pressed = False
 		
 		
 		# Define Variables - Counter
@@ -927,38 +928,25 @@ class ProtocolBase(Screen):
 
 
 	def hold_remind(self, *args):
-		print('hold_remind called, stage=', self.hold_remind_stage, '', time.time() - self.start_time)
-		if self.block_started:
-			self.hold_remind_stage = 0
-			return
-
-		# Stage 0: schedule delayed one-shot trigger and return
-		if self.hold_remind_stage == 0:
-			# schedule a one-shot trigger after hold_remind_delay
-			self.hold_remind_stage = 1
-			Clock.schedule_once(self.hold_remind, self.hold_remind_delay)
-			return
-
-		if self.hold_remind_stage == 1:
-			self.hold_remind_stage = 0
-			if self.feedback_on_screen:
-				if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
+		if self.feedback_on_screen:
+			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
-					return
-				else:
+				return
+			else:
 					# remove any other feedback text
-					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
-					self.feedback_on_screen = False
+				Clock.unschedule(self.remove_feedback)
+				self.protocol_floatlayout.remove_widget(self.feedback_label)
+				self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
+				self.feedback_on_screen = False
 
-			if not self.feedback_on_screen:
-				self.feedback_label.text = self.feedback_dict['return']
-				self.protocol_floatlayout.add_widget(self.feedback_label)
+		if not self.feedback_on_screen:
+			self.feedback_label.text = self.feedback_dict['return']
+			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-				self.feedback_start_time = time.time()
-				self.feedback_on_screen = True
+			self.feedback_start_time = time.time()
+			self.feedback_on_screen = True
 
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		return
 		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
@@ -967,6 +955,7 @@ class ProtocolBase(Screen):
 	def iti_start(self, *args):	
 		if not self.iti_active:
 			# ensure no pending reminder stage remains and swap bindings
+			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
