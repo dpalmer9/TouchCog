@@ -379,6 +379,9 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Widgets - Video
 
+		self.fribble_folder = pathlib.Path('Fribbles', self.stimulus_family)
+		self.outline_mask_path = str(self.image_folder / 'whitecircle.png')
+
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		self.tutorial_outline = ImageButton(source=self.outline_mask_path)
 		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
@@ -885,6 +888,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		
 		# Define Widgets - Images
+
+		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		
 		self.hold_button.source = self.hold_image_path
 		self.hold_button.bind(on_press=self.iti_start)
@@ -2522,8 +2527,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_end()
 		
 		except:
-			
-			print('Error; program terminated.')
+
+			print('Error; program terminated by Trial Contingency.')
 			self.protocol_end()
 
 	def start_stage_screen(self, *args):
@@ -2856,11 +2861,11 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.block_started = False
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames), 'Type', 'Staircasing', 'Units', 'Frames')
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames),'Staircasing', 'Frames')
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames * self.frame_duration), 'Type', 'Staircasing', 'Units', 'Seconds')
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames * self.frame_duration), 'Staircasing', 'Seconds')
 
-			self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.limhold), 'Type', 'Staircasing', 'Units', 'Seconds')
+			self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.limhold), 'Staircasing', 'Seconds')
 
 			self.current_hits = 0
 			self.last_response = 0
@@ -2896,5 +2901,5 @@ class ProtocolScreen(ProtocolBase):
 		
 		except:
 			
-			print('Error; program terminated.')
+			print('Error; program terminated from Block Contingency.')
 			self.protocol_end()
