@@ -1518,6 +1518,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.write_trial()
 
+		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_release=self.premature_response)
+
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
 
@@ -1636,6 +1639,9 @@ class ProtocolScreen(ProtocolBase):
 		self.response_made = False
 
 		self.write_trial()
+
+		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_release=self.premature_response)
 
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
@@ -2527,9 +2533,6 @@ class ProtocolScreen(ProtocolBase):
 					return
 
 			# print('Trial contingency end')
-
-			self.hold_button.bind(on_press=self.iti_start)
-			self.hold_button.bind(on_release=self.premature_response)
 
 			self.trial_end_time = time.time()
 			
