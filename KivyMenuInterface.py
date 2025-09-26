@@ -16,8 +16,6 @@ import pathlib
 import subprocess
 import re
 import sys
-from Quartz import CGDisplayCopyDisplayMode, CGMainDisplayID
-from AppKit import NSScreen
 
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
@@ -28,7 +26,6 @@ from kivy.config import Config
 def get_refresh_rate():
 	"""
 	Returns the current display refresh rate as an integer (Hz).
-	Uses ctypes for Windows, xrandr for Linux, and Quartz/AppKit or system_profiler for macOS.
 	Falls back to sensible defaults or None when detection is not possible.
 	"""
 	if sys.platform.startswith('win'):
@@ -87,23 +84,6 @@ def get_refresh_rate():
 		# Could not detect
 		return None
 	elif sys.platform.startswith('darwin'):
-		# macOS: try Quartz (pyobjc), then AppKit, then system_profiler as a last resort
-		try:
-			# Try Quartz APIs (requires pyobjc-framework-Quartz)
-			mode = CGDisplayCopyDisplayMode(CGMainDisplayID())
-			if mode is not None:
-				# mode may expose a 'refreshRate' attribute or method
-				try:
-					rate = mode.refreshRate()
-				except Exception:
-					rate = getattr(mode, 'refreshRate', None)
-				if rate:
-					return int(round(rate))
-		except Exception:
-			pass
-		# Fallback: parse system_profiler output
-		import subprocess
-		import re
 		try:
 			out = subprocess.check_output(['system_profiler', 'SPDisplaysDataType'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')
 			m = re.search(r'Refresh Rate:\s*(\d+(?:\.\d+)?)\s*Hz', out)
