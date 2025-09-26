@@ -973,8 +973,6 @@ class ProtocolScreen(ProtocolBase):
 
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
-				, options = {'eos': 'stop'}
-				, state = 'stop'
 				)
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
