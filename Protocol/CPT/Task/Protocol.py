@@ -331,7 +331,6 @@ class ProtocolScreen(ProtocolBase):
 		self.task_clock.interupt_next_only = True
 
 		self.tutorial_video_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 0)
-		self.stimdur_event = self.task_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
 		self.trial_contingency_event = self.task_clock.create_trigger(self.trial_contingency, 0)
 		self.stimulus_present_event = self.task_clock.create_trigger(self.stimulus_present, -1)
 		self.stimulus_end_event = self.task_clock.create_trigger(self.stimulus_end, 0)
@@ -1308,6 +1307,7 @@ class ProtocolScreen(ProtocolBase):
 
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
 
+		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return None
 		
@@ -1331,22 +1331,29 @@ class ProtocolScreen(ProtocolBase):
 		self.write_trial()
 
 		self.iti_active = False
-		
-		if (self.current_block == 0) \
-			or (self.current_stage == 'Training'):
 
-			self.feedback_label.text = self.feedback_dict['wait']
+		self.feedback_label.text = self.feedback_dict['wait']
 			
-			if not self.feedback_on_screen:
-				self.protocol_floatlayout.add_widget(self.feedback_label)
+		if not self.feedback_on_screen:
+			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-				self.feedback_start_time = time.time()
-				self.feedback_on_screen = True
+			self.feedback_start_time = time.time()
+			self.feedback_on_screen = True
 
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+		else:
+			Clock.unschedule(self.remove_feedback)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_press=self.premature_resolved)
+
+	def premature_resolved(self, *args):
+		Clock.unschedule(self.remove_feedback)
+		self.remove_feedback()
+		self.hold_button_pressed = True
+		self.hold_button.bind(on_release=self.premature_response)
+		self.iti_start()
+		return
 	
 	
 	
@@ -2626,6 +2633,7 @@ class ProtocolScreen(ProtocolBase):
 		try:
 			Clock.unschedule(self.stimulus_end)
 			Clock.unschedule(self.center_notpressed)
+			Clock.unschedule(self.iti_end)
 		
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
