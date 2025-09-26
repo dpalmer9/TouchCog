@@ -981,12 +981,17 @@ class ProtocolBase(Screen):
 			self.protocol_floatlayout.add_stage_event('ITI End')
 
 			self.hold_button.unbind(on_release=self.hold_remind)
+			self.hold_button.bind(on_release=self.hold_lift_trial)
 			self.hold_active = True
 			self.stimulus_presentation()
 				
 			return
 		else:
 			return
+	
+	def hold_lift_trial(self, *args):
+		self.hold_button.unbind(on_release=self.hold_lift_trial)
+		self.hold_button_pressed = False
 
 	def remove_feedback(self, *args):
 		if self.feedback_on_screen:
