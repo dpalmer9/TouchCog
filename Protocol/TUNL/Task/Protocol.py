@@ -17,11 +17,6 @@ from kivy.uix.label import Label
 from kivy.uix.video import Video
 
 
-# environ_vars = dict(os.environ)
-
-
-
-
 class ProtocolScreen(ProtocolBase):
 	
 	def __init__(self, **kwargs):	
@@ -1034,8 +1029,6 @@ class ProtocolScreen(ProtocolBase):
 			and not self.cue_completed:
 
 			return
-
-		# print('Hold released; trial aborted.')
 		
 		self.protocol_floatlayout.add_event('Hold Released')
 		
@@ -1051,12 +1044,9 @@ class ProtocolScreen(ProtocolBase):
 		if self.stimulus_on_screen \
 			and self.cue_completed:
 
-			# print('Trial aborted during cue presentation.')
-
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
 		elif self.delay_active:
-			# print('Trial aborted during delay presentation.')
 			self.delay_video.state = 'pause'
 
 			self.video_end_time = time.time()
