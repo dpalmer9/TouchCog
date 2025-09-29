@@ -706,7 +706,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 		
 		self.start_clock()
-		self.block_check_event()
+		self.block_contingency()
 
 	def section_start(self, *args):
 
@@ -1287,7 +1287,7 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.clear_widgets()
 					self.present_tutorial_video()
 				
-				elif not pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Tutorial_Video').is_dir():
+				else:
 					self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
 					self.instruction_button.text = 'Start Section'
 
@@ -1302,13 +1302,6 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
 					
 					self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
-				else:
-					self.block_started = False
-					self.block_event()
-
-			else:
-				self.block_started = False
-				self.block_event()
 
 			self.trial_contingency()
 		
