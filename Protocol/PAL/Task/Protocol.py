@@ -621,15 +621,225 @@ class ProtocolScreen(ProtocolBase):
 		return stimulus_grid_loc
 
 
+	def present_tutorial_video(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_stage_event('Object Display')
+
+		if self.current_stage == 'Recall':
+			self.tutorial_video.source = self.tutorial_video_PA_path
+			self.tutorial_video_duration = self.tutorial_video_duration_PA
+		else:
+			self.tutorial_video.source = self.tutorial_video_PAL_path
+			self.tutorial_video_duration = self.tutorial_video_duration_PAL
+
+		self.tutorial_video.state = 'stop'
+		self.tutorial_video._video = None
+		self.tutorial_video.reload()
+		
+		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
+		self.tutorial_start_button.size_hint = self.text_button_size
+		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
+		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial_video)
+		
+		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
+		self.tutorial_restart.size_hint = self.text_button_size
+		self.tutorial_restart.pos_hint = self.text_button_pos_LL
+		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
+		
+		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.size_hint = (1, 1)
+		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+
+		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', self.tutorial_video.source)
+
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
+
+		self.tutorial_video.state = 'stop'
+
+	def start_tutorial_video(self, *args):
+
+		self.tutorial_video.state = 'play'
+		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
+	
+		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+
+		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+
+	def present_tutorial_video_start_button(self, *args):
+
+		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
+		self.protocol_floatlayout.add_widget(self.tutorial_restart)
+			
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Section Start')
+
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Video Restart')
+
+
+	def start_protocol_from_tutorial_video(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
+
+		if self.stage_index == 0:
+			self.start_clock()
+		
+		self.block_start = time.time()
+
+		self.hold_button.bind(on_press=self.iti)
+
+		self.protocol_floatlayout.add_stage_event('Section Start')
+
+		if self.current_stage == 'Recall':
+			self.start_recall_target_screen()
+
+		else:
+			self.trial_contingency()
 
 	def start_protocol(self, *args):
 		
 		self.protocol_floatlayout.clear_widgets()
 		
-		# print('Stage list: ', self.stage_list)
-		
 		self.start_clock()
 		self.block_check_event()
+
+	def section_start(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_stage_event('Section Start')
+
+		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Section', 'Instructions')
+
+		self.protocol_floatlayout.add_object_event('Remove', 'Button', 'Section', 'Instructions')
+
+		self.block_end()
+
+	# ...existing code...
+
+	def start_stage_screen(self, *args):
+		Clock.unschedule(self.iti_end)
+
+		self.protocol_floatlayout.add_stage_event('Section End')
+
+		self.protocol_floatlayout.clear_widgets()
+		self.feedback_on_screen = False
+
+		if len(self.response_tracking) <1:
+			self.outcome_string = "Great job!\n\n"
+		else:
+			hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
+			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
+				+ str(round(hit_accuracy * 100)) \
+				+ '%!'
+
+		if self.stage_index < len(self.stage_list):
+			self.stage_string = 'Please press "Continue" to start the next block.'
+
+		else:
+			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.'
+			
+		stage_text = self.outcome_string + '\n\n' + self.stage_string
+		self.stage_results_label.text = stage_text
+
+		self.protocol_floatlayout.add_widget(self.stage_results_label)
+
+		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
+
+		self.stage_screen_time = time.time()
+		self.stage_screen_started = True
+		self.block_started = True
+
+		Clock.schedule_once(self.stage_screen_end, 1.0)
+
+	def stage_screen_end(self, *args):
+		self.stage_screen_started = False
+
+		if self.stage_index >= (len(self.stage_list)):
+			self.session_event.cancel()
+			self.stage_continue_button.unbind(on_press=self.block_check_event)
+			self.stage_continue_button.bind(on_press=self.protocol_end)
+			self.stage_continue_button.text = 'End Task'
+				
+			self.protocol_floatlayout.add_stage_event('Task End')
+
+		self.protocol_floatlayout.add_widget(self.stage_continue_button)
+
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
+
+	def start_recall_target_screen(self, *args):
+
+		if not self.recall_instruction_target_display_started:
+
+			for stimulus in self.stimulus_grid_list:
+				stimulus.bind(on_press=self.target_pressed)
+				stimulus.unbind(on_press=self.target_pressed)
+
+				stimulus.bind(on_press=self.nontarget_pressed)
+				stimulus.unbind(on_press=self.nontarget_pressed)
+
+			self.protocol_floatlayout.clear_widgets()
+
+			self.stimulus_grid_list[0].texture = self.image_dict[self.target_image_list[0]].image.texture
+
+			for stimulus in self.stimulus_grid_list:
+				self.protocol_floatlayout.add_widget(stimulus)
+			
+			self.recall_target_screen_start_time = time.time()
+			self.recall_instruction_target_display_started = True
+			
+			self.protocol_floatlayout.add_stage_event('Object Display')
+
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', '0')
+
+			self.present_recall_stimuli(0)
+
+	def present_recall_stimuli(self, img_index, *args):
+		if img_index >= self.num_stimuli:
+			self.end_recall_screen()
+			return
+		else:
+			self.stimulus_grid_list[img_index].texture = self.image_dict[self.target_image_list[img_index]].image.texture
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', img_index)
+			time.wait(self.recall_target_present_duration)
+			self.stimulus_grid_list[self.recall_target_display_pos].texture = self.image_dict[self.outline_image].image.texture
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', self.recall_target_display_pos)
+			img_index += 1
+			self.present_recall_stimuli(img_index)
+
+	def end_recall_screen(self, *args):
+
+		for iLoc in list(range(0, self.num_stimuli)):
+			self.protocol_floatlayout.remove_widget(self.stimulus_grid_list[iLoc])
+			self.stimulus_grid_list[iLoc].texture = self.image_dict[self.outline_image].image.texture
+
+			if iLoc == self.target_loc:
+				self.stimulus_grid_list[iLoc].bind(on_press=self.target_pressed)
+			else:
+				self.stimulus_grid_list[iLoc].bind(on_press=self.nontarget_pressed)
+
+			self.protocol_floatlayout.add_widget(self.stimulus_grid_list[iLoc])
+
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', iLoc)
+
+		self.hold_button.bind(on_press=self.iti)
+		self.section_start()
+	
+	def start_recall_block(self, *args):
+
+		self.hold_button.unbind(on_press=self.start_recall_block)
+		self.hold_button.bind(on_press=self.iti)
+
+		self.protocol_floatlayout.remove_widget(self.hold_button)
+
+		self.protocol_floatlayout.add_stage_event('Section Start')
+
+		self.trial_contingency()
 	
 	
 	
@@ -798,11 +1008,9 @@ class ProtocolScreen(ProtocolBase):
 			]
 		
 		self.write_summary_file(trial_data)
-	
-	
-	
-	# Trial Contingency Functions
-	
+
+	# Trial Contingency
+
 	def trial_contingency(self, *args):
 		try:
 
@@ -816,7 +1024,7 @@ class ProtocolScreen(ProtocolBase):
 
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
-					self.stage_screen_event()
+					self.start_stage_screen()
 				
 				elif (self.current_stage == 'Training') \
 					and (sum(self.response_tracking) >= self.training_block_max_correct):
@@ -827,7 +1035,7 @@ class ProtocolScreen(ProtocolBase):
 					
 					self.hold_button.bind(on_release=self.premature_response)
 					
-					self.block_check_event()
+					self.block_contingency()
 
 				elif (len(self.response_tracking) > 10) \
 					and (sum(self.response_tracking[-10:]) >= 6) \
@@ -835,7 +1043,7 @@ class ProtocolScreen(ProtocolBase):
 
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
-					self.stage_screen_event()
+					self.start_stage_screen()
 
 				else:
 					self.protocol_floatlayout.add_widget(self.hold_button)
@@ -966,259 +1174,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Error; program terminated.')
 			self.protocol_end()
 
-	# ...existing code...
-
-	def section_start(self, *args):
-
-		self.protocol_floatlayout.clear_widgets()
-
-		self.protocol_floatlayout.add_stage_event('Section Start')
-
-		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Section', 'Instructions')
-
-		self.protocol_floatlayout.add_object_event('Remove', 'Button', 'Section', 'Instructions')
-
-		self.block_end()
-
-	# ...existing code...
-
-	def stage_screen(
-		self
-		, *args
-		):
-
-		if not self.stage_screen_started:
-
-			self.protocol_floatlayout.add_stage_event('Section End')
-
-			self.protocol_floatlayout.clear_widgets()
-			self.feedback_on_screen = False
-
-			if len(self.response_tracking) <1:
-				self.outcome_string = "Great job!\n\n"
-			else:
-				hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
-				self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-					+ str(round(hit_accuracy * 100)) \
-					+ '%!'
-
-			if self.stage_index < len(self.stage_list):
-				self.stage_string = 'Please press "Continue" to start the next block.'
-
-			else:
-				self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.'
-			
-			stage_text = self.outcome_string + '\n\n' + self.stage_string
-			self.stage_results_label.text = stage_text
-
-			self.protocol_floatlayout.add_widget(self.stage_results_label)
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
-
-			self.stage_screen_time = time.time()
-			self.stage_screen_started = True
-			self.block_started = True
-
-			self.stage_screen_event()
-
-		if (time.time() - self.stage_screen_time) >= 1.0:
-			self.stage_screen_started = False
-
-			if self.stage_index >= (len(self.stage_list)):
-				self.session_event.cancel()
-				self.stage_continue_button.unbind(on_press=self.block_check_event)
-				self.stage_continue_button.bind(on_press=self.protocol_end)
-				self.stage_continue_button.text = 'End Task'
-				
-				self.protocol_floatlayout.add_stage_event('Task End')
-
-			self.protocol_floatlayout.add_widget(self.stage_continue_button)
-
-			self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
-
-	def recall_target_screen(self, *args):
-
-		if not self.recall_instruction_target_display_started:
-
-			for stimulus in self.stimulus_grid_list:
-				stimulus.bind(on_press=self.target_pressed)
-				stimulus.unbind(on_press=self.target_pressed)
-
-				stimulus.bind(on_press=self.nontarget_pressed)
-				stimulus.unbind(on_press=self.nontarget_pressed)
-
-			self.protocol_floatlayout.clear_widgets()
-
-			self.stimulus_grid_list[0].texture = self.image_dict[self.target_image_list[0]].image.texture
-
-			for stimulus in self.stimulus_grid_list:
-				self.protocol_floatlayout.add_widget(stimulus)
-			
-			self.recall_target_screen_start_time = time.time()
-			self.recall_instruction_target_display_started = True
-			
-			self.protocol_floatlayout.add_stage_event('Object Display')
-
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', '0')
-
-		if (time.time() - self.recall_target_screen_start_time) >= self.recall_target_present_duration:
-
-			if self.recall_target_display_pos < self.num_stimuli:
-				self.protocol_floatlayout.remove_widget(self.stimulus_grid_list[self.recall_target_display_pos])
-				self.stimulus_grid_list[self.recall_target_display_pos].texture = self.image_dict[self.outline_image].image.texture
-				self.protocol_floatlayout.add_widget(self.stimulus_grid_list[self.recall_target_display_pos])
-
-				self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', self.recall_target_display_pos)
-
-				self.recall_target_display_pos += 1
-
-			if self.recall_target_display_pos == self.num_stimuli:
-
-				for iLoc in list(range(0, self.num_stimuli)):
-					self.protocol_floatlayout.remove_widget(self.stimulus_grid_list[iLoc])
-					self.stimulus_grid_list[iLoc].texture = self.image_dict[self.target_image_list[iLoc]].image.texture
-					self.protocol_floatlayout.add_widget(self.stimulus_grid_list[iLoc])
-
-					self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', iLoc)
-
-				self.recall_target_display_pos += 1
-				self.recall_target_screen_start_time = time.time()
-				self.recall_instruction_target_present_event()
-
-			elif self.recall_target_display_pos > self.num_stimuli:
-
-				for iLoc in list(range(0, self.num_stimuli)):
-					self.protocol_floatlayout.remove_widget(self.stimulus_grid_list[iLoc])
-					self.stimulus_grid_list[iLoc].texture = self.image_dict[self.outline_image].image.texture
-
-					if iLoc == self.target_loc:
-						self.stimulus_grid_list[iLoc].bind(on_press=self.target_pressed)
-					else:
-						self.stimulus_grid_list[iLoc].bind(on_press=self.nontarget_pressed)
-
-					self.protocol_floatlayout.add_widget(self.stimulus_grid_list[iLoc])
-
-					self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', iLoc)
-
-				self.hold_button.bind(on_press=self.iti)
-				self.section_start()
-
-			else:
-				self.protocol_floatlayout.remove_widget(self.stimulus_grid_list[self.recall_target_display_pos])
-				self.stimulus_grid_list[self.recall_target_display_pos].texture = self.image_dict[self.target_image_list[self.recall_target_display_pos]].image.texture
-				self.protocol_floatlayout.add_widget(self.stimulus_grid_list[self.recall_target_display_pos])
-
-				self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', self.recall_target_display_pos)
-
-				self.recall_target_screen_start_time = time.time()
-				self.recall_instruction_target_present_event()
-
-		else:
-			self.recall_instruction_target_present_event()
-
-	# ...existing code...
-
-	def start_recall_block(self, *args):
-
-		self.hold_button.unbind(on_press=self.start_recall_block)
-		self.hold_button.bind(on_press=self.iti)
-
-		self.protocol_floatlayout.remove_widget(self.hold_button)
-
-		self.protocol_floatlayout.add_stage_event('Section Start')
-
-		self.trial_contingency()
-		self.iti()
-
-	# ...existing code...
-
-	def present_tutorial_video(self, *args):
-
-		self.protocol_floatlayout.clear_widgets()
-		self.block_started = True
-
-		self.protocol_floatlayout.add_stage_event('Object Display')
-
-		if self.current_stage == 'Recall':
-			self.tutorial_video.source = self.tutorial_video_PA_path
-			self.tutorial_video_duration = self.tutorial_video_duration_PA
-		else:
-			self.tutorial_video.source = self.tutorial_video_PAL_path
-			self.tutorial_video_duration = self.tutorial_video_duration_PAL
-
-		self.tutorial_video.state = 'stop'
-		self.tutorial_video._video = None
-		self.tutorial_video.reload()
-		
-		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
-		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
-		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial_video)
-		
-		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
-		self.tutorial_restart.size_hint = self.text_button_size
-		self.tutorial_restart.pos_hint = self.text_button_pos_LL
-		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
-		
-		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
-		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.size_hint = (1, 1)
-		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
-		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
-
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', self.tutorial_video.source)
-
-		self.protocol_floatlayout.add_widget(self.tutorial_video)
-		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
-
-		self.tutorial_video.state = 'stop'
-
-	# ...existing code...
-
-	def start_tutorial_video(self, *args):
-
-		self.tutorial_video.state = 'play'
-		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
-	
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
-
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
-
-	# ...existing code...
-
-	def present_tutorial_video_start_button(self, *args):
-
-		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
-		self.protocol_floatlayout.add_widget(self.tutorial_restart)
-			
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Section Start')
-
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Video Restart')
-
-	# ...existing code...
-
-	def start_protocol_from_tutorial_video(self, *args):
-		self.tutorial_video.state = 'stop'
-		self.protocol_floatlayout.clear_widgets()
-
-		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
-
-		if self.stage_index == 0:
-			self.start_clock()
-		
-		self.block_start = time.time()
-
-		self.hold_button.bind(on_press=self.iti)
-
-		self.protocol_floatlayout.add_stage_event('Section Start')
-
-		if self.current_stage == 'Recall':
-			self.recall_instruction_target_present_event()
-
-		else:
-			self.block_started = False
-			self.trial_contingency()
-
+	# Block Contingency
 
 	def block_contingency(self, *args):
 		try:
