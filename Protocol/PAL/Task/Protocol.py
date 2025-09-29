@@ -567,10 +567,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_widget(self.recall_stimulus)
 		
-		
-		# Begin Task
-
-		# print('End load parameters...')
 		self.start_protocol_from_tutorial()
 	
 
@@ -719,8 +715,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Remove', 'Button', 'Section', 'Instructions')
 
 		self.block_end()
-
-	# ...existing code...
 
 	def start_stage_screen(self, *args):
 		Clock.unschedule(self.iti_end)
