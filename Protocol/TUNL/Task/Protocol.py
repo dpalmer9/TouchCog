@@ -100,8 +100,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config
 		
-		# print('Reading configuration data...')
-		
 		config_path = pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini')
 		config_file = configparser.ConfigParser()
 		config_file.read(config_path)
@@ -326,8 +324,6 @@ class ProtocolScreen(ProtocolBase):
 	
 	def load_parameters(self, parameter_dict):
 		
-		# print('Load parameters...')
-		
 		self.parameters_dict = parameter_dict
 	
 		self.participant_id = self.parameters_dict['participant_id']
@@ -457,15 +453,7 @@ class ProtocolScreen(ProtocolBase):
 		self.delay_trial_index_list = list(range(0, len(self.delay_probe_delay_list)))
 
 		random.shuffle(self.space_trial_index_list)
-		random.shuffle(self.delay_trial_index_list)
-
-		# print(self.space_probe_sep_list)
-		# print(self.delay_probe_delay_list)
-		# print(self.combo_probe_sep_list)
-		
-		# print(self.space_trial_index_list)
-		# print(self.delay_trial_index_list)
-		
+		random.shuffle(self.delay_trial_index_list)		
 
 		# Define Variables - Numeric
 
@@ -574,8 +562,6 @@ class ProtocolScreen(ProtocolBase):
 		if (lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
-			# print(self.tutorial_video_path)
-
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
 				, allow_stretch = True
@@ -631,13 +617,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.cue_image_button = ImageButton(source=self.stimulus_button_image_path)
 		self.target_image_button = ImageButton(source=self.stimulus_button_image_path)
-
-		# print('Cue image texture size:', self.cue_image.texture_size)
-		# print('Cue button texture size:', self.cue_image_button.texture_size)
-
-		# print('self.stimulus_image_spacing: ', self.stimulus_image_spacing)
-		# print('self.stimulus_image_size: ', self.stimulus_image_size)
-		# print('self.stimulus_button_size: ', self.stimulus_button_size)
 
 		self.cue_image.size_hint = self.stimulus_image_size
 		self.target_image.size_hint = self.stimulus_image_size
@@ -747,36 +726,21 @@ class ProtocolScreen(ProtocolBase):
 			min(y_boundaries) + stimulus_size[1]*(y_padding_b + 0.5)
 			, max(y_boundaries) - stimulus_size[1]*(y_padding_t + 0.5)
 			]
-		
-		# print('X lim:', x_lim)
-		# print('Y lim:', y_lim)
 
 		main_move = float(sep_level) + 1
 		
 		cue_xpos = random.uniform(min(x_lim), max(x_lim))
 		cue_ypos = random.uniform(min(y_lim), max(y_lim))
-
-		# print('Cue xpos:', cue_xpos)
-		# print('Cue ypos:', cue_ypos)
 		
 		horz_dist = random.uniform(-main_move, main_move)
 		horz_move = horz_dist * stimulus_size[0]
-
-		# print('Main move:', main_move)
-		# print('Horz move:', horz_move)
 		
 		target_xpos = cue_xpos + horz_move
 
 		vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
 		vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
-
-		# print('Vert dist:', vert_dist)
-		# print('Vert move:', vert_move)
 		
 		target_ypos = cue_ypos + vert_move
-
-		# print('Target xpos:', target_xpos)
-		# print('Target ypos:', target_ypos)
 		
 		while (target_xpos < min(x_lim)) \
 			or (target_xpos > max(x_lim)) \
@@ -809,22 +773,6 @@ class ProtocolScreen(ProtocolBase):
 				vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
 				vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
 				target_ypos = cue_ypos + vert_move
-		
-		# print('Cue xpos: ', cue_xpos)
-		# print('Cue ypos: ', cue_ypos)
-
-		# print('Horz move: ', horz_move)
-		# print('Vert move: ', vert_move)
-		
-		# print('Target xpos: ', target_xpos)
-		# print('Target ypos: ', target_ypos)
-
-		# print('Stimulus size: ', stimulus_size)
-
-		# print('Current sep: ', self.current_sep)
-		# print('Sep level: ', sep_level)
-
-		# print('Main move: ', main_move)
 
 		cue_coord = {'x': round(cue_xpos, 4), 'y': round(cue_ypos, 4)}
 		target_coord = {'x': round(target_xpos, 4), 'y': round(target_ypos, 4)}
@@ -856,11 +804,7 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 			
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Object Display'
-			])
+		self.protocol_floatlayout.add_stage_event('Object Display')
 
 		self.protocol_floatlayout.add_widget(self.tutorial_video)
 		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
@@ -876,13 +820,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Video'
-			, 'Section'
-			, 'Instructions'
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Instructions')
 
 
 	
@@ -893,25 +831,9 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
 		self.protocol_floatlayout.add_widget(self.tutorial_restart)
 				
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Button'
-			, 'Section'
-			, 'Instructions'
-			, 'Type'
-			, 'Section Start'
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
 				
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Button'
-			, 'Section'
-			, 'Instructions'
-			, 'Type'
-			, 'Video Restart'
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
 	
 	
 	
@@ -925,43 +847,17 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Video'
-			, 'Section'
-			, 'Instructions'
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Instructions')
 
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Section Start'
-			])
+		self.protocol_floatlayout.add_stage_event('Section Start')
 
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Stage Change'
-			, 'Instruction Presentation'
-			])
+		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
 		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Text Removed'
-			, 'Task Instruction'
-			])
+		self.protocol_floatlayout.add_text_event('Removed', 'Task Instruction')
 		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Button Removed'
-			, 'Task Start Button'
-			])
+		self.protocol_floatlayout.add_button_event('Removed', 'Task Start Button')
 		
-		self.protocol_floatlayout.add_event([
-			0
-			, 'Button Displayed'
-			, 'Hold Button'
-			])
+		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 		
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
@@ -975,9 +871,6 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def cue_present(self, *args): # Present cue
-		
-		# print('Cue presentation')
-		
 		self.hold_button.unbind(on_press=self.iti)
 		self.hold_button.unbind(on_release=self.premature_response)
 
@@ -996,24 +889,10 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.cue_start_time = time.time()
 		
-		self.protocol_floatlayout.add_event([
-			(self.cue_start_time - self.start_time)
-			, 'State Change'
-			, 'Cue Display'
-			])
+		self.protocol_floatlayout.add_stage_event('Cue Display')
 		
-		self.protocol_floatlayout.add_event([
-			(self.cue_start_time - self.start_time)
-			, 'Object Display'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
-		
-		# print('Cue start time: ', (self.cue_start_time - self.start_time))
-		# print('Cue x coord: ', self.trial_coord['Cue']['x'])
-		# print('Cue y coord: ', self.trial_coord['Cue']['y'])
-		
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.cue_image.pos_hint)
+
 		self.stimulus_event()
 	
 
@@ -1028,19 +907,9 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Delay Start'
-			])
+		self.protocol_floatlayout.add_stage_event('Delay Start')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 		
 		self.delay_end_event = self.task_clock.schedule_once(self.delay_end, self.current_delay)
 
@@ -1051,21 +920,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.delay_active = True
 
-		self.protocol_floatlayout.add_event([
-			(self.video_start_time - self.start_time)
-			, 'State Change'
-			, 'Object Display'
-			])
+		self.protocol_floatlayout.add_event('Object Display')
 
-		self.protocol_floatlayout.add_event([
-			(self.video_start_time - self.start_time)
-			, 'Object Display'
-			, 'Video'
-			, 'Delay'
-			, str(self.delay_video.source)
-			, 'Video Time'
-			, self.video_position
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.delay_video.source), self.video_position)
 
 
 
@@ -1085,27 +942,11 @@ class ProtocolScreen(ProtocolBase):
 		self.delay_ended = True
 		self.delay_active = False
 		
-		self.protocol_floatlayout.add_event([
-			time.time() - self.start_time
-			, 'Stage Change'
-			, 'Delay End'
-			])
+		self.protocol_floatlayout.add_stage_event('Delay End')
 
-		self.protocol_floatlayout.add_event([
-			(self.video_end_time - self.start_time)
-			, 'State Change'
-			, 'Object Remove'
-			])
+		self.protocol_floatlayout.add_event('Object Remove')
 
-		self.protocol_floatlayout.add_event([
-			(self.video_end_time - self.start_time)
-			, 'Object Remove'
-			, 'Video'
-			, 'Delay'
-			, str(self.delay_video.source)
-			, 'Video Time'
-			, self.video_position
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
 
 		self.target_present_event()
 	
@@ -1115,8 +956,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.delay_end_event.cancel()
 		self.iti_event.cancel()
-		
-		# print('Target presentation')
 		
 		self.hold_button.unbind(on_release=self.hold_released)
 
@@ -1135,33 +974,12 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_active = False
 		
 		self.feedback_label.text = ''
-			
-		# print('Start target time: ', (self.target_start_time - self.start_time))
-		# print('Delay length: ', self.current_delay)
-		# print('Target x coord: ', self.trial_coord['Target']['x'])
-		# print('Target y coord: ', self.trial_coord['Target']['y'])
 		
-		self.protocol_floatlayout.add_event([
-			(self.target_start_time - self.start_time)
-			, 'State Change'
-			, 'Target Display'
-			])
+		self.protocol_floatlayout.add_stage_event('Target Display')
 		
-		self.protocol_floatlayout.add_event([
-			(self.target_start_time - self.start_time)
-			, 'Object Display'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.cue_image.pos_hint)
 		
-		self.protocol_floatlayout.add_event([
-			(self.target_start_time - self.start_time)
-			, 'Object Display'
-			, 'Stimulus'
-			, 'Target'
-			, self.target_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.target_image.pos_hint)
 			
 		self.stimulus_event()
 	
@@ -1219,17 +1037,9 @@ class ProtocolScreen(ProtocolBase):
 
 		# print('Hold released; trial aborted.')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Hold Released'
-			])
+		self.protocol_floatlayout.add_event('Hold Released')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Trial Aborted'
-			])
+		self.protocol_floatlayout.add_event('Trial Aborted')
 
 		self.stimulus_event.cancel()
 
@@ -1243,13 +1053,7 @@ class ProtocolScreen(ProtocolBase):
 
 			# print('Trial aborted during cue presentation.')
 
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Remove'
-				, 'Stimulus'
-				, 'Cue'
-				, self.cue_image.pos_hint
-				])
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
 		elif self.delay_active:
 			# print('Trial aborted during delay presentation.')
@@ -1259,16 +1063,8 @@ class ProtocolScreen(ProtocolBase):
 			self.video_time = self.video_end_time - self.video_start_time
 			self.video_position += self.video_time
 
-			self.protocol_floatlayout.add_event([
-				(self.video_end_time - self.start_time)
-				, 'Object Remove'
-				, 'Video'
-				, 'Delay'
-				, str(self.delay_video.source)
-				, 'Video Time'
-				, self.video_position
-				])
-		
+			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
+
 		self.feedback_label.text = self.feedback_dict['abort']
 
 		self.hold_button.bind(on_press=self.iti)
@@ -1281,13 +1077,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_on_screen = True
 			self.feedback_start_time = time.time()
 
-			self.protocol_floatlayout.add_event([
-				(self.feedback_start_time - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Feedback'
-				, self.feedback_label.text
-				])
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
 		self.stimulus_on_screen = False
 		self.cue_completed = False
@@ -1308,8 +1098,6 @@ class ProtocolScreen(ProtocolBase):
 	# Hold released too early
 	
 	def premature_response(self, *args):
-		
-		# print('Premature response')
 		
 		if self.stimulus_on_screen is True:
 			return
@@ -1350,8 +1138,6 @@ class ProtocolScreen(ProtocolBase):
 	# Cue Stimuli Pressed during Target
 	
 	def cue_pressed(self, *args):
-		
-		# print('Cue pressed')
 
 		self.stimulus_event.cancel()
 		
@@ -1458,8 +1244,6 @@ class ProtocolScreen(ProtocolBase):
 	# Target Stimuli Pressed during Target
 	
 	def target_pressed(self, *args):
-		
-		# print('Target pressed')
 
 		self.stimulus_event.cancel()
 		
@@ -1566,8 +1350,6 @@ class ProtocolScreen(ProtocolBase):
 	# No response during test phase limited hold
 	
 	def no_response(self, *args):
-		
-		# print('No response; limhold ended')
 
 		self.stimulus_event.cancel()
 		
@@ -1656,8 +1438,6 @@ class ProtocolScreen(ProtocolBase):
 	
 	def write_trial(self):
 		
-		# print('Write trial')
-		
 		cue_x = self.trial_coord['Cue']['x']
 		cue_y = self.trial_coord['Cue']['y']
 		target_x = self.trial_coord['Target']['x']
@@ -1694,24 +1474,6 @@ class ProtocolScreen(ProtocolBase):
 				self.hold_active = False
 
 			if self.current_block_trial != 0:
-				# print('\n\n\n')
-				# print('Trial contingency start')
-				# print('')
-				# print('Current stage: ', self.current_stage)
-				# print('Current block: ', self.current_block)
-				# print('Current trial: ', self.current_trial)
-				# print('Current task time: ', (time.time() - self.start_time))
-				# print('Current block time: ', (time.time() - self.block_start_time))
-				# print('')
-				# print('ITI: ', self.iti_length)
-				# print('Separation: ', self.current_sep)
-				# print('Delay: ', self.current_delay)
-				# print('Video position: ', self.video_position)
-				
-				# print('')
-				# print('Last response: ', self.last_response)
-				# print('Target latency: ', self.response_latency)
-				# print('')
 
 				if self.last_response in [0, 1]:
 					self.response_tracking.append(self.last_response)
@@ -1759,7 +1521,6 @@ class ProtocolScreen(ProtocolBase):
 				# Adjust staircasing
 				
 				if self.staircase_change == 'inc':
-					# print('Performance over chance.')
 				
 					if self.current_stage == 'Space':
 						self.space_probe_delay_list[self.space_trial_index] += self.space_probe_staircase_list[self.space_trial_index]
@@ -1801,7 +1562,6 @@ class ProtocolScreen(ProtocolBase):
 				
 				
 				if self.staircase_change == 'dec':
-					# print('Performance under chance.')
 				
 					if self.current_stage == 'Space':
 
@@ -2128,7 +1888,6 @@ class ProtocolScreen(ProtocolBase):
 			if self.feedback_on_screen:
 				
 				if (time.time() - self.feedback_start_time) >= self.feedback_length:
-					# print('Feedback over')
 					self.block_check_event.cancel()
 					self.protocol_floatlayout.remove_widget(self.feedback_label)
 					self.feedback_label.text = ''
@@ -2138,15 +1897,10 @@ class ProtocolScreen(ProtocolBase):
 					return
 			
 			else:
-				# print('Block check event cancel')
 				self.block_check_event.cancel()
-			
-			# print('\n\n\n\nBlock contingency\n\n')
 
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_label.text = ''
-
-			# print('Clear widgets')
 		
 			self.protocol_floatlayout.add_event([
 				(time.time() - self.start_time)
@@ -2160,18 +1914,11 @@ class ProtocolScreen(ProtocolBase):
 				, 'Screen Cleared'
 				])
 			
-			# print('Current block: ', self.current_block)
-			# print('Current task time: ', (time.time() - self.start_time))
-			
 			if (self.current_block > self.block_multiplier) or (self.current_block == -1):
 				self.stage_index += 1
-				self.current_block = 1
-				
-				# print('Stage index: ', self.stage_index)
-			
+				self.current_block = 1			
 	
 			if self.stage_index >= len(self.stage_list): # Check if all stages complete
-				# print('All stages complete')
 				self.session_event.cancel()
 				self.results_screen()
 
@@ -2179,7 +1926,6 @@ class ProtocolScreen(ProtocolBase):
 			
 			else:
 				self.current_stage = self.stage_list[self.stage_index]
-				# print('Current stage: ', self.current_stage)
 		
 				self.protocol_floatlayout.add_event([
 					(time.time() - self.start_time)
@@ -2227,7 +1973,6 @@ class ProtocolScreen(ProtocolBase):
 
 
 			if (self.current_block == 1) and (self.stage_index == 0):
-				# print('Section Task Instructions')
 				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
 
 				self.instruction_button.text = 'Begin Section'
@@ -2256,7 +2001,6 @@ class ProtocolScreen(ProtocolBase):
 					])
 			
 			else:
-				# print('Else: Block Screen')
 				self.block_started = False
 				self.block_event()
 			
@@ -2267,8 +2011,6 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_outcome = 0
 			self.current_block_trial = 0
 			self.trial_index = 0
-			
-			# print('Block contingency end')
 			
 			self.trial_contingency()
 		
