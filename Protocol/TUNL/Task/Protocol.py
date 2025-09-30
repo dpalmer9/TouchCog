@@ -25,29 +25,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_name = 'TUNL'
 		self.update_task()
-		
-
-		# Set screen size
-		
-		width = int(Config.get('graphics', 'width'))
-		height = int(Config.get('graphics', 'height'))
-		self.maxfps = int(Config.get('graphics', 'maxfps'))
-		
-		if self.maxfps == 0:
-			self.maxfps = 120
-
-		self.screen_resolution = (width, height)
-		self.protocol_floatlayout.size = self.screen_resolution
-
-		self.width_adjust = 1
-		self.height_adjust = 1
-		
-		if width > height:
-			self.width_adjust = height / width
-		
-		elif width < height:
-			self.height_adjust = width / height
-
 
 		# Define Data Columns
 		
@@ -391,7 +368,7 @@ class ProtocolScreen(ProtocolBase):
 			self.stage_list.append('Delay')
 		
 		if len(self.stage_list) > 1:
-			random.shuffle(self.stage_list)
+			self.constrained_shuffle(self.stage_list)
 		
 		if int(self.parameters_dict['combined_probe']) == 1:
 			self.stage_list.append('Combo')
@@ -447,8 +424,8 @@ class ProtocolScreen(ProtocolBase):
 		self.space_trial_index_list = list(range(0, len(self.space_probe_sep_list)))
 		self.delay_trial_index_list = list(range(0, len(self.delay_probe_delay_list)))
 
-		random.shuffle(self.space_trial_index_list)
-		random.shuffle(self.delay_trial_index_list)		
+		self.constrained_shuffle(self.space_trial_index_list)
+		self.constrained_shuffle(self.delay_trial_index_list)		
 
 		# Define Variables - Numeric
 
@@ -557,12 +534,7 @@ class ProtocolScreen(ProtocolBase):
 		if (lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_path
-				, allow_stretch = True
-				, options = {'eos': 'stop'}
-				, state = 'stop'
-				)
+			self.tutorial_video = Video(source = self.tutorial_video_path)
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
@@ -605,7 +577,7 @@ class ProtocolScreen(ProtocolBase):
 		# Define Widgets - Buttons
 		
 		self.hold_button.source = str(self.image_folder / (self.hold_image + '.png'))
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 				
 		self.cue_image = ImageButton(source=self.stimulus_image_path)
 		self.target_image = ImageButton(source=self.stimulus_image_path)
@@ -863,27 +835,11 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Section Start'
-			])
+		self.protocol_floatlayout.add_stage_event('Section Start')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Text'
-			, 'Stage'
-			, 'Instructions'
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Instructions')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Button'
-			, 'Stage'
-			, 'Continue'
-			])
+		self.protocol_floatlayout.add_event('Remove', 'Button', 'Continue')
 		
 		self.block_end()
 	
@@ -916,26 +872,14 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.section_instr_label)
 		self.protocol_floatlayout.add_widget(self.instruction_button)
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Text'
-			, 'Stage'
-			, 'Results'
-			])
+		self.protocol_floatlayout.add_event('Display', 'Text', 'Results')
 		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Button'
-			, 'Stage'
-			, 'Continue'
-			])
+		self.protocol_floatlayout.add_event('Display', 'Button', 'Continue')
 
 
 
 	def cue_present(self, *args): # Present cue
-		self.hold_button.unbind(on_press=self.iti)
+		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
 
 		self.hold_button.bind(on_release=self.hold_released)
@@ -1004,7 +948,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_stage_event('Delay End')
 
-		self.protocol_floatlayout.add_event('Object Remove')
+		self.protocol_floatlayout.add_stage_event('Object Remove')
 
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
 
@@ -1051,21 +995,9 @@ class ProtocolScreen(ProtocolBase):
 	def stimulus_presentation_end(self, *args):
 		self.protocol_floatlayout.remove_widget(self.cue_image)
 		self.protocol_floatlayout.remove_widget(self.target_image)
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Target'
-			, self.target_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
 
 	def hold_released(self, *args):
 		Clock.unschedule(self.delay_present)
@@ -1082,9 +1014,9 @@ class ProtocolScreen(ProtocolBase):
 
 			return
 		
-		self.protocol_floatlayout.add_event('Hold Released')
+		self.protocol_floatlayout.add_stage_event('Hold Released')
 		
-		self.protocol_floatlayout.add_event('Trial Aborted')
+		self.protocol_floatlayout.add_stage_event('Trial Aborted')
 		
 		if self.stimulus_on_screen \
 			and self.cue_completed:
@@ -1102,7 +1034,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.feedback_label.text = self.feedback_dict['abort']
 
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
@@ -1140,11 +1072,7 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_active = False
 		Clock.unschedule(self.iti_end)
 		
-		self.protocol_floatlayout.add_event([
-			time.time() - self.start_time
-			, 'Stage Change'
-			, 'Premature Response'
-			])
+		self.protocol_floatlayout.add_stage_event('Premature Response')
 
 		self.last_response = np.nan
 		self.response_latency = np.nan
@@ -1156,13 +1084,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_on_screen = True
 			self.feedback_start_time = time.time()
 
-			self.protocol_floatlayout.add_event([
-				(self.feedback_start_time - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Feedback'
-				, self.feedback_label.text
-				])
+			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.iti_start)
@@ -1184,61 +1106,23 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.remove_widget(self.cue_image_button)
 		self.protocol_floatlayout.remove_widget(self.target_image_button)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'State Change'
-			, 'Cue Pressed'
-			])
+		self.protocol_floatlayout.add_stage_event('Cue Pressed')
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'State Change'
-			, 'Incorrect Reponse'
-			])
+		self.protocol_floatlayout.add_stage_event('Incorrect Reponse')
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Target'
-			, self.target_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Stimulus Chosen'
-			, 'Cue'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Last Response'
-			, self.last_response
-			])
-		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Response Latency'
-			, self.response_latency
-			])
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'Cue')
+
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Last Response', self.last_response)
+
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Response Latency', self.response_latency)
 		
 		self.feedback_label.text = self.feedback_dict['incorrect']
 
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
@@ -1251,13 +1135,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_start_time = time.time()
 			self.feedback_on_screen = True
 
-			self.protocol_floatlayout.add_event([
-				(self.feedback_start_time - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Feedback'
-				, self.feedback_label.text
-				])
+			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
 		
 		self.hold_active = False
 		self.stimulus_on_screen = False
@@ -1289,61 +1167,23 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.remove_widget(self.cue_image_button)
 		self.protocol_floatlayout.remove_widget(self.target_image_button)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'State Change'
-			, 'Target Pressed'
-			])
+		self.protocol_floatlayout.add_stage_event('Target Pressed')
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'State Change'
-			, 'Correct Reponse'
-			])
+		self.protocol_floatlayout.add_stage_event('Correct Response')
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Target'
-			, self.target_image.pos_hint
-			])
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Stimulus Chosen'
-			, 'Target'
-			])
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'Target')
 		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Last Response'
-			, self.last_response
-			])
-		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Response Latency'
-			, self.response_latency
-			])
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Last Response', self.last_response)
+
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Response Latency', self.response_latency)
 
 		self.feedback_label.text = self.feedback_dict['correct']
 
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
@@ -1356,13 +1196,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_start_time = time.time()
 			self.feedback_on_screen = True
 
-			self.protocol_floatlayout.add_event([
-				(self.feedback_start_time - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Feedback'
-				, self.feedback_label.text
-				])
+			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
 		
 		self.hold_active = False
 		self.stimulus_on_screen = False
@@ -1393,55 +1227,27 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.remove_widget(self.cue_image_button)
 		self.protocol_floatlayout.remove_widget(self.target_image_button)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'State Change'
-			, 'No Response'
-			])
+		# State change: No Response
+		self.protocol_floatlayout.add_stage_event('No Response')
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Cue'
-			, self.cue_image.pos_hint
-			])
+		# Object remove: Cue stimulus
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			(self.target_touch_time - self.start_time)
-			, 'Object Remove'
-			, 'Stimulus'
-			, 'Target'
-			, self.target_image.pos_hint
-			])
+		# Object remove: Target stimulus
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
 
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Stimulus Chosen'
-			, 'None'
-			])
+		# Variable change: Stimulus Chosen -> None
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'None')
 		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Last Response'
-			, self.last_response
-			])
+		# Variable change: Last Response
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Last Response', self.last_response)
 		
-		self.protocol_floatlayout.add_event([
-			self.target_touch_time - self.start_time
-			, 'Variable Change'
-			, 'Outcome'
-			, 'Response Latency'
-			, self.response_latency
-			])
+		# Variable change: Response Latency
+		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Response Latency', self.response_latency)
 
 		self.feedback_label.text = ''
 
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
@@ -1521,28 +1327,16 @@ class ProtocolScreen(ProtocolBase):
 
 					self.staircase_change = 'dec'
 					self.response_tracking = list()
-
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Staircasing'
-						, 'Decrease'
-						])
+					# Variable change: Staircasing -> Decrease
+					self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Staircasing', 'Decrease')
 
 				elif (len(self.response_tracking) >= 2) \
 					and (sum(self.response_tracking) > 0):
 
 					self.staircase_change = 'inc'
 					self.response_tracking = list()
-
-					self.protocol_floatlayout.add_event([
-						(time.time() - self.start_time)
-						, 'Variable Change'
-						, 'Parameter'
-						, 'Staircasing'
-						, 'Increase'
-						])
+					# Variable change: Staircasing -> Increase
+					self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Staircasing', 'Increase')
 				
 				else:
 					self.staircase_change = 'non'
@@ -1573,20 +1367,11 @@ class ProtocolScreen(ProtocolBase):
 							self.combo_probe_delay_list[self.combo_trial_index] = self.max_delay
 						
 						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
+						# State change: Combo Staircasing
+						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'State Change'
-							, 'Combo Staircasing'
-							])
-
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Delay'
-							, self.current_delay
-							])
+						# Variable change: Delay
+						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
 						
 						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
 				
@@ -1624,19 +1409,11 @@ class ProtocolScreen(ProtocolBase):
 						
 						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'State Change'
-							, 'Combo Staircasing'
-							])
+							# State change: Combo Staircasing
+						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Delay'
-							, self.current_delay
-							])
+							# Variable change: Delay
+						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
 
 						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
 				
@@ -1650,27 +1427,12 @@ class ProtocolScreen(ProtocolBase):
 						self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
 						self.combo_probe_delay_list[self.combo_trial_index] = self.current_delay
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'State Change'
-							, 'Combo Staircasing'
-							])
+						# State change: Combo Staircasing
+						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
 
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Separation'
-							, self.current_sep
-							])
-
-						self.protocol_floatlayout.add_event([
-							(time.time() - self.start_time)
-							, 'Variable Change'
-							, 'Parameter'
-							, 'Delay'
-							, self.current_delay
-							])
+						# Variable changes: Separation and Delay
+						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Separation', self.current_sep)
+						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
 
 					else:
 						self.block_contingency()
@@ -1687,21 +1449,10 @@ class ProtocolScreen(ProtocolBase):
 			self.current_trial += 1
 			self.current_block_trial += 1
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Trial'
-				, str(self.current_trial)
-				])
-			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Block Trial'
-				, str(self.current_block_trial)
-				])
+			# Variable changes: Current Trial and Current Block Trial
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Trial', str(self.current_trial))
+
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Block Trial', str(self.current_block_trial))
 			
 			# Set ITI
 
@@ -1713,20 +1464,15 @@ class ProtocolScreen(ProtocolBase):
 				else:
 					self.iti_length = round(random.uniform(min(self.iti_range), max(self.iti_range)), 2)
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Current ITI'
-					, self.iti_length
-					])
+				# Variable change: Current ITI
+				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current ITI', self.iti_length)
 
 
 			if self.current_stage == 'Space':
 				
 				if self.trial_index >= len(self.space_trial_index_list):
 					self.trial_index = 0
-					random.shuffle(self.space_trial_index_list)
+					self.constrained_shuffle(self.space_trial_index_list)
 				
 				self.space_trial_index = self.space_trial_index_list[self.trial_index]
 				
@@ -1737,7 +1483,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				if self.trial_index >= len(self.delay_trial_index_list):
 					self.trial_index = 0
-					random.shuffle(self.delay_trial_index_list)
+					self.constrained_shuffle(self.delay_trial_index_list)
 				
 				self.delay_trial_index = self.delay_trial_index_list[self.trial_index]
 				
@@ -1780,37 +1526,17 @@ class ProtocolScreen(ProtocolBase):
 				}
 			
 
-			self.protocol_floatlayout.add_event([
-				time.time() - self.start_time
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Delay'
-				, str(self.current_delay)
-				])
-			
-			self.protocol_floatlayout.add_event([
-				time.time() - self.start_time
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Current Separation'
-				, str(self.current_sep)
-				])
-			
-			self.protocol_floatlayout.add_event([
-				time.time() - self.start_time
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Cue Position'
-				, self.cue_image.pos_hint
-				])
-			
-			self.protocol_floatlayout.add_event([
-				time.time() - self.start_time
-				, 'Variable Change'
-				, 'Parameter'
-				, 'Target Position'
-				, self.cue_image.pos_hint
-				])
+			# Variable change: Current Delay
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Delay', str(self.current_delay))
+
+			# Variable change: Current Separation
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Separation', str(self.current_sep))
+
+			# Variable change: Cue Position
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Cue Position', self.cue_image.pos_hint)
+
+			# Variable change: Target Position
+			self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Target Position', self.cue_image.pos_hint)
 
 			self.trial_end_time = time.time()
 		
@@ -1842,17 +1568,10 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_label.text = ''
 		
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'State Change'
-				, 'Block Contingency'
-				])
-		
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'State Change'
-				, 'Screen Cleared'
-				])
+			# State changes for block transition
+			self.protocol_floatlayout.add_stage_event('Block Contingency')
+
+			self.protocol_floatlayout.add_stage_event('Screen Cleared')
 			
 			if (self.current_block > self.block_multiplier) or (self.current_block == -1):
 				self.stage_index += 1
@@ -1867,49 +1586,28 @@ class ProtocolScreen(ProtocolBase):
 			else:
 				self.current_stage = self.stage_list[self.stage_index]
 		
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'State Change'
-					, 'Stage Change'
-					, 'Current Stage'
-					, self.current_stage
-					])
+				# Stage and block change events
+				self.protocol_floatlayout.add_stage_event('Stage Change')
+				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Stage', self.current_stage)
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'State Change'
-					, 'Block Change'
-					, 'Current Block'
-					, self.current_block
-					])
+				self.protocol_floatlayout.add_stage_event('Block Change')
+				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Block', self.current_block)
 			
 			
 			if self.current_stage == 'Space':
-				random.shuffle(self.space_trial_index_list)
+				self.constrained_shuffle(self.space_trial_index_list)
 			
 			elif self.current_stage == 'Delay':
-				random.shuffle(self.delay_trial_index_list)
+				self.constrained_shuffle(self.delay_trial_index_list)
 						
 			elif self.current_stage == 'Combo':	
 				self.combo_trial_index = 0
 				self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
 				self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Separation'
-					, self.current_sep
-					])
-
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Variable Change'
-					, 'Parameter'
-					, 'Delay'
-					, self.current_delay
-					])
+				# Variable changes: Separation and Delay
+				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Separation', self.current_sep)
+				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
 
 
 			if (self.current_block == 1) and (self.stage_index == 0):
@@ -1920,25 +1618,10 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_widget(self.section_instr_label)
 				self.protocol_floatlayout.add_widget(self.instruction_button)
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Object Display'
-					, 'Text'
-					, 'Block'
-					, 'Instructions'
-					, 'Type'
-					, 'Training'
-					])
-				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Object Display'
-					, 'Button'
-					, 'Block'
-					, 'Instructions'
-					, 'Type'
-					, 'Continue'
-					])
+				# Object display events: training text and continue button
+				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Type', 'Training')
+
+				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Type', 'Continue')
 			
 			else:
 				self.block_started = False
