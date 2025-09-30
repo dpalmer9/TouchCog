@@ -145,11 +145,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
 		
 		self.task_clock = Clock
-		self.task_clock.interupt_next_only = False
-		self.stimulus_present_event = self.task_clock.create_trigger(self.stimulus_presentation, 0.4)
-		self.display_hold_button_event = self.task_clock.create_trigger(self.display_hold_button, self.hold_button_delay)
 		self.no_response_event = self.task_clock.create_trigger(self.protocol_end, self.timeout_duration)
-		self.tutorial_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 0)
 
 
 		# Define Widgets - Buttons
@@ -402,7 +398,7 @@ class ProtocolScreen(ProtocolBase):
 			x_pos = x_pos + 1
 
 		self.hold_button.source = self.hold_image_path
-		self.hold_button.bind(on_press=self.iti)
+		#self.hold_button.bind(on_press=self.iti_start)
 
 		self.stimulus_button = ImageButton(source=self.stimulus_image_path)
 
@@ -500,15 +496,12 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+		Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
 		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
 
 
 	def present_tutorial_video_start_button(self, *args):
-
-		self.tutorial_video_end_event.cancel()
-
 		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
 		self.protocol_floatlayout.add_widget(self.tutorial_restart)
 				
@@ -533,11 +526,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_contingency()
 
 
-	def results_screen(
-				self
-				, *args
-				):
-			
+	def results_screen(self, *args):
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_on_screen = False
 
@@ -560,12 +549,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation
-		
-		# print('Stimulus presentation')
-
-		self.iti_event.cancel()
-
-		self.hold_button.unbind(on_press=self.iti)
+		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
@@ -585,16 +569,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimulus_on_screen = True
 
-		self.no_response_event()
+		Clock.schedule_once(self.no_response_event, self.timeout_duration)
 	
 				
 	
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
-		
+		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return
 		
-		self.iti_event.cancel()
+		Clock.unschedule(self.iti_end)
 		
 		self.protocol_floatlayout.clear_widgets()
 		
@@ -617,9 +601,9 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.start_block)
 
-		self.protocol_floatlayout.add_widget(self.feedback_label)
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		self.protocol_floatlayout.add_widget(self.quit_button)
+		self.hold_button.bind(on_press=self.iti_start)
 	
 	
 	
@@ -629,7 +613,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# print('Target pressed')
 
-		self.no_response_event.cancel()
+		Clock.unschedule(self.no_response_event)
 
 		self.stimulus_press_time = time.time()
 		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
@@ -708,6 +692,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Hit Target', self.hit_target)
 				
 				self.block_contingency()
+				return
 			
 
 			else:
@@ -752,9 +737,7 @@ class ProtocolScreen(ProtocolBase):
 						}
 
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Target Location', self.stimulus_button.pos_hint)
-
 				self.stimulus_presentation()
-		
 		
 		except KeyboardInterrupt:
 			
@@ -771,7 +754,7 @@ class ProtocolScreen(ProtocolBase):
 	# Block start function (add widgets and set block start time)
 
 	def start_block(self, *args):
-
+		self.hold_button_pressed = True
 		self.protocol_floatlayout.remove_widget(self.feedback_label)
 		self.feedback_label.text = ''
 		
@@ -783,14 +766,15 @@ class ProtocolScreen(ProtocolBase):
 		self.block_start_time = time.time()
 
 		self.hold_button.unbind(on_press=self.start_block)
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 
 		self.hold_button.bind(on_release=self.premature_response)
 
 		for grid_square in self.background_grid_list:
 			self.protocol_floatlayout.add_widget(grid_square)
-		
-		self.iti()
+
+		if self.hold_button_pressed:
+			self.iti_start()
 
 
 	# Block Contingency Function
@@ -798,8 +782,9 @@ class ProtocolScreen(ProtocolBase):
 	def block_contingency(self, *args):
 		
 		try:			
-			self.hold_button.unbind(on_press=self.iti)
+			self.hold_button.unbind(on_press=self.iti_start)
 			self.hold_button.unbind(on_release=self.premature_response)
+			Clock.unschedule(self.iti_end)
 			Clock.unschedule(self.remove_feedback)
 			self.remove_feedback()
 
