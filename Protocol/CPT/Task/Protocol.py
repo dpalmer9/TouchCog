@@ -350,7 +350,7 @@ class ProtocolScreen(ProtocolBase):
 		if 'Flanker_Probe' in self.stage_list:
 			self.flanker_stage_index = 0
 			self.flanker_stage_list = ['none', 'same', 'diff', 'none', 'same', 'diff']
-			random.shuffle(self.flanker_stage_list)
+			self.constrained_shuffle(self.flanker_stage_list)
 			self.current_substage = ''
 			self.flanker_image = ''
 		
@@ -2814,7 +2814,7 @@ class ProtocolScreen(ProtocolBase):
 					for iTrial in range((self.target_prob_trial_num - self.target_prob_list[self.target_prob_list_index])):
 						self.trial_list.append('Nontarget')
 
-					random.shuffle(self.trial_list)
+					self.constrained_shuffle(self.trial_list)
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'SART_Probe':
@@ -2881,7 +2881,7 @@ class ProtocolScreen(ProtocolBase):
 					for iTrial in range((self.target_prob_trial_num - self.target_prob_list[self.target_prob_list_index])):
 						self.trial_list.append('Nontarget')
 
-					random.shuffle(self.trial_list)
+					self.constrained_shuffle(self.trial_list)
 
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
@@ -2905,7 +2905,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.response_tracking = list()
 			
-			random.shuffle(self.trial_list)
+			self.constrained_shuffle(self.trial_list)
 
 			self.block_start = time.time()
 			
