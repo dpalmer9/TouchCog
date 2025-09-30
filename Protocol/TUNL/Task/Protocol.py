@@ -813,15 +813,13 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 		
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+		Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
 		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Instructions')
 
 
 	
 	def present_tutorial_video_start_button(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 
 		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
 		self.protocol_floatlayout.add_widget(self.tutorial_restart)
@@ -833,8 +831,6 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def start_protocol_from_tutorial(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 		self.tutorial_video.state = 'stop'
 		
 		self.generate_output_files()
@@ -863,6 +859,79 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.feedback_label.text = ''
 
+	def section_start(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'State Change'
+			, 'Section Start'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Text'
+			, 'Stage'
+			, 'Instructions'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Remove'
+			, 'Button'
+			, 'Stage'
+			, 'Continue'
+			])
+		
+		self.block_end()
+	
+
+
+	def results_screen(self, *args):
+		
+		Clock.unschedule(self.iti_end)
+		
+		self.protocol_floatlayout.clear_widgets()
+		self.feedback_on_screen = False
+		self.feedback_label.text = ''
+
+		if len(self.accuracy_tracking) == 0:
+			self.outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
+		
+		else:
+			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
+			
+			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
+				+ str(round(self.hit_accuracy * 100)) \
+				+ '%!\n\nPlease inform the researcher that you have finished this task.'
+		
+		self.instruction_button.unbind(on_press=self.section_start)
+		self.instruction_button.bind(on_press=self.protocol_end)
+		self.instruction_button.text = 'End Task'
+
+		self.section_instr_label.text = self.outcome_string
+
+		self.protocol_floatlayout.add_widget(self.section_instr_label)
+		self.protocol_floatlayout.add_widget(self.instruction_button)
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Text'
+			, 'Stage'
+			, 'Results'
+			])
+		
+		self.protocol_floatlayout.add_event([
+			(time.time() - self.start_time)
+			, 'Object Display'
+			, 'Button'
+			, 'Stage'
+			, 'Continue'
+			])
+
 
 
 	def cue_present(self, *args): # Present cue
@@ -888,17 +957,13 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.cue_image.pos_hint)
 
-		self.stimulus_event()
+		Clock.schedule_once(self.delay_present, self.stimdur)
 	
 
 
 	# Display Distractor During Delay
 	
 	def delay_present(self, *args):
-
-		self.cue_present_event.cancel()
-		self.stimulus_event.cancel()
-
 		self.protocol_floatlayout.clear_widgets()
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
@@ -919,13 +984,13 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.delay_video.source), self.video_position)
 
+		Clock.schedule_once(self.delay_end, self.current_delay)
+
 
 
 	# Display Distractor During Delay
 	
 	def delay_end(self, *args):
-
-		self.delay_present_event.cancel()
 		self.delay_video.state = 'pause'
 
 		self.protocol_floatlayout.clear_widgets()
@@ -943,14 +1008,11 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
 
-		self.target_present_event()
+		self.target_present()
 	
 	
 	
 	def target_present(self, *args): # Present stimulus
-
-		self.delay_end_event.cancel()
-		self.iti_event.cancel()
 		
 		self.hold_button.unbind(on_release=self.hold_released)
 
@@ -976,48 +1038,38 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.target_image.pos_hint)
 			
-		self.stimulus_event()
+		if self.limhold > self.stimdur:
+			Clock.schedule_once(self.stimulus_presentation_end, self.stimdur)
+		Clock.schedule_once(self.no_response, self.limhold)
 	
 	
 	
 	def stimulus_presentation(self, *args): # Stimulus presentation
-		
-		if not self.stimulus_on_screen \
-			and not self.cue_completed \
-			and not self.delay_active \
-			and not self.limhold_started:
+		self.cue_present()
+		return
 
-			self.cue_present_event()
-		
-		elif self.stimulus_on_screen \
-			and not self.limhold_started \
-			and (time.time() - self.cue_start_time) < self.stimdur \
-			and self.hold_active:
-			
-			self.stimulus_event()
+	def stimulus_presentation_end(self, *args):
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Cue'
+			, self.cue_image.pos_hint
+			])
 
-		elif self.stimulus_on_screen \
-			and not self.limhold_started \
-			and (time.time() - self.cue_start_time) >= self.stimdur \
-			and self.hold_active:
-
-			self.stimulus_event.cancel()
-			self.delay_present_event()
-		
-		elif self.stimulus_on_screen \
-			and self.limhold_started \
-			and (time.time() - self.target_start_time) < self.limhold:
-			
-			self.stimulus_event()
-
-		else:
-			self.stimulus_event.cancel()
-			self.target_present_event.cancel()
-			self.no_response()
-
-
+		self.protocol_floatlayout.add_event([
+			(self.target_touch_time - self.start_time)
+			, 'Object Remove'
+			, 'Stimulus'
+			, 'Target'
+			, self.target_image.pos_hint
+			])
 
 	def hold_released(self, *args):
+		Clock.unschedule(self.delay_present)
+		Clock.unschedule(self.delay_end)
 		
 		self.protocol_floatlayout.clear_widgets()
 
@@ -1033,13 +1085,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_event('Hold Released')
 		
 		self.protocol_floatlayout.add_event('Trial Aborted')
-
-		self.stimulus_event.cancel()
-
-		self.cue_present_event.cancel()
-		self.target_present_event.cancel()
-		self.delay_present_event.cancel()
-		self.delay_end_event.cancel()
 		
 		if self.stimulus_on_screen \
 			and self.cue_completed:
@@ -1093,8 +1138,7 @@ class ProtocolScreen(ProtocolBase):
 			return
 	
 		self.hold_active = False
-		
-		self.iti_event.cancel()
+		Clock.unschedule(self.iti_end)
 		
 		self.protocol_floatlayout.add_event([
 			time.time() - self.start_time
@@ -1121,16 +1165,15 @@ class ProtocolScreen(ProtocolBase):
 				])
 		
 		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 	
 	
 	
 	# Cue Stimuli Pressed during Target
 	
 	def cue_pressed(self, *args):
-
-		self.stimulus_event.cancel()
-		
+		Clock.unschedule(self.stimulus_presentation_end)
+		Clock.unschedule(self.no_response)
 		self.last_response = 0
 		
 		self.target_touch_time = time.time()
@@ -1234,9 +1277,8 @@ class ProtocolScreen(ProtocolBase):
 	# Target Stimuli Pressed during Target
 	
 	def target_pressed(self, *args):
-
-		self.stimulus_event.cancel()
-		
+		Clock.unschedule(self.stimulus_presentation_end)
+		Clock.unschedule(self.no_response)
 		self.last_response = 1
 		
 		self.target_touch_time = time.time()
@@ -1340,8 +1382,6 @@ class ProtocolScreen(ProtocolBase):
 	# No response during test phase limited hold
 	
 	def no_response(self, *args):
-
-		self.stimulus_event.cancel()
 		
 		self.last_response = np.nan
 
@@ -1418,7 +1458,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		if self.hold_active == True:
 			self.hold_active = False
-			self.iti()
+			self.iti_start()
 
 		return
 	
@@ -1633,12 +1673,12 @@ class ProtocolScreen(ProtocolBase):
 							])
 
 					else:
-						self.block_check_event()
+						self.block_contingency()
 
 
 				if (time.time() - self.block_start_time >= self.block_duration):
 					self.current_block += 1
-					self.block_check_event()
+					self.block_contingency()
 
 			# Set next trial parameters
 
@@ -1784,84 +1824,6 @@ class ProtocolScreen(ProtocolBase):
 			
 			print('Error; program terminated.')
 			self.protocol_end()
-	
-	
-	
-	def section_start(self, *args):
-
-		self.protocol_floatlayout.clear_widgets()
-
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'State Change'
-			, 'Section Start'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Text'
-			, 'Stage'
-			, 'Instructions'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Remove'
-			, 'Button'
-			, 'Stage'
-			, 'Continue'
-			])
-		
-		self.block_end()
-	
-
-
-	def results_screen(
-			self
-			, *args
-			):
-		
-		self.iti_event.cancel()
-		
-		self.protocol_floatlayout.clear_widgets()
-		self.feedback_on_screen = False
-		self.feedback_label.text = ''
-
-		if len(self.accuracy_tracking) == 0:
-			self.outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
-		
-		else:
-			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
-			
-			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-				+ str(round(self.hit_accuracy * 100)) \
-				+ '%!\n\nPlease inform the researcher that you have finished this task.'
-		
-		self.instruction_button.unbind(on_press=self.section_start)
-		self.instruction_button.bind(on_press=self.protocol_end)
-		self.instruction_button.text = 'End Task'
-
-		self.section_instr_label.text = self.outcome_string
-
-		self.protocol_floatlayout.add_widget(self.section_instr_label)
-		self.protocol_floatlayout.add_widget(self.instruction_button)
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Text'
-			, 'Stage'
-			, 'Results'
-			])
-		
-		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
-			, 'Object Display'
-			, 'Button'
-			, 'Stage'
-			, 'Continue'
-			])
 
 
 
@@ -1871,23 +1833,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		try:
 
-			self.iti_event.cancel()
+			Clock.unschedule(self.iti_end)
 
 			self.block_started = True
-
-			if self.feedback_on_screen:
-				
-				if (time.time() - self.feedback_start_time) >= self.feedback_length:
-					self.block_check_event.cancel()
-					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.feedback_label.text = ''
-					self.feedback_on_screen = False
-
-				else:
-					return
-			
-			else:
-				self.block_check_event.cancel()
+			Clock.unschedule(self.remove_feedback)
+			self.remove_feedback()
 
 			self.protocol_floatlayout.clear_widgets()
 			self.feedback_label.text = ''
@@ -1992,7 +1942,7 @@ class ProtocolScreen(ProtocolBase):
 			
 			else:
 				self.block_started = False
-				self.block_event()
+				self.block_contingency()
 			
 
 			self.response_tracking = list()
