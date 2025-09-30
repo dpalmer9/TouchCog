@@ -27,29 +27,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_name = 'PR'
 		self.update_task()
 		
-
-		# Set screen size
-		
-		width = int(Config.get('graphics', 'width'))
-		height = int(Config.get('graphics', 'height'))
-		self.maxfps = int(Config.get('graphics', 'maxfps'))
-		
-		if self.maxfps == 0:
-			self.maxfps = 120
-
-		self.screen_resolution = (width, height)
-		self.protocol_floatlayout.size = self.screen_resolution
-
-		self.width_adjust = 1
-		self.height_adjust = 1
-		
-		if width > height:
-			self.width_adjust = height / width
-		
-		elif width < height:
-			self.height_adjust = width / height
-
-
 		# Define Data Columns
 
 		self.data_cols = [
@@ -433,12 +410,7 @@ class ProtocolScreen(ProtocolBase):
 
 			# print(self.tutorial_video_path)
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_path
-				, allow_stretch = True
-				, options = {'eos': 'stop'}
-				, state = 'stop'
-				)
+			self.tutorial_video = Video(source = self.tutorial_video_path)
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
