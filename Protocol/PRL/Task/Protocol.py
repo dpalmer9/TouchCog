@@ -22,30 +22,6 @@ class ProtocolScreen(ProtocolBase):
 		super(ProtocolScreen, self).__init__(**kwargs)
 		self.protocol_name = 'PRL'
 		self.update_task()
-		
-
-		# Set screen size
-		
-		width = int(Config.get('graphics', 'width'))
-		height = int(Config.get('graphics', 'height'))
-		self.maxfps = int(Config.get('graphics', 'maxfps'))
-		
-		if self.maxfps == 0:
-			self.maxfps = 120
-
-		self.screen_resolution = (width, height)
-		self.protocol_floatlayout.size = self.screen_resolution
-
-		self.width_adjust = 1
-		self.height_adjust = 1
-		
-		if width > height:
-			self.width_adjust = height / width
-		
-		elif width < height:
-			self.height_adjust = width / height
-		
-
 		# Define Data Columns
 		
 		self.data_cols = [
@@ -160,16 +136,6 @@ class ProtocolScreen(ProtocolBase):
 		self.language_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 		self.image_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Image')
 
-
-		# Define Clock
-		
-		self.block_check_clock = Clock
-		self.block_check_clock.interupt_next_only = False
-		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
-
-		self.task_clock = Clock
-		self.task_clock.interupt_next_only = False
-
 		# Define Variables - Time
 
 		self.start_stimulus = 0.0
@@ -219,7 +185,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 
 		self.stimulus_size = (0.4 * self.width_adjust, 0.4 * self.height_adjust)
 		self.stimulus_pos_l = {'center_x': 0.25, 'center_y': 0.55}
@@ -458,12 +424,7 @@ class ProtocolScreen(ProtocolBase):
 
 			# print(self.tutorial_video_path)
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_path
-				, allow_stretch = True
-				, options = {'eos': 'stop'}
-				, state = 'stop'
-				)
+			self.tutorial_video = Video(source = self.tutorial_video_path)
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
@@ -549,8 +510,6 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def start_protocol_from_tutorial(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 		self.tutorial_video.state = 'stop'
 
 		self.protocol_floatlayout.clear_widgets()
@@ -601,8 +560,6 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation
-		self.iti_event.cancel()
-
 		self.hold_button.unbind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
@@ -625,7 +582,9 @@ class ProtocolScreen(ProtocolBase):
 		if self.stimulus_on_screen is True:
 			pass
 		
-		self.iti_event.cancel()
+		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.remove_feedback)
+		self.remove_feedback()
 		
 		self.protocol_floatlayout.clear_widgets()
 		
@@ -651,7 +610,7 @@ class ProtocolScreen(ProtocolBase):
 				])
 		
 		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 	
 		self.protocol_floatlayout.add_widget(self.hold_button)
 	
@@ -719,7 +678,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_variable_event('Outcome', 'Points', self.response_latency)
 		
 		else:
-
+			self.feedback_label.text = ''
 			self.protocol_floatlayout.add_stage_event('Choice Not Rewarded')
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Side Chosen', self.side_chosen)
@@ -733,15 +692,14 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Remove', 'Image', 'Target', 'Location', self.target_loc)
 		self.protocol_floatlayout.add_object_event('Remove', 'Image', 'Nontarget', 'Location', self.nontarget_loc)
 
-		self.hold_button.bind(on_press=self.iti)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		if self.feedback_label.text != '' \
 			and not self.feedback_on_screen:
-			print(self.feedback_label.text, time.time() - self.start_time)
 			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_start_time = time.time()
 			self.feedback_on_screen = True
+			Clock.schedule_once(self.remove_feedback, self.feedback_length)
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
 		self.protocol_floatlayout.add_widget(self.hold_button)
@@ -886,8 +844,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		try:
 
-			Clock.unschedule(self.iti_event)
-			self.hold_button.unbind(on_press=self.iti)
+			Clock.unschedule(self.iti_end)
+			self.hold_button.unbind(on_press=self.iti_start)
 			self.hold_button.unbind(on_release=self.premature_response)
 
 			self.block_started = True
