@@ -634,13 +634,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Video Restart')
 
-	def start_protocol(self, *args):
-		
-		self.protocol_floatlayout.clear_widgets()
-		
-		self.start_clock()
-		self.block_contingency()
-
 	def section_start(self, *args):
 
 		self.protocol_floatlayout.clear_widgets()
