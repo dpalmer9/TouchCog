@@ -628,21 +628,18 @@ class ProtocolBase(Screen):
 		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 		
 		start_path = lang_folder_path / 'Start.txt'
-		start_open = open(start_path, 'r', encoding='utf-8')
-		start_label_str = start_open.read()
-		start_open.close()
+		with open(start_path, 'r', encoding='utf-8') as file:
+			start_label_str = file.read()
 		self.instruction_label.text = start_label_str
 		
 		break_path = lang_folder_path / 'Break.txt'
-		break_open = open(break_path, 'r', encoding='utf-8')
-		break_label_str = break_open.read()
-		break_open.close()
+		with open(break_path , 'r', encoding='utf-8') as file:
+			break_label_str = file.read()
 		self.block_label.text = break_label_str
 		
 		end_path = lang_folder_path / 'End.txt'
-		end_open = open(end_path, 'r', encoding='utf-8')
-		end_label_str = end_open.read()
-		end_open.close()
+		with open(end_path, 'r', encoding='utf-8') as file:
+			end_label_str = file.read()
 		self.end_label.text = end_label_str
 		
 		button_lang_path = lang_folder_path / 'Button.ini'
