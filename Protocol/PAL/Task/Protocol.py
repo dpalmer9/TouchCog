@@ -72,21 +72,29 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_path = pathlib.Path('Protocol', self.protocol_name)
 
-		config_path = str(self.protocol_path / 'Configuration.ini')
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
+		self.config_path = str(self.protocol_path / 'Configuration.ini')
+		self.config_file = configparser.ConfigParser()
+		self.config_file.read(self.config_path)
 
 		self.debug_mode = False
 
-		if ('DebugParameters' in config_file) \
-			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+		if ('DebugParameters' in self.config_file) \
+			and (int(self.config_file['DebugParameters']['debug_mode']) == 1):
 
-			self.parameters_dict = config_file['DebugParameters']
+			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
 
 		else:
-			self.parameters_dict = config_file['TaskParameters']
+			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
+
+
+	def _load_config_parameters(self, parameters_dict):
+		self.parameters_dict = parameters_dict
+
+		self.participant_id = self.parameters_dict['participant_id']
+		
+		self.language = self.parameters_dict['language']
 
 		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
 		self.tutorial_video_duration_PAL = float(self.parameters_dict['tutorial_video_duration_pal'])
@@ -96,8 +104,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
-		iti_import = self.parameters_dict['iti_length']
-		iti_import = iti_import.split(',')
+		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.iti_import.split(',')
 		
 		self.feedback_length = float(self.parameters_dict['feedback_length'])
 		self.block_duration = int(self.parameters_dict['block_duration'])
@@ -120,20 +128,24 @@ class ProtocolScreen(ProtocolBase):
 
 		self.training_image = self.parameters_dict['training_image']
 
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
-
-
-		# Create stage list
+		self.hold_image = self.config_file['Hold']['hold_image']
+		self.mask_image = self.config_file['Mask']['mask_image']
 
 		self.stage_list = list()
+		
+		if int(self.parameters_dict['training_task']) == 1:
+			self.stage_list.append('Training')
+		
+		if int(self.parameters_dict['dpal_probe']) == 1:
+			self.stage_list.append('dPAL')
+		
+		if int(self.parameters_dict['spal_probe']) == 1:
+			self.stage_list.append('sPAL')
+		
+		if int(self.parameters_dict['recall_probe']) == 1:
+			self.stage_list.append('Recall')
 
-
-		# Define Language
-
-		self.language = 'English'
-		self.set_language(self.language)
-
+	def _load_task_variables(self):
 		# Define Variables - Time
 
 		self.stimulus_start_time = 0.0
@@ -177,159 +189,10 @@ class ProtocolScreen(ProtocolBase):
 		# Define Variables - String
 
 		self.current_stage = ''
-		self.target_image = ''
-		self.nontarget_image = ''
-		self.blank_image = ''
-		self.recall_image = ''
-
-
-		# Define Widgets - Image Paths
-
-		self.image_folder = self.protocol_path / 'Image'
-		self.target_folder = str(self.image_folder / 'Targets')
-
-		self.outline_image = 'whitesquare'
-
-		self.hold_image_path = str(self.image_folder / str(self.hold_image + '.png'))
-		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
-		self.outline_image_path = str(self.image_folder / str(self.outline_image + '.png'))
-
-
-		# Define Widgets - Images
-
-		self.stimulus_grid_list = list()
-		self.recall_stimulus = ImageButton()
-
-
-		# Define Widgets - Instructions
-		
-		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		self.instruction_dict['Training'] = {}
-		self.instruction_dict['dPAL'] = {}
-		self.instruction_dict['sPAL'] = {}
-		self.instruction_dict['Recall'] = {}
-		
-		for stage in self.stage_list:
-			
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
-
-
-
-	# Initialization Functions #
-		
-	def load_parameters(self,parameter_dict):
-
-		self.parameters_dict = parameter_dict
-		
-		self.participant_id = self.parameters_dict['participant_id']
-		
-		self.language = self.parameters_dict['language']
-
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
-		self.tutorial_video_duration_PAL = float(self.parameters_dict['tutorial_video_duration_pal'])
-		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
-
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
-		
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
-		
-		iti_import = self.parameters_dict['iti_length']
-		iti_import = iti_import.split(',')
-		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = int(self.parameters_dict['block_duration'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
-		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
-
-		self.dpal_trial_max = int(self.parameters_dict['dpal_trial_max'])
-		self.spal_trial_max = int(self.parameters_dict['spal_trial_max'])
-		self.recall_trial_max = int(self.parameters_dict['recall_trial_max'])
-		
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
-
-		self.recall_target_present_duration = float(self.parameters_dict['recall_target_present_duration'])
-		
-		self.num_stimuli_pal = int(self.parameters_dict['num_stimuli_pal'])
-		self.num_stimuli_pa = int(self.parameters_dict['num_stimuli_pa'])
-		self.num_rows = int(self.parameters_dict['num_rows'])
-
-		self.training_image = self.parameters_dict['training_image']
-		
-
-		config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
-
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
-
-
-		# Create stage list
-
-		self.stage_list = list()
-		
-		if int(self.parameters_dict['training_task']) == 1:
-			self.stage_list.append('Training')
-		
-		if int(self.parameters_dict['dpal_probe']) == 1:
-			self.stage_list.append('dPAL')
-		
-		if int(self.parameters_dict['spal_probe']) == 1:
-			self.stage_list.append('sPAL')
-		
-		if int(self.parameters_dict['recall_probe']) == 1:
-			self.stage_list.append('Recall')
-
-
-		# Define Language
-
-		self.language = 'English'
-		self.set_language(self.language)
-
-
-		# Define Variables - Numeric
-		
-		self.current_block = -1
-		self.current_block_trial = 0
-		
-		self.stage_index = -1
-		
-		self.block_max_count = self.block_multiplier
-		self.block_trial_max = 120
-
-		self.last_response = 0
-
-		self.response_tracking = list()
-
-		self.target_loc = 0
-		self.nontarget_loc = 1
-		self.nontarget_image_loc = 2
-
-		self.recall_target_display_pos = 0
-
-
-		# Define Variables - String
-
-		self.current_stage = ''
 		self.target_image = self.mask_image
 		self.nontarget_image = self.mask_image
 		self.blank_image = self.mask_image
 		self.recall_image = self.mask_image
-
-
-		# Define Variables - Boolean
-
-		self.recall_instruction_target_display_started = False
-		self.stage_screen_started = False
-
 
 		# Define Variables - Time
 
@@ -339,16 +202,28 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_end_time = 0.0
 		self.recall_target_screen_start_time = 0.0
 		self.tutorial_video_duration = 0.0
-		
-		self.iti_range = [float(iNum) for iNum in iti_import]
+
+	# Initialization Functions #
+
+	def _setup_session_stages(self):
+		self.iti_range = [float(iNum) for iNum in self.iti_import]
 		self.iti_length = self.iti_range[0]
+		self.trial_list = list()
+		self.trial_list_pal = list()
+		self.trial_list_pa = list()
+		self.trial_list_index = 0
 
+		for iNum in range(15):
+			self.trial_list_pal.append(iNum % self.num_stimuli_pal)
+			self.trial_list_pa.append(iNum % self.num_stimuli_pa)
 
-		# Define Widgets - Images
+	def _setup_image_widgets(self):
+		# Define Widgets - Image Paths
 
 		self.image_folder = self.protocol_path / 'Image'
-		
-		self.outline_image = 'whitecircle'
+		self.target_folder = str(self.image_folder / 'Targets')
+
+		self.outline_image = 'whitesquare'
 
 		self.hold_image_path = str(self.image_folder / str(self.hold_image + '.png'))
 		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
@@ -397,9 +272,10 @@ class ProtocolScreen(ProtocolBase):
 		self.total_image_list = self.stimulus_image_path_list
 
 		self.total_image_list += [self.hold_image_path, self.mask_image_path, self.outline_image_path, self.training_image_path]
-		# print('\n\nTotal image list: ', self.total_image_list, '\n\n')
 
 		self.load_images(self.total_image_list)
+
+		# Define Widgets - Images
 
 		self.recall_stimulus = ImageButton(
 			source = self.mask_image_path
@@ -416,28 +292,66 @@ class ProtocolScreen(ProtocolBase):
 		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
 		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
-		# Define trial lists
+		self.x_boundaries = [0.1, 0.9]
+		self.y_boundaries = [0.1, 1]
 
-		self.trial_list = list()
-		self.trial_list_pal = list()
-		self.trial_list_pa = list()
-		self.trial_list_index = 0
+		self.stimulus_image_x_size = (max(self.x_boundaries) - min(self.x_boundaries))/np.ceil(max(self.num_stimuli_pal, self.num_stimuli_pa)/self.num_rows)
 
-		for iNum in range(15):
-			self.trial_list_pal.append(iNum % self.num_stimuli_pal)
-			self.trial_list_pa.append(iNum % self.num_stimuli_pa)
+		self.stimulus_x_boundaries = [
+			(min(self.x_boundaries) + (self.stimulus_image_x_size/2))
+			, (max(self.x_boundaries) - (self.stimulus_image_x_size/2))
+			]
+
+		if any(True for stage in ['dPAL', 'sPAL', 'Training'] if stage in self.stage_list):
+			self.num_stimuli = self.num_stimuli_pal
+		
+		else:
+			self.num_stimuli = self.num_stimuli_pa
+		
+		self.stimulus_x_loc = np.linspace(min(self.stimulus_x_boundaries), max(self.stimulus_x_boundaries), int(self.num_stimuli)).tolist()
+
+		self.stimulus_grid_list = self.generate_stimulus_grid(
+			self.stimulus_x_loc
+			, self.num_rows
+			, grid_gap = 0.1
+			)
 
 
+
+		# Define Widgets - Images
+
+		self.stimulus_grid_list = list()
+		self.recall_stimulus = ImageButton()
+
+	def _setup_language_localization(self):
+		self.set_language(self.language)
+
+	def _load_video_and_instruction_components(self):
+		# Define Widgets - Instructions
+		
+		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
+		
+		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
+		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
+		
+		self.instruction_dict = {}
+		self.instruction_dict['Training'] = {}
+		self.instruction_dict['dPAL'] = {}
+		self.instruction_dict['sPAL'] = {}
+		self.instruction_dict['Recall'] = {}
+		
+		for stage in self.stage_list:
+			
+			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
+			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
+		
 		# Instruction Import
 
-		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 
-		if (lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_PAL_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*Part 1*'))[0])
-			self.tutorial_video_PA_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*Part 2*'))[0])
-
-			# print(self.tutorial_video_PAL_path)
-			# print(self.tutorial_video_PA_path)
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
+			self.tutorial_video_PAL_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 1*'))[0])
+			self.tutorial_video_PA_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 2*'))[0])
 
 			self.tutorial_video = Video(source = self.tutorial_video_PAL_path, state = 'stop')
 
@@ -480,38 +394,10 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
-		
-
-		# Define Widgets - Stimulus Layout
-
-		self.x_boundaries = [0.1, 0.9]
-		self.y_boundaries = [0.1, 1]
-
-		self.stimulus_image_x_size = (max(self.x_boundaries) - min(self.x_boundaries))/np.ceil(max(self.num_stimuli_pal, self.num_stimuli_pa)/self.num_rows)
-
-		self.stimulus_x_boundaries = [
-			(min(self.x_boundaries) + (self.stimulus_image_x_size/2))
-			, (max(self.x_boundaries) - (self.stimulus_image_x_size/2))
-			]
-
-		if any(True for stage in ['dPAL', 'sPAL', 'Training'] if stage in self.stage_list):
-			self.num_stimuli = self.num_stimuli_pal
-		
-		else:
-			self.num_stimuli = self.num_stimuli_pa
-		
-		self.stimulus_x_loc = np.linspace(min(self.stimulus_x_boundaries), max(self.stimulus_x_boundaries), int(self.num_stimuli)).tolist()
-
-		self.stimulus_grid_list = self.generate_stimulus_grid(
-			self.stimulus_x_loc
-			, self.num_rows
-			, grid_gap = 0.1
-			)
-		
 
 		# Instruction - Dictionary
 		
-		self.instruction_path = str(lang_folder_path / 'Instructions.ini')
+		self.instruction_path = str(self.lang_folder_path / 'Instructions.ini')
 		
 		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
 		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
@@ -525,12 +411,21 @@ class ProtocolScreen(ProtocolBase):
 		for stage in self.stage_list:
 			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
 			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
+		
+	def load_parameters(self,parameter_dict):
+		self._load_config_parameters(parameter_dict)
+		self._load_task_variables()
+		self._setup_session_stages()
+		self._setup_image_widgets()
+		self._setup_language_localization()
+		self._load_video_and_instruction_components()
 
 		for stimulus in self.stimulus_grid_list:
 			self.protocol_floatlayout.add_widget(stimulus)
 		
 		self.protocol_floatlayout.add_widget(self.recall_stimulus)
 		
+		self.start_clock()
 		self.present_tutorial_video()
 	
 
@@ -543,7 +438,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'stop'
 		self.generate_output_files()
 		self.metadata_output_generation()
-		self.start_clock()
 		self.block_contingency()
 
 
@@ -675,7 +569,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
-		self.stage_screen_time = time.time()
+		self.stage_screen_time = time.perf_counter()
 		self.stage_screen_started = True
 		self.block_started = True
 
@@ -713,7 +607,7 @@ class ProtocolScreen(ProtocolBase):
 			for stimulus in self.stimulus_grid_list:
 				self.protocol_floatlayout.add_widget(stimulus)
 			
-			self.recall_target_screen_start_time = time.time()
+			self.recall_target_screen_start_time = time.perf_counter()
 			self.recall_instruction_target_display_started = True
 			
 			self.protocol_floatlayout.add_stage_event('Object Display')
@@ -778,7 +672,7 @@ class ProtocolScreen(ProtocolBase):
 		for stimulus in self.stimulus_grid_list:
 			self.protocol_floatlayout.add_widget(stimulus)
 		
-		self.stimulus_start_time = time.time()
+		self.stimulus_start_time = time.perf_counter()
 		
 		self.feedback_label.text = ''
 		
@@ -812,7 +706,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.feedback_on_screen is False:
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 			self.feedback_on_screen = True
-			self.feedback_start_time = time.time()
+			self.feedback_start_time = time.perf_counter()
 
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
@@ -826,7 +720,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_stage_event('Correct Response')
 		
 		self.last_response = 1
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 
 		self.protocol_floatlayout.clear_widgets()
@@ -852,7 +746,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.feedback_label)
 
 		self.feedback_on_screen = True
-		self.feedback_start_time = time.time()
+		self.feedback_start_time = time.perf_counter()
 
 		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
@@ -869,7 +763,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.last_response = 0
 
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 
 		self.protocol_floatlayout.clear_widgets()
@@ -895,7 +789,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.feedback_label)
 		
 		self.feedback_on_screen = True
-		self.feedback_start_time = time.time()
+		self.feedback_start_time = time.perf_counter()
 
 		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
@@ -946,7 +840,7 @@ class ProtocolScreen(ProtocolBase):
 				# Check if block ended
 
 				if (self.current_block_trial >= self.block_trial_max) \
-					or (time.time() - self.block_start >= self.block_duration):
+					or (time.perf_counter() - self.block_start >= self.block_duration):
 
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
@@ -1090,7 +984,7 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.last_response = 0
 			
-			self.trial_end_time = time.time()
+			self.trial_end_time = time.perf_counter()
 		
 		except KeyboardInterrupt:
 			print('Program terminated by user.')

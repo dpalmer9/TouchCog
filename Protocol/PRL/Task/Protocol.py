@@ -66,173 +66,26 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config Import
 		
-		config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
+		self.config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
+		self.config_file = configparser.ConfigParser()
+		self.config_file.read(self.config_path)
 
 		self.debug_mode = False
 
-		if ('DebugParameters' in config_file) \
-			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+		if ('DebugParameters' in self.config_file) \
+			and (int(self.config_file['DebugParameters']['debug_mode']) == 1):
 
-			self.parameters_dict = config_file['DebugParameters']
+			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
 
 		else:
-			self.parameters_dict = config_file['TaskParameters']
+			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
 
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
-		self.tutorial_video_duration = int(self.parameters_dict['tutorial_video_duration'])
+	def _load_config_parameters(self, parameters_dict):
+		self.parameters_dict = parameters_dict
 
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
-		
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
-		
-		iti_import = self.parameters_dict['iti_length']
-		iti_import = iti_import.split(',')
-		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = int(self.parameters_dict['block_duration'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
-		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
-		self.block_trial_max = int(self.parameters_dict['block_trial_max'])
-		
-		self.target_reward_probability = float(self.parameters_dict['target_reward_probability'])
-		self.reversal_threshold = int(self.parameters_dict['reversal_threshold'])
-		self.max_reversals = int(self.parameters_dict['max_reversals'])
-
-		self.image_set = self.parameters_dict['image_set']
-
-		self.training_target_image = self.parameters_dict['training_target_image']
-		self.training_nontarget_image = self.parameters_dict['training_nontarget_image']
-		
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
-
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
-
-
-		# Define Variables - List
-
-		self.stage_list = list()
-
-		if self.parameters_dict['training_task'] == 1:
-			self.stage_list.append('Training')
-
-		self.stage_list.append('Test')
-
-
-		# Define Language
-
-		self.language = 'English'
-		self.set_language(self.language)
-
-
-		# Define Paths
-
-		self.language_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
-		self.image_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Image')
-
-		# Define Variables - Time
-
-		self.start_stimulus = 0.0
-		self.response_latency = 0.0
-		self.trial_end_time = 0.0
-
-
-		# Define Variables - Count
-
-		self.current_hits = 0
-		self.current_reversal = 0
-		self.point_counter = 0
-
-		self.target_image_index = 0
-		self.nontarget_image_index = 1
-
-		self.stage_index = 0
-
-
-		# Define Boolean
-
-		self.target_rewarded = True
-		self.nontarget_rewarded = False
-		self.choice_rewarded = True
-
-
-		# Define Variables - String
-
-		self.target_image = self.training_target_image
-		self.nontarget_image = self.training_nontarget_image
-		self.current_stage = self.stage_list[self.stage_index]
-		self.side_chosen = ''
-
-
-		# Define Widgets - Images
-
-		self.stimulus_path_list = list(self.image_dir_path.glob(str(pathlib.Path('Targets', self.image_set, '*.png'))))
-		stimulus_image_list = list()
-
-		for filename in self.stimulus_path_list:
-			stimulus_image_list.append(filename.stem)
-		
-		self.total_image_list = self.stimulus_path_list
-
-		self.hold_image_path = str(self.image_dir_path / (self.hold_image + '.png'))
-		self.mask_image_path = str(self.image_dir_path / (self.mask_image + '.png'))
-
-		self.hold_button.unbind(on_release=self.hold_remind)
-		self.hold_button.bind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti_start)
-
-		self.stimulus_size = (0.4 * self.width_adjust, 0.4 * self.height_adjust)
-		self.stimulus_pos_l = {'center_x': 0.25, 'center_y': 0.55}
-		self.stimulus_pos_r = {'center_x': 0.75, 'center_y': 0.55}
-
-		self.left_stimulus = ImageButton(source=self.mask_image_path)
-		self.left_stimulus.size_hint = self.stimulus_size
-		self.left_stimulus.pos_hint = self.stimulus_pos_l
-
-		self.right_stimulus = ImageButton(source=self.mask_image_path)
-		self.right_stimulus.size_hint = self.stimulus_size
-		self.right_stimulus.pos_hint = self.stimulus_pos_r
-
-
-		# Define Widgets - Text
-
-		self.score_string = 'Your Points:\n%s' % (0)
-		self.score_label = Label(text=self.score_string, font_size='50sp', markup=True, halign='center')
-		self.score_label.size_hint = (0.8, 0.2)
-		self.score_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
-
-
-		# Define Widgets - Instructions
-		
-		self.instruction_path = str(self.language_dir_path / 'Instructions.ini')
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		self.instruction_dict['Main'] = {}
-		
-		self.instruction_dict['Main']['train'] = self.instruction_config['Main']['train']
-		self.instruction_dict['Main']['task'] = self.instruction_config['Main']['task']
-
-
-
-	# Initialization Functions #
-		
-	def load_parameters(self,parameter_dict):
-
-		self.parameters_dict = parameter_dict
-		
-		config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
-
+		self.participant_id = self.parameters_dict['participant_id']
 		self.language = self.parameters_dict['language']
 
 		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
@@ -242,8 +95,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
-		iti_import = self.parameters_dict['iti_length']
-		iti_import = iti_import.split(',')
+		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.iti_import.split(',')
 		
 		self.feedback_length = float(self.parameters_dict['feedback_length'])
 		self.block_duration = int(self.parameters_dict['block_duration'])
@@ -264,9 +117,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
 
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
-
+		self.hold_image = self.config_file['Hold']['hold_image']
+		self.mask_image = self.config_file['Mask']['mask_image']
 
 		# Define Variables - List
 
@@ -277,26 +129,19 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list.append('Test')
 
-
-		# Define Language
-
-		self.language = 'English'
-		self.set_language(self.language)
-
-
+	def _load_task_variables(self):
 		# Define Paths
 
 		self.language_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 		self.image_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Image')
-
 
 		# Define Variables - Time
 
 		self.start_stimulus = 0.0
 		self.response_latency = 0.0
 		self.trial_end_time = 0.0
-		
-		self.iti_range = [float(iNum) for iNum in iti_import]
+
+		self.iti_range = [float(iNum) for iNum in self.iti_import]
 		self.iti_length = self.iti_range[0]
 
 
@@ -322,12 +167,28 @@ class ProtocolScreen(ProtocolBase):
 
 		self.target_rewarded = True
 		self.nontarget_rewarded = False
-
 		self.choice_rewarded = True
 
 
-		# Nontarget Prob
+		# Define Variables - String
 
+		self.target_image = self.training_target_image
+		self.nontarget_image = self.training_nontarget_image
+		self.current_stage = self.stage_list[self.stage_index]
+		self.side_chosen = ''
+
+		# Define Variables - String
+
+		self.target_loc_list = ['Left', 'Right']
+		self.constrained_shuffle(self.target_loc_list)
+
+		self.target_loc_index = 0
+		self.nontarget_loc_index = 1
+
+		self.target_loc = self.target_loc_list[self.target_loc_index]
+		self.nontarget_loc = self.target_loc_list[self.nontarget_loc_index]
+
+	def _setup_session_stages(self):
 		self.nontarget_reward_probability = round(1 - self.target_reward_probability, 2)
 
 		self.trial_reward_list = list()
@@ -342,25 +203,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.constrained_shuffle(self.trial_reward_list)
 
-
-		# Define Variables - String
-
-		self.target_image = self.training_target_image
-		self.nontarget_image = self.training_nontarget_image
-
-		self.current_stage = self.stage_list[self.stage_index]
-		self.side_chosen = ''
-
-		self.target_loc_list = ['Left', 'Right']
-		self.constrained_shuffle(self.target_loc_list)
-
-		self.target_loc_index = 0
-		self.nontarget_loc_index = 1
-
-		self.target_loc = self.target_loc_list[self.target_loc_index]
-		self.nontarget_loc = self.target_loc_list[self.nontarget_loc_index]
-
-
+	def _setup_image_widgets(self):
 		# Define Widgets - Images
 
 		self.stimulus_path_list = list(self.image_dir_path.glob(str(pathlib.Path('Targets', self.image_set, '*.png'))))
@@ -373,6 +216,10 @@ class ProtocolScreen(ProtocolBase):
 
 		self.hold_image_path = str(self.image_dir_path / (self.hold_image + '.png'))
 		self.mask_image_path = str(self.image_dir_path / (self.mask_image + '.png'))
+
+		self.hold_button.unbind(on_release=self.hold_remind)
+		self.hold_button.bind(on_release=self.premature_response)
+		self.hold_button.bind(on_press=self.iti_start)
 
 		self.training_target_image_path = str(self.image_dir_path / (self.training_target_image + '.png'))
 		self.training_nontarget_image_path = str(self.image_dir_path / (self.training_nontarget_image + '.png'))
@@ -413,14 +260,17 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  {"center_x": 0.5, "center_y": 0.9}
 		self.instruction_button.bind(on_press=self.section_start)
-		
 
+	def _setup_language_localization(self):
+		self.set_language(self.language)
+
+	def _load_video_and_instruction_components(self):
 		# Tutorial Import
 
-		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 
-		if (lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
+			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
 			# print(self.tutorial_video_path)
 
@@ -442,11 +292,24 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.instruction_dict['Main']['train'] = self.instruction_config['Main']['train']
 		self.instruction_dict['Main']['task'] = self.instruction_config['Main']['task']
+
+		self.score_string = 'Your Points:\n%s' % (0)
+		self.score_label = Label(text=self.score_string, font_size='50sp', markup=True, halign='center')
+		self.score_label.size_hint = (0.8, 0.2)
+		self.score_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
+
+	def load_parameters(self,parameter_dict):
+		self._load_config_parameters(parameter_dict)
+		self._load_task_variables()
+		self._setup_session_stages()
+		self._setup_image_widgets()
+		self._setup_language_localization()
+		self._load_video_and_instruction_components()
 		
 		
 		# Begin Task
 
-		if (lang_folder_path / 'Tutorial_Video').is_dir() \
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
 			and (self.skip_tutorial_video == 0):
 
 			self.protocol_floatlayout.clear_widgets()
