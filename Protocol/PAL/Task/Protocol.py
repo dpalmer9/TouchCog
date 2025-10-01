@@ -194,15 +194,6 @@ class ProtocolScreen(ProtocolBase):
 		self.blank_image = self.mask_image
 		self.recall_image = self.mask_image
 
-		# Define Variables - Time
-
-		self.stimulus_start_time = 0.0
-		self.stimulus_press_time = 0.0
-		self.response_latency = 0.0
-		self.trial_end_time = 0.0
-		self.recall_target_screen_start_time = 0.0
-		self.tutorial_video_duration = 0.0
-
 	# Initialization Functions #
 
 	def _setup_session_stages(self):
@@ -319,8 +310,6 @@ class ProtocolScreen(ProtocolBase):
 
 
 		# Define Widgets - Images
-
-		self.stimulus_grid_list = list()
 		self.recall_stimulus = ImageButton()
 
 	def _setup_language_localization(self):
@@ -395,23 +384,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 
-		# Instruction - Dictionary
-		
-		self.instruction_path = str(self.lang_folder_path / 'Instructions.ini')
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		self.instruction_dict['Training'] = {}
-		self.instruction_dict['dPAL'] = {}
-		self.instruction_dict['sPAL'] = {}
-		self.instruction_dict['Recall'] = {}
-		
-		for stage in self.stage_list:
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
-		
 	def load_parameters(self,parameter_dict):
 		self._load_config_parameters(parameter_dict)
 		self._load_task_variables()
