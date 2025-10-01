@@ -1,9 +1,6 @@
 # Imports
 from Classes.Menu import MenuBase
 
-# TextInput(text="Test",id="Test1")
-
-
 class ConfigureScreen(MenuBase):
     def __init__(self, **kwargs):
         super(ConfigureScreen, self).__init__(**kwargs)
