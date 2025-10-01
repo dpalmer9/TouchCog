@@ -16,6 +16,7 @@ import pathlib
 import subprocess
 import re
 import sys
+import queue
 
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
@@ -363,6 +364,9 @@ class MenuApp(App):
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
 		self.summary_event_path = ''
+		self.event_queue = queue.Queue()
+		self.event_list = list()
+		self.event_columns = list()
 		self.s_manager = ScreenManager()
 		self.main_menu = MainMenu()
 		self.s_manager.add_widget(self.main_menu)
@@ -378,10 +382,12 @@ class MenuApp(App):
 	
 	
 	def on_stop(self):
-		
-		self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-		self.session_event_data.to_csv(self.session_event_path, index=False)
-		self.summary_event_data.to_csv(self.summary_event_path, index=False)
+		self.event_queue.put(None)
+		if len(self.event_list) > 0:
+			self.session_event_data = pd.DataFrame(self.event_list)
+			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+			self.session_event_data.to_csv(self.session_event_path, index=False)
+			self.summary_event_data.to_csv(self.summary_event_path, index=False)
 
 
 

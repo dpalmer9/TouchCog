@@ -8,6 +8,7 @@ import pathlib
 import sys
 import time
 import threading
+import queue
 import random
 from collections import Counter
 
@@ -55,7 +56,7 @@ class FloatLayoutLog(FloatLayout):
 		self.height_min = self.height / 100
 		self.held_name = ''
 		
-		self.event_columns = [
+		self.app.event_columns = [
 			'Time'
 			, 'Event_Type'
 			, 'Event_Name'
@@ -67,16 +68,27 @@ class FloatLayoutLog(FloatLayout):
 			, 'Arg3_Value'
 			]
 		
-		self.event_dataframe = pd.DataFrame(columns=self.event_columns)
+		self.event_dataframe = pd.DataFrame(columns=self.app.event_columns)
 		self.event_dataframe.Time = self.event_dataframe.Time.astype('float64')
 		self.app.session_event_data = self.event_dataframe
+		self.app.event_list = list()
 		self.event_index = 0
 		self.save_path = ''
 		self.elapsed_time = 0
 		self.touch_time = 0
 		self.start_time = 0
+
+		threading.Thread(target=self.event_writer, daemon=True).start()
 	
-	
+	def event_writer(self):
+		while True:
+			try:
+				event_row = self.app.event_queue.get()
+				if event_row is None: # Sentinel to stop the thread
+					break
+				self.app.event_list.append(event_row)
+			except queue.Empty:
+				continue # Should not happen with blocking get()
 	
 	def filter_children(self, string):
 		
@@ -87,7 +99,7 @@ class FloatLayoutLog(FloatLayout):
 	def on_touch_down(self, touch):
 		
 		self.touch_pos = touch.pos
-		self.touch_time = time.time() - self.start_time
+		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled and self.collide_point(*touch.pos):
 			return True
@@ -123,30 +135,26 @@ class FloatLayoutLog(FloatLayout):
 				return True
 		
 		self.held_name = ''
-		
-		threading.Thread(
-			target=self.add_event
-			, args=([
-				self.touch_time
-				, 'Screen'
-				, 'Touch Press'
-				, 'X Position'
-				, self.touch_pos[0]
-				, 'Y Position'
-				, self.touch_pos[1]
-				, 'Stimulus Name'
-				, self.held_name
-				]
-				, 
-				)
-			).start()
+
+		self.add_event([
+			self.touch_time
+			, 'Screen'
+			, 'Touch Press'
+			, 'X Position'
+			, self.touch_pos[0]
+			, 'Y Position'
+			, self.touch_pos[1]
+			, 'Stimulus Name'
+			, self.held_name
+			]
+			)
 	
 	
 	
 	def on_touch_move(self, touch):
 		
 		self.touch_pos = touch.pos
-		self.touch_time = time.time() - self.start_time
+		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled:
 			return
@@ -166,23 +174,19 @@ class FloatLayoutLog(FloatLayout):
 					or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
 					
 					self.last_recorded_pos = self.touch_pos
-					
-					threading.Thread(
-						target=self.add_event
-						, args=([
-							self.touch_time
-							, 'Screen'
-							, 'Touch Move'
-							, 'X Position'
-							, self.touch_pos[0]
-							, 'Y Position'
-							, self.touch_pos[1]
-							, 'Stimulus Name'
-							, self.held_name
-							]
-							, 
-							)
-						).start()
+
+					self.add_event([
+						self.touch_time
+						, 'Screen'
+						, 'Touch Move'
+						, 'X Position'
+						, self.touch_pos[0]
+						, 'Y Position'
+						, self.touch_pos[1]
+						, 'Stimulus Name'
+						, self.held_name
+						]
+						)
 				
 				return True
 		
@@ -192,30 +196,24 @@ class FloatLayoutLog(FloatLayout):
 			or (abs(self.touch_pos[1] - self.last_recorded_pos[1]) >= self.height_min):
 			
 			self.last_recorded_pos = self.touch_pos
-			
-			threading.Thread(
-				target=self.add_event
-				, args=([
-					self.touch_time
-					, 'Screen'
-					, 'Touch Move'
-					, 'X Position'
-					, self.touch_pos[0]
-					, 'Y Position'
-					, self.touch_pos[1]
-					, 'Stimulus Name'
-					, self.held_name
-					]
-					, 
-					)
-				).start()
+
+			self.add_event([
+				self.touch_time,
+				'Screen',
+				'Touch Move',
+				'X Position',
+				self.touch_pos[0],
+				'Y Position',
+				self.touch_pos[1],
+				'Stimulus Name',
+				self.held_name])
 
 	
 	
 	def on_touch_up(self, touch):
 		
 		self.touch_pos = touch.pos
-		self.touch_time = time.time() - self.start_time
+		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled:
 			return
@@ -229,44 +227,35 @@ class FloatLayoutLog(FloatLayout):
 				
 				else:
 					self.held_name = ''
-				
-				threading.Thread(
-					target=self.add_event
-					, args=([
-						self.touch_time
-						, 'Screen'
-						, 'Touch Release'
-						, 'X Position'
-						, self.touch_pos[0]
-						, 'Y Position'
-						, self.touch_pos[1]
-						, 'Stimulus Name'
-						, self.held_name
-						]
-						, 
-						)
-					).start()
-				
+
+				self.add_event([
+					self.touch_time
+					, 'Screen'
+					, 'Touch Release'
+					, 'X Position'
+					, self.touch_pos[0]
+					, 'Y Position'
+					, self.touch_pos[1]
+					, 'Stimulus Name'
+					, self.held_name
+					]
+					)
+
 				return True
 		
 		self.held_name = ''
-		
-		threading.Thread(
-			target=self.add_event
-			, args=([
-				self.touch_time
-				, 'Screen'
-				, 'Touch Release'
-				, 'X Position'
-				, self.touch_pos[0]
-				, 'Y Position'
-				, self.touch_pos[1]
-				, 'Stimulus Name'
-				, self.held_name
-				]
-				, 
-				)
-			).start()
+
+		self.add_event([
+			self.touch_time
+			, 'Screen'
+			, 'Touch Release'
+			, 'X Position'
+			, self.touch_pos[0]
+			, 'Y Position'
+			, self.touch_pos[1]
+			, 'Stimulus Name'
+			, self.held_name
+			])
 		
 		if self.held_name != '':
 			self.held_name = ''
@@ -274,29 +263,25 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def add_event(self, row):
-		
-		row_df = pd.DataFrame(columns=self.event_columns)
 		new_row = {}
 		
-		for iCol in range(len(self.event_columns)):
+		for iCol in range(len(self.app.event_columns)):
 
 			if iCol >= len(row):
-				new_row[self.event_columns[iCol]] = ''
+				new_row[self.app.event_columns[iCol]] = ''
 			
 			else:
-				if self.event_columns[iCol] == 'Time':
-					new_row[self.event_columns[iCol]] = float(row[iCol])
+				if self.app.event_columns[iCol] == 'Time':
+					new_row[self.app.event_columns[iCol]] = float(row[iCol])
 				
 				else:
-					new_row[self.event_columns[iCol]] = str(row[iCol])
+					new_row[self.app.event_columns[iCol]] = str(row[iCol])
 
-		row_df.loc[0] = new_row
-		
-		self.app.session_event_data = pd.concat([self.app.session_event_data,row_df])
+		self.app.event_queue.put(new_row)
 
 	def add_stage_event(self, stage_name):
 		self.add_event([
-			(time.time() - self.start_time)
+			(time.perf_counter() - self.start_time)
 			, 'Stage Change'
 			, stage_name
 			])
@@ -304,7 +289,7 @@ class FloatLayoutLog(FloatLayout):
 	
 	def add_button_event(self, event_type, button_name):
 		self.add_event([
-			(time.time() - self.start_time)
+			(time.perf_counter() - self.start_time)
 			, 'Button ' + event_type
 			, button_name
 			])
@@ -312,7 +297,7 @@ class FloatLayoutLog(FloatLayout):
 	
 	def add_text_event(self, event_type, text_name):
 		self.add_event([
-			(time.time() - self.start_time)
+			(time.perf_counter() - self.start_time)
 			, 'Text ' + event_type
 			, text_name
 			])
@@ -321,7 +306,7 @@ class FloatLayoutLog(FloatLayout):
 	def add_variable_event(self, variable_class, variable_name, variable_value, variable_type=None, variable_units=None):
 		if variable_type is None and variable_units is None:
 			self.add_event([
-				(time.time() - self.start_time),
+				(time.perf_counter() - self.start_time),
 			 	'Variable Change',
 				variable_class,
 				variable_name,
@@ -329,7 +314,7 @@ class FloatLayoutLog(FloatLayout):
 			
 		elif variable_type is not None and variable_units is None:
 			self.add_event([
-				(time.time() - self.start_time),
+				(time.perf_counter() - self.start_time),
 			 	'Variable Change',
 				variable_class,
 				variable_name,
@@ -338,7 +323,7 @@ class FloatLayoutLog(FloatLayout):
 		
 		else:
 			self.add_event([
-				(time.time() - self.start_time),
+				(time.perf_counter() - self.start_time),
 			 	'Variable Change',
 				variable_class,
 				variable_name,
@@ -351,7 +336,7 @@ class FloatLayoutLog(FloatLayout):
 		# Generic object event builder. This will log the standard fields and
 		# append an 'Image Name' pair only when an image_name is provided.
 		row = [
-			(time.time() - self.start_time),
+			(time.perf_counter() - self.start_time),
 			'Object ' + event_type,
 			object_type,
 			object_name,
@@ -366,7 +351,8 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def write_data(self):
-		
+		self.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
+		self.session_event_data.Time = self.session_event_data.Time.astype('float64')
 		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
 		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
 	
@@ -832,7 +818,7 @@ class ProtocolBase(Screen):
 			# reset any pending hold_remind stage
 			self.hold_remind_stage = 0
 			
-			self.block_start = time.time()
+			self.block_start = time.perf_counter()
 			self.block_started = True
 		
 			Clock.schedule_once(self.block_rest_end, self.block_min_rest_duration)
@@ -857,8 +843,8 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Removed', 'Continue Button')
 		
-		self.block_start = time.time()
-		self.trial_end_time = time.time()
+		self.block_start = time.perf_counter()
+		self.trial_end_time = time.perf_counter()
 		self.hold_button.bind(on_press=self.iti_start)
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
@@ -879,7 +865,7 @@ class ProtocolBase(Screen):
 		self.protocol_floatlayout.add_widget(self.end_label)
 		
 		self.protocol_floatlayout.add_event([
-			(time.time() - self.start_time)
+			(time.perf_counter() - self.start_time)
 			, 'Text Displayed'
 			, 'End Instruction'
 			])
@@ -943,7 +929,7 @@ class ProtocolBase(Screen):
 			self.feedback_label.text = self.feedback_dict['return']
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-			self.feedback_start_time = time.time()
+			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
@@ -959,14 +945,14 @@ class ProtocolBase(Screen):
 			self.hold_button.unbind(on_press=self.iti_start)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
-			self.start_iti = time.time()
+			self.start_iti = time.perf_counter()
 			self.iti_active = True
 
 			self.protocol_floatlayout.add_stage_event('ITI Start')
 
 			Clock.schedule_once(self.iti_end, self.iti_length)
-			if (time.time() - self.start_iti) > (time.time() - self.feedback_start_time) and self.feedback_on_screen:
-				Clock.schedule_once(self.remove_feedback, self.feedback_length - (time.time() - self.feedback_start_time))
+			if (time.perf_counter() - self.start_iti) > (time.perf_counter() - self.feedback_start_time) and self.feedback_on_screen:
+				Clock.schedule_once(self.remove_feedback, self.feedback_length - (time.perf_counter() - self.feedback_start_time))
 			else:
 				Clock.schedule_once(self.remove_feedback, self.feedback_length)			
 			return
@@ -1023,7 +1009,7 @@ class ProtocolBase(Screen):
 	
 	def start_clock(self, *args):
 		
-		self.start_time = time.time()
+		self.start_time = time.perf_counter()
 		self.session_event()
 		self.protocol_floatlayout.set_start_time(self.start_time)
 		
