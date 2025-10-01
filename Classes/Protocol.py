@@ -466,8 +466,8 @@ class ProtocolBase(Screen):
 		
 		# Define Variables - Counter
 		
-		self.current_block = 1
-		self.current_trial = 1
+		self.current_block = 0
+		self.current_trial = 0
 		self.stage_index = 0
 		
 		
