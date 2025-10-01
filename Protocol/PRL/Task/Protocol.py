@@ -151,10 +151,10 @@ class ProtocolScreen(ProtocolBase):
 		self.current_reversal = 0
 		self.point_counter = 0
 
-		self.current_block = 0
+		self.current_block = -1
 		self.current_block_trial = 0
 
-		self.stage_index = 0
+		self.stage_index = -1
 
 		image_index_choice = [0, 1]
 		self.constrained_shuffle(image_index_choice)
@@ -308,7 +308,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		
 		# Begin Task
-
+		self.start_clock()
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
 			and (self.skip_tutorial_video == 0):
 
@@ -383,8 +383,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.generate_output_files()
 		self.metadata_output_generation()
-
-		self.start_clock()
 		self.block_contingency()
 
 
@@ -429,7 +427,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.left_stimulus)
 		self.protocol_floatlayout.add_widget(self.right_stimulus)
 		
-		self.stimulus_start_time = time.time()
+		self.stimulus_start_time = time.perf_counter()
 		
 		self.protocol_floatlayout.add_stage_event('Object Display')
 		
@@ -462,7 +460,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.feedback_on_screen is False:	
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 			self.feedback_on_screen = True
-			self.feedback_start_time = time.time()
+			self.feedback_start_time = time.perf_counter()
 
 			self.protocol_floatlayout.add_event([
 				(self.feedback_start_time - self.start_time)
@@ -483,7 +481,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	def left_pressed(self, *args):
 
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.side_chosen = 'Left'
 		self.protocol_floatlayout.add_stage_event('Left Stimulus Pressed')
 		self.trial_outcomes()
@@ -494,7 +492,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	def right_pressed(self, *args):
 
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.side_chosen = 'Right'
 		self.protocol_floatlayout.add_stage_event('Right Stimulus Pressed')
 		self.trial_outcomes()
@@ -606,7 +604,7 @@ class ProtocolScreen(ProtocolBase):
 
 				# Check if block ended
 
-				if (time.time() - self.block_start >= self.block_duration) \
+				if (time.perf_counter() - self.block_start >= self.block_duration) \
 					or (self.current_block_trial >= self.block_trial_max):
 					
 					self.block_contingency()
@@ -687,7 +685,7 @@ class ProtocolScreen(ProtocolBase):
 					self.target_rewarded = False
 					self.nontarget_rewarded = True
 
-			self.trial_end_time = time.time()
+			self.trial_end_time = time.perf_counter()
 		
 		
 		except KeyboardInterrupt:
