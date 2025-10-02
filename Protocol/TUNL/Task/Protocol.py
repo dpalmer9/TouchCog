@@ -1120,7 +1120,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 				if (len(self.response_tracking) >= 2) \
-					and (sum(self.response_tracking) < 0):
+					and (sum(self.response_tracking) == 0):
 
 					self.staircase_change = 'dec'
 					self.response_tracking = list()
