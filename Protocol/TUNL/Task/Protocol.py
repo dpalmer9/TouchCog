@@ -725,8 +725,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.delay_video.source), self.video_position)
 
-		Clock.schedule_once(self.delay_end, self.current_delay)
-
 
 
 	# Display Distractor During Delay
