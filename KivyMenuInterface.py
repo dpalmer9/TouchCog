@@ -174,12 +174,14 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.textinput import TextInput
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.widget import Widget
+from kivy.uix.checkbox import CheckBox
 
 
 
@@ -189,7 +191,38 @@ from kivy.uix.widget import Widget
 Window.size = (int(x_dim), int(y_dim))
 Window.borderless = '0'
 
+def search_protocols():
+		
+		task_list = list(pathlib.Path().glob('Protocol/*'))
+		output_list = list()
+		
+		for task in task_list:
+		
+			if not task.is_dir():
+				continue
+			
+			output_list.append(task.stem)
+		
+		return output_list
 
+def protocol_constructor(protocol):
+		
+		def lazy_import(protocol):
+			
+			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
+			mod_name = 'Menu'
+			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
+			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
+			mod_spec.loader = mod_loader
+			module = importlib.util.module_from_spec(mod_spec)
+			sys.modules[mod_name] = module
+			mod_loader.exec_module(module)
+			
+			return module
+		
+		task_module = lazy_import(protocol)
+
+		return task_module
 
 
 # Class Objects #
@@ -231,6 +264,11 @@ class MainMenu(Screen):
 		launch_button.pos_hint = {'x': 0.35, 'y': 0.6}
 		launch_button.bind(on_press=self.load_protocol_menu)
 		self.Menu_Layout.add_widget(launch_button)
+		battery_button = Button(text='Protocol Battery')
+		battery_button.size_hint = (0.3, 0.2)
+		battery_button.pos_hint = {'x': 0.35, 'y': 0.4}
+		battery_button.bind(on_press=self.load_battery_menu)
+		self.Menu_Layout.add_widget(battery_button)
 		
 		exit_button = Button(text='Close Program')
 		exit_button.size_hint = (0.3, 0.2)
@@ -250,7 +288,15 @@ class MainMenu(Screen):
 			self.manager.add_widget(self.protocol_window)
 			self.manager.current = 'protocolmenu'
 	
-	
+	def load_battery_menu(self, *args):
+		
+		if isinstance(self.protocol_window, ProtocolBattery):
+			self.manager.current = 'protocolbattery'
+		
+		else:
+			self.protocol_window = ProtocolBattery()
+			self.manager.add_widget(self.protocol_window)
+			self.manager.current = 'protocolbattery'
 	
 	def exit_program(self, *args):
 		
@@ -274,7 +320,7 @@ class ProtocolMenu(Screen):
 		
 		self.Protocol_Configure_Screen = MenuBase()
 		
-		protocol_list = self.search_protocols()
+		protocol_list = search_protocols()
 		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
 		protocol_index = 0
 		
@@ -303,7 +349,8 @@ class ProtocolMenu(Screen):
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
 		
-		self.protocol_constructor(label)
+		task_module = protocol_constructor(label)
+		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
 		self.manager.current = 'menuscreen'
@@ -313,23 +360,6 @@ class ProtocolMenu(Screen):
 	def cancel_protocol(self, *args):
 		
 		self.manager.current = 'mainmenu'
-	
-	
-	
-	def search_protocols(self):
-		
-		task_list = list(pathlib.Path().glob('Protocol/*'))
-		output_list = list()
-		
-		for task in task_list:
-		
-			if not task.is_dir():
-				continue
-			
-			output_list.append(task.stem)
-		
-		return output_list
-	
 	
 	
 	def protocol_constructor(self, protocol):
@@ -352,6 +382,89 @@ class ProtocolMenu(Screen):
 		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 
 
+class ProtocolBattery(Screen):
+
+	def __init__(self, **kwargs):
+		super(ProtocolBattery, self).__init__(**kwargs)
+
+		self.app = App.get_running_app()
+
+		self.protocol_battery_layout = FloatLayout()
+		self.protocol_configure_screen = MenuBase()
+		self.name = 'protocolbattery'
+
+		self.protocol_list = search_protocols()
+
+		# Build tight horizontal rows: each row is a BoxLayout with checkbox directly to the left of the label
+		if len(self.protocol_list) == 0:
+			no_label = Label(text='No protocols found', size_hint=(0.8, 0.1), pos_hint={'x':0.1,'y':0.45})
+			self.protocol_battery_layout.add_widget(no_label)
+		else:
+			# single column grid where each child is a horizontal row (BoxLayout)
+			# center the grid and make it occupy ~50% of vertical space
+			self._protocol_grid = GridLayout(cols=1, spacing=10, padding=[10,10,10,10], size_hint=(0.8, 0.5), pos_hint={'x':0.1, 'y':0.25})
+			self.protocol_checkboxes = {}
+
+			for protocol in self.protocol_list:
+				# each row is tighter horizontally but taller to accommodate larger checkbox and font
+				row = BoxLayout(orientation='horizontal', spacing=8, size_hint_y=None, height=64)
+				cb = CheckBox(size_hint=(None, None), size=(48, 48))
+				# larger label font and vertically centered
+				lbl = Label(text=protocol, valign='middle', halign='left', size_hint_x=1, font_size='28sp')
+				# ensure label text is constrained to the widget bounds for proper alignment
+				lbl.bind(size=lambda instance, value: setattr(instance, 'text_size', (instance.width, instance.height)))
+				self.protocol_checkboxes[protocol] = cb
+				row.add_widget(cb)
+				row.add_widget(lbl)
+				self._protocol_grid.add_widget(row)
+
+			self.protocol_battery_layout.add_widget(self._protocol_grid)
+
+		self.add_widget(self.protocol_battery_layout)
+
+		
+		battery_start_button = Button(text='Start Battery')
+		battery_start_button.size_hint = (0.2, 0.1)
+		battery_start_button.pos_hint = {'x': 0.25, 'y': 0.1}
+		battery_start_button.bind(on_press=self.start_battery)
+		self.protocol_battery_layout.add_widget(battery_start_button)
+		cancel_button = Button(text='Cancel')
+		cancel_button.size_hint = (0.2, 0.1)
+		cancel_button.pos_hint = {'x': 0.5, 'y': 0.1}
+		cancel_button.bind(on_press=self.cancel_battery)
+		self.protocol_battery_layout.add_widget(cancel_button)
+
+	def cancel_battery(self, *args):
+
+		self.manager.current = 'mainmenu'
+
+	def start_battery(self, *args):
+		# gather selected protocols from the checkbox widgets
+		selected = []
+		if hasattr(self, 'protocol_checkboxes') and isinstance(self.protocol_checkboxes, dict):
+			for name, cb in self.protocol_checkboxes.items():
+				# Kivy CheckBox uses the 'active' attribute
+				try:
+					if getattr(cb, 'active', False):
+						selected.append(name)
+				except Exception:
+					# ignore widgets that don't expose active
+					continue
+
+		# store on the running app instance
+		self.app.battery_protocols = selected
+		# set battery_active True if any were selected, otherwise False
+		self.app.battery_active = len(selected) > 0
+
+		for battery in self.app.battery_protocols:
+			self.start_battery_task(battery)
+
+		# Optional: you may want to proceed to main menu or start the selected protocols here
+		return
+	
+	def start_battery_task(self, *args):
+		return
+
 
 
 # Class App Builder #
@@ -367,6 +480,10 @@ class MenuApp(App):
 		self.event_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
+
+		self.battery_active = False
+		self.battery_protocols = list()
+
 		self.s_manager = ScreenManager()
 		self.main_menu = MainMenu()
 		self.s_manager.add_widget(self.main_menu)
