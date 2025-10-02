@@ -268,6 +268,7 @@ class ProtocolScreen(ProtocolBase):
 	def _setup_image_widgets(self):
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
 		self.stimulus_image_path = str(self.image_folder / (self.stimulus_image + '.png'))
+		self.stimulus_button_image_path = str(self.image_folder / (self.stimulus_button_image + '.png'))
 		hold_button_top_loc = self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2)
 
 		self.x_boundaries = [float(iNum) for iNum in self.x_boundaries]
@@ -278,11 +279,9 @@ class ProtocolScreen(ProtocolBase):
 		elif self.y_boundaries[1] < hold_button_top_loc:
 			self.y_boundaries[1] = hold_button_top_loc
 
-
-		self.text_button_size = [0.4, 0.15]
-		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
-		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
-
+		self.cue_image = ImageButton(source=self.stimulus_image_path)
+		self.target_image = ImageButton(source=self.stimulus_image_path)
+		
 		self.stimulus_image_spacing = [
 			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale)
 			, ((self.cue_image.texture_size[1]/self.screen_resolution[1]) * self.stimulus_scale)
@@ -296,8 +295,6 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.source = str(self.image_folder / (self.hold_image + '.png'))
 		self.hold_button.bind(on_press=self.iti_start)
 				
-		self.cue_image = ImageButton(source=self.stimulus_image_path)
-		self.target_image = ImageButton(source=self.stimulus_image_path)
 
 		self.cue_image_button = ImageButton(source=self.stimulus_button_image_path)
 		self.cue_image_button.bind(on_press=self.cue_pressed)
@@ -314,6 +311,10 @@ class ProtocolScreen(ProtocolBase):
 		self.target_image_button.size_hint = self.stimulus_button_size
 		self.target_image_button.bind(on_press=self.target_pressed)
 		self.target_image_button.name = 'Target Image'
+
+		self.text_button_size = [0.4, 0.15]
+		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 		self.trial_coord = self.generate_trial_pos_sep(
 			self.x_boundaries
@@ -344,6 +345,14 @@ class ProtocolScreen(ProtocolBase):
 			"center_x": self.trial_coord['Target']['x'], 
 			"center_y": self.trial_coord['Target']['y']
 			}
+		
+	def _setup_language_localization(self):
+		self.set_language(self.language)
+
+	def _load_video_and_instruction_components(self):
+		self.video_size = (1, 1)
+		self.video_pos = {"center_x": 0.5, "y": 0.125}
+		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 
 		self.delay_video_folder = pathlib.Path('Delay_Videos')
 
@@ -363,22 +372,13 @@ class ProtocolScreen(ProtocolBase):
 		
 		else:
 			self.delay_video_path = self.delay_video_path_list[0]
-		
-		self.delay_video = Video(
-			source = str(self.delay_video_path)
-			)
 
-		self.delay_video.pos_hint = self.video_pos
-		self.delay_video.size_hint = self.video_size
+		#self.delay_video_path = 'C:\\Users\\MOUSETRAP-DAN\\Documents\\TouchCog\\TouchCog\\Protocol\\TUNL\\Language\\English\\Tutorial_Video\\2025-07-25 TUNL Instruction Video 1.5-1080p.mp4'
+		self.delay_video = Video(source = str(self.delay_video_path), options = {'eos': 'loop'})
+		self.delay_video.state = 'stop'
+		self.protocol_floatlayout.add_widget(self.delay_video)
 		self.delay_video.state = 'pause'
-		
-	def _setup_language_localization(self):
-		self.set_language(self.language)
-
-	def _load_video_and_instruction_components(self):
-		self.video_size = (1, 1)
-		self.video_pos = {"center_x": 0.5, "y": 0.125}
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.protocol_floatlayout.remove_widget(self.delay_video)
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
@@ -387,6 +387,8 @@ class ProtocolScreen(ProtocolBase):
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
+		self.delay_video.pos_hint = self.video_pos
+		self.delay_video.size_hint = self.video_size
 
 
 		# Instruction - Dictionary
@@ -451,7 +453,23 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button = Button()
 		self.instruction_button.bind(on_press=self.section_start)
 	
-	
+	def _check_delay_video_loaded(self, *args):
+		if self.delay_video.loaded:
+			Clock.unschedule(self._check_delay_video_loaded)
+			self.delay_video.state = 'pause'
+			self.protocol_floatlayout.remove_widget(self.feedback_label)
+			self.feedback_label.text = ''
+
+			if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
+			and (self.skip_tutorial_video == 0):
+
+				self.protocol_floatlayout.clear_widgets()
+				self.present_tutorial_video()
+		
+			else:
+				self.present_instructions()
+		else:
+			pass
 	
 	# Initialization Functions
 	
@@ -467,14 +485,10 @@ class ProtocolScreen(ProtocolBase):
 
 		# Begin Task
 		self.start_clock()
-		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
-			and (self.skip_tutorial_video == 0):
-
-			self.protocol_floatlayout.clear_widgets()
-			self.present_tutorial_video()
-		
-		else:
-			self.present_instructions()
+		self.feedback_label.text = 'LOADING VIDEO... PLEASE WAIT'
+		self.protocol_floatlayout.add_widget(self.feedback_label)
+		self.delay_video.state = 'play'
+		Clock.schedule_interval(self._check_delay_video_loaded, 0.5)
 
 
 
@@ -591,7 +605,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Instructions')
+		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
 
 
 	
@@ -614,7 +628,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Instructions')
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
 		self.protocol_floatlayout.add_text_event('Removed', 'Task Instruction')
@@ -634,9 +648,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		
-		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Instructions')
+		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Section', 'Instructions')
 		
-		self.protocol_floatlayout.add_event('Remove', 'Button', 'Continue')
+		self.protocol_floatlayout.add_button_event('Remove', 'Button', 'Continue')
 		
 		self.block_end()
 	
@@ -669,9 +683,9 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.section_instr_label)
 		self.protocol_floatlayout.add_widget(self.instruction_button)
 		
-		self.protocol_floatlayout.add_event('Display', 'Text', 'Results')
-		
-		self.protocol_floatlayout.add_event('Display', 'Button', 'Continue')
+		self.protocol_floatlayout.add_text_event('Display', 'Text', 'Results')
+
+		self.protocol_floatlayout.add_button_event('Display', 'Button', 'Continue')
 
 
 
@@ -696,7 +710,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_stage_event('Cue Display')
 		
-		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Cue Image',self.cue_image.pos_hint)
 
 		Clock.schedule_once(self.delay_present, self.stimdur)
 	
@@ -709,10 +723,10 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
 		self.protocol_floatlayout.add_stage_event('Delay Start')
-		
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
-		
-		self.delay_end_event = self.task_clock.schedule_once(self.delay_end, self.current_delay)
+
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
+
+		self.delay_end_event = Clock.schedule_once(self.delay_end, self.current_delay)
 
 		self.protocol_floatlayout.add_widget(self.delay_video)
 		self.delay_video.state = 'play'
@@ -721,7 +735,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.delay_active = True
 
-		self.protocol_floatlayout.add_event('Object Display')
+		self.protocol_floatlayout.add_stage_event('Object Display')
 
 		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.delay_video.source), self.video_position)
 
@@ -773,9 +787,9 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_stage_event('Target Display')
 		
-		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 		
-		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', self.target_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 			
 		if self.limhold > self.stimdur:
 			Clock.schedule_once(self.stimulus_presentation_end, self.stimdur)
@@ -790,9 +804,9 @@ class ProtocolScreen(ProtocolBase):
 	def stimulus_presentation_end(self, *args):
 		self.protocol_floatlayout.remove_widget(self.cue_image)
 		self.protocol_floatlayout.remove_widget(self.target_image)
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
 	def hold_released(self, *args):
 		Clock.unschedule(self.delay_present)
@@ -816,7 +830,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.stimulus_on_screen \
 			and self.cue_completed:
 
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
 		elif self.delay_active:
 			self.delay_video.state = 'pause'
@@ -879,7 +893,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_on_screen = True
 			self.feedback_start_time = time.perf_counter()
 
-			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback',self.feedback_label.text)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.iti_start)
@@ -903,11 +917,11 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_stage_event('Cue Pressed')
 
-		self.protocol_floatlayout.add_stage_event('Incorrect Reponse')
+		self.protocol_floatlayout.add_stage_event('Incorrect Response')
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
 		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'Cue')
 
@@ -930,7 +944,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
-			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback',self.feedback_label.text)
 		
 		self.hold_active = False
 		self.stimulus_on_screen = False
@@ -966,9 +980,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_stage_event('Correct Response')
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
 		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'Target')
 		
@@ -991,8 +1005,8 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
-			self.protocol_floatlayout.add_object_event('Display', 'Text', self.feedback_label.text)
-		
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+
 		self.hold_active = False
 		self.stimulus_on_screen = False
 		self.cue_completed = False
@@ -1026,10 +1040,10 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_stage_event('No Response')
 
 		# Object remove: Cue stimulus
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.cue_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
 		# Object remove: Target stimulus
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', self.target_image.pos_hint)
+		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
 		# Variable change: Stimulus Chosen -> None
 		self.protocol_floatlayout.add_variable_event('Change', 'Outcome', 'Stimulus Chosen', 'None')
@@ -1414,9 +1428,9 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_widget(self.instruction_button)
 				
 				# Object display events: training text and continue button
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Type', 'Training')
+				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Training')
 
-				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Type', 'Continue')
+				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Continue')
 			
 			else:
 				self.block_started = False
