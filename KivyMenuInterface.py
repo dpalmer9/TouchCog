@@ -205,12 +205,10 @@ def search_protocols():
 		
 		return output_list
 
-def protocol_constructor(protocol):
+def protocol_constructor(protocol, mod_name):
 		
-		def lazy_import(protocol):
-			
-			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
-			mod_name = 'Menu'
+		def lazy_import(protocol, mod_name):
+			working = pathlib.Path('Protocol', protocol, 'Task', f'{mod_name}.py')
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
 			mod_spec.loader = mod_loader
@@ -220,7 +218,7 @@ def protocol_constructor(protocol):
 			
 			return module
 		
-		task_module = lazy_import(protocol)
+		task_module = lazy_import(protocol, mod_name)
 
 		return task_module
 
@@ -349,7 +347,7 @@ class ProtocolMenu(Screen):
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
 		
-		task_module = protocol_constructor(label)
+		task_module = protocol_constructor(label, 'Menu')
 		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
@@ -360,27 +358,6 @@ class ProtocolMenu(Screen):
 	def cancel_protocol(self, *args):
 		
 		self.manager.current = 'mainmenu'
-	
-	
-	def protocol_constructor(self, protocol):
-		
-		def lazy_import(protocol):
-			
-			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
-			mod_name = 'Menu'
-			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
-			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
-			mod_spec.loader = mod_loader
-			module = importlib.util.module_from_spec(mod_spec)
-			sys.modules[mod_name] = module
-			mod_loader.exec_module(module)
-			
-			return module
-		
-		task_module = lazy_import(protocol)
-		
-		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
-
 
 class ProtocolBattery(Screen):
 
@@ -457,7 +434,7 @@ class ProtocolBattery(Screen):
 		self.app.battery_active = len(selected) > 0
 
 		for battery in self.app.battery_protocols:
-			self.start_battery_task(battery)
+			self.app.start_next_battery_config()
 
 		# Optional: you may want to proceed to main menu or start the selected protocols here
 		return
@@ -483,6 +460,8 @@ class MenuApp(App):
 
 		self.battery_active = False
 		self.battery_protocols = list()
+		self.battery_index = 0
+		self.battery_configs = {}
 
 		self.s_manager = ScreenManager()
 		self.main_menu = MainMenu()
@@ -490,7 +469,30 @@ class MenuApp(App):
 		
 		return self.s_manager
 	
+	def start_next_battery_config(self):
+		if self.battery_index < len(self.battery_protocols):
+			protocol_name = self.battery_protocols[self.battery_index]
+			protocol_module = protocol_constructor(protocol_name, 'Menu')
+			config_screen = protocol_module.ConfigureScreen()
+			config_screen.update_battery_mode(True)
+			config_screen.size = Window.size
+			self.s_manager.add_widget(config_screen)
+			self.s_manager.current = config_screen.protocol
+		else:
+			self.start_battery_tasks()
 	
+	def start_battery_tasks(self):
+		self.battery_index = 0
+		if self.battery_index < len(self.battery_protocols):
+			protocol_name = self.battery_protocols[self.battery_index]
+			parameter_dict = self.battery_configs[protocol_name]
+			task_module = protocol_constructor(protocol_name, 'Protocol')
+			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
+			protocol_task_screen.load_parameters(parameter_dict)
+			self.s_manager.add_widget(protocol_task_screen)
+			self.s_manager.current = protocol_task_screen.protocol_name
+		else:
+			self.s_manager.current = 'mainmenu'
 	
 	def add_screen(self, screen):
 		
