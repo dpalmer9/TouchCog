@@ -16,7 +16,7 @@ from kivy.uix.screenmanager import Screen, ScreenManagerException
 from kivy.uix.scrollview import ScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.uix.textinput import TextInput
-
+from kivy.app import App
 
 
 
@@ -31,18 +31,10 @@ class MenuBase(Screen):
 		
 		self.name = 'menuscreen'
 		self.main_layout = FloatLayout()
-		
-		# if sys.platform == 'linux' or sys.platform == 'darwin':
-			
-			
-		# 	self.folder_mod = '/'
-		
-		
-		# elif sys.platform == 'win32':
-			
-			
-		# 	self.folder_mod = '\\'
-		
+
+		self.app = App.get_running_app()
+
+		self.is_battery_mode = False
 		
 		self.protocol_name = ''
 		self.protocol_path = ''
@@ -79,7 +71,11 @@ class MenuBase(Screen):
 		self.back_button.pos_hint = {'x': 0.4, 'y': 0.1}
 		self.back_button.bind(on_press=self.return_menu)
 
-		self.start_button = Button(text='Start Task')
+		if self.is_battery_mode:
+			button_string = 'Continue'
+		else:
+			button_string = 'Start Task'
+		self.start_button = Button(text=button_string)
 		self.start_button.size_hint = (0.1, 0.1)
 		self.start_button.pos_hint = {'x': 0.6, 'y': 0.1}
 		self.start_button.bind(on_press=self.start_protocol)
@@ -96,6 +92,13 @@ class MenuBase(Screen):
 		self.add_widget(self.main_layout)
 	
 	
+	def update_battery_mode(self, is_battery):
+		if is_battery:
+			self.is_battery_mode = True
+			self.start_button.text = 'Continue'
+		else:
+			self.is_battery_mode = False
+			self.start_button.text = 'Start Task'
 	
 	def start_protocol(self, *args):
 		
@@ -117,23 +120,6 @@ class MenuBase(Screen):
 			mod_loader.exec_module(module)
 			
 			return module
-		
-		
-		task_module = lazy_import(self.protocol)
-		protocol_task_screen = task_module.ProtocolScreen(screen_resolution=self.size)
-		
-		try:
-			
-			
-			self.manager.remove_widget(self.manager.get_screen('protocolscreen'))
-			self.manager.add_widget(protocol_task_screen)
-		
-		
-		except ScreenManagerException:
-			
-			
-			self.manager.add_widget(protocol_task_screen)
-		
 		
 		key = ''
 		value = ''
@@ -177,10 +163,34 @@ class MenuBase(Screen):
 			
 			parameter_dict['language'] = self.dropdown_main.text
 		
+		# Start or protocol or continue battery
+		if not self.is_battery_mode:
+			task_module = lazy_import(self.protocol)
+			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=self.size)
 		
-		protocol_task_screen.load_parameters(parameter_dict)
+			try:
+			
+			
+				self.manager.remove_widget(self.manager.get_screen('protocolscreen'))
+				self.manager.add_widget(protocol_task_screen)
 		
-		self.manager.current = 'protocolscreen'
+		
+			except ScreenManagerException:
+			
+			
+				self.manager.add_widget(protocol_task_screen)
+		
+			protocol_task_screen.load_parameters(parameter_dict)
+		
+			self.manager.current = 'protocolscreen'
+		
+		else:
+			protocol_name = self.app.battery_protocols[self.app.battery_index]
+			self.app.battery_configs[protocol_name] = parameter_dict
+			self.app.battery_index += 1
+			self.app.start_next_battery_config()
+
+
 	
 	
 	
