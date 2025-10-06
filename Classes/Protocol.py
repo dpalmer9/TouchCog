@@ -30,13 +30,93 @@ from kivy.config import Config
 class ImageButton(ButtonBehavior, Image):
 
 	def __init__(self, **kwargs):
-	
+
 		super(ImageButton, self).__init__(**kwargs)
 		
 		self.coord = None
 		self.fit_mode = 'fill'
 		self.touch_pos = (0, 0)
 		self.name = ''
+
+		# Internal touch tracking for move-out release behaviour
+		# _grabbed_touch: the current touch instance that began a press on this widget
+		# _touch_inside: whether that touch is currently inside the widget
+		self._grabbed_touch = None
+		self._touch_inside = False
+
+
+	def on_touch_down(self, touch):
+		# Only start tracking if the touch is within this widget and the widget is enabled
+		if self.disabled:
+			return False
+
+		if not self.collide_point(*touch.pos):
+			# Let normal propagation occur
+			return super(ImageButton, self).on_touch_down(touch)
+
+		# Let ButtonBehavior handle press/state changes
+		handled = super(ImageButton, self).on_touch_down(touch)
+		if handled:
+			self._grabbed_touch = touch
+			self._touch_inside = True
+		return handled
+
+
+	def on_touch_move(self, touch):
+		# If this move is not for the touch that initiated the press, pass through
+		if touch is not self._grabbed_touch:
+			return super(ImageButton, self).on_touch_move(touch)
+
+		inside = self.collide_point(*touch.pos)
+
+		# If the touch moved outside while the button was pressed, release it
+		if not inside and self._touch_inside:
+			# Only trigger a release if the button was down
+			if getattr(self, 'state', None) == 'down':
+				# Dispatch on_release so listeners are notified
+				try:
+					self.dispatch('on_release')
+				except Exception:
+					# best-effort: continue even if dispatch fails
+					pass
+				# ensure visual/state is normal
+				self.state = 'normal'
+			self._touch_inside = False
+			# consume the move event
+			return True
+
+		# If moved back inside, do not re-press automatically; simply update flag
+		if inside and not self._touch_inside:
+			self._touch_inside = True
+			# consume the move event
+			return True
+
+		# Otherwise, nothing special to do
+		return True
+
+
+	def on_touch_up(self, touch):
+		# If this up event is not the one we tracked, pass through
+		if touch is not self._grabbed_touch:
+			return super(ImageButton, self).on_touch_up(touch)
+
+		# If the touch is still inside and the button is down, let ButtonBehavior handle release
+		if self._touch_inside and getattr(self, 'state', None) == 'down':
+			res = super(ImageButton, self).on_touch_up(touch)
+		else:
+			# If we already released due to move-out, ensure state is normal and do not dispatch again
+			if getattr(self, 'state', None) == 'down':
+				try:
+					self.dispatch('on_release')
+				except Exception:
+					pass
+				self.state = 'normal'
+			res = True
+
+		# Clear tracked touch
+		self._grabbed_touch = None
+		self._touch_inside = False
+		return res
 
 
 
