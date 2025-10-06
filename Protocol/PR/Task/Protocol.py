@@ -116,7 +116,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.min_separation = int(self.parameters_dict['min_separation'])
 		
-		self.use_confirmation = int(self.parameters_dict['use_confirmation'])
+		self.use_confirmation = self.parameters_dict['use_confirmation']
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -127,6 +127,8 @@ class ProtocolScreen(ProtocolBase):
 		self.hit_target = 2 ** self.response_level
 		self.total_hit_count = 0
 		self.response_count_list = list()
+
+		self.current_block = -1
 
 
 		# Define Variables - Time
@@ -398,7 +400,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_start_time = time.time()
 		self.protocol_floatlayout.add_stage_event('State Change')
 		if (self.current_block_trial % 2) != 1 \
-			and self.use_confirmation == 1:
+			and self.use_confirmation:
 
 			self.hold_button.bind(on_press=self.target_pressed)
 			self.protocol_floatlayout.add_widget(self.hold_button)
@@ -464,7 +466,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 
 		if (self.current_block_trial % 2) != 1 \
-			and self.use_confirmation == 1:
+			and self.use_confirmation:
 
 			self.hold_button.unbind(on_press=self.target_pressed)
 			self.protocol_floatlayout.remove_widget(self.hold_button)
@@ -546,7 +548,7 @@ class ProtocolScreen(ProtocolBase):
 				# Set next trial parameters
 
 				if (self.current_block_trial % 2) != 1 \
-					and self.use_confirmation == 1:
+					and self.use_confirmation:
 
 					# Confirmation button trial
 					pass
@@ -630,6 +632,9 @@ class ProtocolScreen(ProtocolBase):
 			self.remove_feedback()
 
 			self.protocol_floatlayout.clear_widgets()
+
+			if self.current_block == -1:
+				self.current_block = 1
 			
 			if self.response_level > self.response_level_end:
 				self.session_event.cancel()
