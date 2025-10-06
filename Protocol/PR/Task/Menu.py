@@ -6,5 +6,7 @@ class ConfigureScreen(MenuBase):
         super(ConfigureScreen, self).__init__(**kwargs)
         self.protocol = 'PR'
         self.protocol_name = 'Progressive Ratio'
+        self.name = self.protocol + '_configscreen'
         self.protocol_title_label.text = self.protocol_name
+        self.name = self.protocol + '_configscreen'
         self.menu_constructor(self.protocol)

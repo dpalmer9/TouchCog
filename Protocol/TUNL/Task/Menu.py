@@ -12,6 +12,7 @@ class ConfigureScreen(MenuBase):
         self.name = self.protocol_name + '_menuscreen'
         self.protocol_name = 'Trial-Unique Non-Matching to Location'
         self.protocol_title_label.text = self.protocol_name
+        self.name = self.protocol + '_configscreen'
         self.menu_constructor(self.protocol)
             
         
