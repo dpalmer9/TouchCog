@@ -80,7 +80,7 @@ class ProtocolScreen(ProtocolBase):
 		self.debug_mode = False
 
 		if ('DebugParameters' in self.config_file) \
-			and (int(self.config_file['DebugParameters']['debug_mode']) == 1):
+			and (self.config_file.getboolean('DebugParameters', 'debug_mode')):
 
 			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
@@ -97,11 +97,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.language = self.parameters_dict['language']
 
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
+		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
 		self.tutorial_video_duration_PAL = float(self.parameters_dict['tutorial_video_duration_pal'])
 		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
 
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
+		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
@@ -134,16 +134,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 		
-		if int(self.parameters_dict['training_task']) == 1:
+		if self.parameters_dict['training_task']:
 			self.stage_list.append('Training')
 		
-		if int(self.parameters_dict['dpal_probe']) == 1:
+		if self.parameters_dict['dpal_probe']:
 			self.stage_list.append('dPAL')
 		
-		if int(self.parameters_dict['spal_probe']) == 1:
+		if self.parameters_dict['spal_probe']:
 			self.stage_list.append('sPAL')
 		
-		if int(self.parameters_dict['recall_probe']) == 1:
+		if self.parameters_dict['recall_probe']:
 			self.stage_list.append('Recall')
 
 	def _load_task_variables(self):
@@ -1001,7 +1001,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_end()
 				return
 			elif pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Tutorial_Video').is_dir() \
-					and (self.skip_tutorial_video == 0) \
+					and not self.skip_tutorial_video \
 					and (self.stage_list[self.stage_index] == 'Recall') \
 					and (not self.recall_video_presented):
 				self.protocol_floatlayout.clear_widgets()
