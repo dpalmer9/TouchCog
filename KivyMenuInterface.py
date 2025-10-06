@@ -477,7 +477,7 @@ class MenuApp(App):
 			config_screen.update_battery_mode(True)
 			config_screen.size = Window.size
 			self.s_manager.add_widget(config_screen)
-			self.s_manager.current = config_screen.protocol
+			self.s_manager.current = config_screen.name
 		else:
 			self.start_battery_tasks()
 	
@@ -490,7 +490,7 @@ class MenuApp(App):
 			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
 			protocol_task_screen.load_parameters(parameter_dict)
 			self.s_manager.add_widget(protocol_task_screen)
-			self.s_manager.current = protocol_task_screen.protocol_name
+			self.s_manager.current = protocol_task_screen.name
 		else:
 			self.s_manager.current = 'mainmenu'
 	
