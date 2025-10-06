@@ -70,7 +70,7 @@ class ProtocolScreen(ProtocolBase):
 		self.debug_mode = False
 
 		if ('DebugParameters' in self.config_file) \
-			and (int(self.config_file['DebugParameters']['debug_mode']) == 1):
+			and self.config_file.getboolean('DebugParameters', 'debug_mode'):
 
 			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
@@ -85,11 +85,11 @@ class ProtocolScreen(ProtocolBase):
 		self.parameters_dict = parameters_dict
 		self.participant_id = self.parameters_dict['participant_id']
 		self.language = self.parameters_dict['language']
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
+		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
 		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
 
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
-		
+		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
 		self.iti_import = self.parameters_dict['iti_length']
@@ -309,7 +309,7 @@ class ProtocolScreen(ProtocolBase):
 		# Begin Task
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
-			and (self.skip_tutorial_video == 0):
+			and not self.skip_tutorial_video:
 
 			self.protocol_floatlayout.clear_widgets()
 			self.present_tutorial_video()
