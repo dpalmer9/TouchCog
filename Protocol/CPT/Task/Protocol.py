@@ -104,7 +104,7 @@ class ProtocolScreen(ProtocolBase):
 		self.debug_mode = False
 
 		if ('DebugParameters' in self.config_file) \
-			and (int(self.config_file['DebugParameters']['debug_mode']) == 1):
+			and self.config_file.getboolean('DebugParameters', 'debug_mode'):
 
 			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
@@ -119,10 +119,10 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.language = parameters_dict['language']
 
-		self.skip_tutorial_video = int(parameters_dict['skip_tutorial_video'])
-		self.tutorial_video_duration = int(parameters_dict['tutorial_video_duration'])
+		self.skip_tutorial_video = parameters_dict['skip_tutorial_video']
+		self.tutorial_video_duration = float(parameters_dict['tutorial_video_duration'])
 
-		self.block_change_on_duration = int(parameters_dict['block_change_on_duration_only'])
+		self.block_change_on_duration = parameters_dict['block_change_on_duration_only']
 		
 		self.iti_fixed_or_range = parameters_dict['iti_fixed_or_range']
 		
@@ -172,43 +172,43 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 		
-		if int(parameters_dict['training_task']) == 1:
+		if parameters_dict['training_task']:
 			self.stage_list.append('Training')
-		
-		if int(parameters_dict['limdur_scaling']) == 1:
+
+		if parameters_dict['limdur_scaling']:
 			self.stage_list.append('LimDur_Scaling')
-			
-		if int(parameters_dict['similarity_scaling']) == 1:
+
+		if parameters_dict['similarity_scaling']:
 			self.stage_list.append('Similarity_Scaling')
 			self.stimulus_family = 'Fb'
 		
 		else:
 			self.stimulus_family = parameters_dict['stimulus_family']
-		
-		if int(parameters_dict['noise_scaling']) == 1 \
+
+		if parameters_dict['noise_scaling'] \
 			and 'Similarity_Scaling' not in self.stage_list:
 			self.stage_list.append('Noise_Scaling')
-		
-		if int(parameters_dict['blur_scaling']) == 1 \
+
+		if parameters_dict['blur_scaling'] \
 			and 'Similarity_Scaling' not in self.stage_list:
 			self.stage_list.append('Blur_Scaling')
-		
-		if int(parameters_dict['noise_probe']) == 1:
+
+		if parameters_dict['noise_probe']:
 			self.stage_list.append('Noise_Probe')
-		
-		if int(parameters_dict['blur_probe']) == 1:
+
+		if parameters_dict['blur_probe']:
 			self.stage_list.append('Blur_Probe')
-		
-		if int(parameters_dict['stimdur_probe']) == 1:
+
+		if parameters_dict['stimdur_probe']:
 			self.stage_list.append('StimDur_Probe')
-		
-		if int(parameters_dict['flanker_probe']) == 1:
+
+		if parameters_dict['flanker_probe']:
 			self.stage_list.append('Flanker_Probe')
-		
-		if int(parameters_dict['tarprob_probe']) == 1:
+
+		if parameters_dict['tarprob_probe']:
 			self.stage_list.append('TarProb_Probe')
-		
-		if int(parameters_dict['sart_probe']) == 1:
+
+		if parameters_dict['sart_probe']:
 			self.stage_list.append('SART_Probe')
 	
 	def _load_task_variables(self):
@@ -749,7 +749,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.start_clock()
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
-			and (self.skip_tutorial_video == 0):
+			and not self.skip_tutorial_video:
 
 			self.protocol_floatlayout.clear_widgets()
 			self.present_tutorial_video()
@@ -1487,7 +1487,7 @@ class ProtocolScreen(ProtocolBase):
 						self.similarity_tracking.append(self.current_similarity)
 						# If tracking list is greater than or equal to 20 trials and block change on duration is not equal to 1
 						if len(self.similarity_tracking) >= 20 \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 							# If the length of similarity_tracking is equal to 0
 							if len(self.similarity_tracking) == 0:
 								# Take a float value of the similarity of the last nontarget image in the current nontarget image list
@@ -1545,7 +1545,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of the blur tracking list is greater than or equal to 20 and the difference between the maximum and minimum of the last 6 values in the blur tracking list is less than or equal to 2 and block change on duration is not equal to 1
 						if (len(self.blur_tracking) >= 20) \
 							and ((max(self.blur_tracking[-6:]) - min(self.blur_tracking[-6:])) <= 2) \
-							and (self.block_change_on_duration != 1):
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.blur_tracking)
 
@@ -1583,7 +1583,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of noise_tracking is greater than 20 and the difference between the maximum and minimum of the last 6 values in the noise tracking list is less than or equal to 15 and block change on duration is not equal to 1
 						if len(self.noise_tracking) >= 20 \
 							and ((max(self.noise_tracking[-6:]) - min(self.noise_tracking[-6:])) <= 15) \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.noise_tracking) # Gets a vector of the most common values
 
@@ -1641,7 +1641,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of stimdur_frame_tracking is greater than 20 and the difference between the maximum and minimum of the last 10 values in the stimdur_frame_tracking list is less than or equal to 12 and block change on duration is not equal to 1
 						if (len(self.stimdur_frame_tracking) > 20) \
 							and ((max(self.stimdur_frame_tracking[-10:]) - min(self.stimdur_frame_tracking[-10:])) <= 12) \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.stimdur_frame_tracking)
 
@@ -2321,7 +2321,7 @@ class ProtocolScreen(ProtocolBase):
 
 			# If current stage is training and tutorial video has not been skipped and training not yet complete
 			if (self.current_stage == 'Training') \
-				and (self.skip_tutorial_video == 0) \
+				and not self.skip_tutorial_video \
 				and not self.training_complete:
 
 				self.trial_list = ['Target']
