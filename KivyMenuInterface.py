@@ -351,7 +351,7 @@ class ProtocolMenu(Screen):
 		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
-		self.manager.current = 'menuscreen'
+		self.manager.current = self.Protocol_Configure_Screen.name
 	
 	
 	
