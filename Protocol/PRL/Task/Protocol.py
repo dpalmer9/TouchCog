@@ -723,7 +723,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Block', self.current_block)
 			
 			if (self.current_block > self.block_multiplier) \
-				or (self.current_block == -1):
+				or (self.current_block == 0):
 
 				self.stage_index += 1
 				self.current_block = 1
