@@ -8,5 +8,7 @@ class ConfigureScreen(MenuBase):
         super(ConfigureScreen, self).__init__(**kwargs)
 
         self.protocol = 'CPT'
+        self.protocol_name = 'Continuous Performance Task'
+        self.protocol_title_label.text = self.protocol_name
 
         self.menu_constructor(self.protocol)

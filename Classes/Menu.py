@@ -38,6 +38,10 @@ class MenuBase(Screen):
 		
 		self.protocol_name = ''
 		self.protocol_path = ''
+		self.protocol_title_label = Label(text=self.protocol_name, font_size=32)
+		self.protocol_title_label.size_hint = (0.6, 0.1)
+		self.protocol_title_label.pos_hint = {'x': 0.2, 'y': 0.9}
+		self.main_layout.add_widget(self.protocol_title_label)
 		self.parameters_config = dict()
 		self.setting_scrollview = ScrollView(effect_cls=ScrollEffect)
 		self.setting_gridlayout = GridLayout()
@@ -84,7 +88,7 @@ class MenuBase(Screen):
 
 		# Add scrollview and other widgets to main_layout only once
 		self.setting_scrollview.pos_hint = {'x': 0.1, 'y': 0.4}
-		self.setting_scrollview.size_hint = (0.85, 0.6)
+		self.setting_scrollview.size_hint = (0.85, 0.5)
 		self.main_layout.add_widget(self.setting_scrollview)
 		self.main_layout.add_widget(self.id_grid)
 		self.main_layout.add_widget(self.back_button)

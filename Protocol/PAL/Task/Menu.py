@@ -9,6 +9,8 @@ class ConfigureScreen(MenuBase):
     def __init__(self,**kwargs):
         super(ConfigureScreen,self).__init__(**kwargs)
         self.protocol = 'PAL'
+        self.protocol_name = 'Paired Associates Learning'
+        self.protocol_title_label.text = self.protocol_name
 
         self.correction_dropdown = DropDown()
         self.correction_button = Button(text='Correction Trials Enabled')
