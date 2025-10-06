@@ -16,8 +16,111 @@ from kivy.uix.screenmanager import Screen, ScreenManagerException
 from kivy.uix.scrollview import ScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.uix.textinput import TextInput
+from kivy.uix.checkbox import CheckBox
 from kivy.app import App
+from kivy.uix.image import Image
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.metrics import dp
 
+
+class ImageSetItem(ButtonBehavior, BoxLayout):
+	"""A single selectable dropdown row: label on the left, thumbnails on the right.
+
+	This widget is intended to be added to a DropDown. When released it will call
+	`dropdown.select(value)` so the parent dropdown receives the selection.
+	"""
+	def __init__(self, label_text, image_paths, dropdown, value=None, thumb_size=dp(48), **kwargs):
+		super(ImageSetItem, self).__init__(orientation='horizontal', spacing=8, padding=(8,6), **kwargs)
+		self.dropdown = dropdown
+		self.value = value if value is not None else label_text
+
+		# Left: label
+		self.label = Label(text=label_text, valign='middle', halign='left', size_hint_x=0.6)
+		self.label.bind(size=lambda instance, val: setattr(instance, 'text_size', (instance.width, instance.height)))
+		self.add_widget(self.label)
+
+		# Right: small thumbnails (can be one or several)
+		thumb_container = BoxLayout(orientation='horizontal', spacing=4, size_hint_x=0.4)
+		for p in image_paths:
+			try:
+				src = str(p)
+				img = Image(source=src, size_hint=(None, None), size=(thumb_size, thumb_size), allow_stretch=True, keep_ratio=True)
+				thumb_container.add_widget(img)
+			except Exception:
+				# If image fails to load, add an empty label placeholder
+				thumb_container.add_widget(Label(text='?', size_hint=(None, None), size=(thumb_size, thumb_size)))
+
+		self.add_widget(thumb_container)
+
+	def on_release(self):
+		# When the row is clicked, notify the dropdown
+		try:
+			self.dropdown.select(self.value)
+		except Exception:
+			pass
+
+
+class ImageSetDropdown(BoxLayout):
+	"""A labeled dropdown selector where each option shows a label and small images.
+
+	Usage:
+	options = [
+		{'label': 'Image Set 1', 'images': ['Protocol/CPT/Image/set1_a.png', 'Protocol/CPT/Image/set1_b.png'], 'value': 'set1'},
+		...
+	]
+	widget = ImageSetDropdown(options)
+	"""
+	def __init__(self, options, left_label='Image Set', default_text='Select...', thumb_size=dp(48), **kwargs):
+		super(ImageSetDropdown, self).__init__(orientation='horizontal', spacing=8, size_hint_y=None, height=thumb_size + dp(16), **kwargs)
+		self.options = options
+		self.selected_value = None
+		self.thumb_size = thumb_size
+
+		# Static label on the left (descriptive)
+		self.left_label = Label(text=left_label, size_hint_x=None, width=dp(160), valign='middle', halign='left')
+		self.left_label.bind(size=lambda inst, val: setattr(inst, 'text_size', (inst.width, inst.height)))
+		self.add_widget(self.left_label)
+
+		# Main button that opens the dropdown
+		self.button = Button(text=default_text)
+		self.add_widget(self.button)
+
+		# The dropdown that will hold ImageSetItem rows
+		self.dropdown = DropDown()
+
+		# Populate dropdown
+		for opt in self.options:
+			label = opt.get('label', '')
+			images = opt.get('images', [])
+			value = opt.get('value', label)
+			item = ImageSetItem(label_text=label, image_paths=images, dropdown=self.dropdown, value=value, thumb_size=self.thumb_size, size_hint_y=None, height=self.thumb_size + dp(12))
+			self.dropdown.add_widget(item)
+
+		# Hook selection
+		self.dropdown.bind(on_select=self._on_select)
+		self.button.bind(on_release=lambda btn: self.dropdown.open(btn))
+
+	def _on_select(self, instance, value):
+		# update button text and store selected value
+		self.selected_value = value
+		# try to find the label text for nicer display
+		for opt in self.options:
+			if opt.get('value', opt.get('label')) == value:
+				self.button.text = opt.get('label', str(value))
+				break
+
+	def get_selected(self):
+		return self.selected_value
+
+	def set_selected_by_value(self, value):
+		# programmatically set selection (will update button text if found)
+		for opt in self.options:
+			if opt.get('value', opt.get('label')) == value:
+				self.selected_value = value
+				self.button.text = opt.get('label', str(value))
+				return True
+		return False
 
 
 class MenuBase(Screen):
@@ -108,13 +211,7 @@ class MenuBase(Screen):
 		
 		
 		def lazy_import(protocol):
-			
-			
 			working = pathlib.Path('Protocol', protocol, 'Task', 'Protocol.py')
-			
-# 			cwd = os.getcwd()
-# 			working = cwd + '\\Protocol\\' + protocol + '\\Task\\Protocol.py'
-			
 			mod_name = 'Protocol'
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
@@ -141,16 +238,16 @@ class MenuBase(Screen):
 			
 			
 			elif isinstance(widget, TextInput):
-				
-				
 				value = widget.text
 				parameter_dict[key] = value
 			
 			
 			elif isinstance(widget, Button):
-				
-				
 				value = widget.text
+				parameter_dict[key] = value
+
+			elif isinstance(widget, CheckBox):
+				value = widget.active
 				parameter_dict[key] = value
 		
 		
@@ -217,7 +314,7 @@ class MenuBase(Screen):
 		config_file.read(config_path)
 
 		if ('DebugParameters' in config_file) \
-			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+			and (config_file.getboolean('DebugParameters', 'debug_mode', fallback=False)):
 			self.parameters_config = config_file['DebugParameters']
 			self.debug_mode = True
 		else:
@@ -232,9 +329,14 @@ class MenuBase(Screen):
 
 		for parameter in self.parameters_config:
 			label = Label(text=parameter, size_hint_y=None, height=50)
-			text_input = TextInput(text=self.parameters_config[parameter], size_hint_y=None, height=50)
-			self.setting_gridlayout.add_widget(label)
-			self.setting_gridlayout.add_widget(text_input)
+			if self.parameters_config[parameter].lower() in ['true', 'false']:
+				checkbox = CheckBox(active=self.parameters_config[parameter].lower() == 'true', size_hint_x=None, width=50)
+				self.setting_gridlayout.add_widget(label)
+				self.setting_gridlayout.add_widget(checkbox)
+			else:
+				text_input = TextInput(text=self.parameters_config[parameter], size_hint_y=None, height=50)
+				self.setting_gridlayout.add_widget(label)
+				self.setting_gridlayout.add_widget(text_input)
 
 		for wid in self.settings_widgets:
 			if isinstance(wid, (Label, Button)):
