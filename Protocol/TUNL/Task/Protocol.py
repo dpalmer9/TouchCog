@@ -24,6 +24,7 @@ class ProtocolScreen(ProtocolBase):
 		super(ProtocolScreen, self).__init__(**kwargs)
 		
 		self.protocol_name = 'TUNL'
+		self.name = self.protocol_name + '_protocolscreen'
 		self.update_task()
 
 		# Define Data Columns
