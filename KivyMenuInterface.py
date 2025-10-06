@@ -505,8 +505,14 @@ class MenuApp(App):
 		if len(self.event_list) > 0:
 			self.session_event_data = pd.DataFrame(self.event_list)
 			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-			self.session_event_data.to_csv(self.session_event_path, index=False)
-			self.summary_event_data.to_csv(self.summary_event_path, index=False)
+			try:
+				self.session_event_data.to_csv(self.session_event_path, index=False)
+			except FileNotFoundError:
+				pass
+			try:
+				self.summary_event_data.to_csv(self.summary_event_path, index=False)
+			except FileNotFoundError:
+				pass
 
 
 
