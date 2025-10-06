@@ -186,7 +186,7 @@ class MenuBase(Screen):
 		
 			protocol_task_screen.load_parameters(parameter_dict)
 		
-			self.manager.current = 'protocolscreen'
+			self.manager.current = protocol_task_screen.name
 		
 		else:
 			protocol_name = self.app.battery_protocols[self.app.battery_index]
