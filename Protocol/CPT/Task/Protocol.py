@@ -2204,6 +2204,7 @@ class ProtocolScreen(ProtocolBase):
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.remove_feedback)
 
 		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
