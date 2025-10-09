@@ -449,7 +449,19 @@ class ProtocolBattery(Screen):
 class MenuApp(App):
 	
 	def build(self):
-		
+
+		current_file = pathlib.Path(__file__).resolve()
+		if '_internal' in current_file.parts:
+			app_root = pathlib.Path(*current_file.parts[:current_file.parts.index('_internal')])
+		elif getattr(sys, 'frozen', False):
+			app_root = pathlib.Path(sys.executable).resolve().parent
+		else:
+			app_root = current_file.parent
+
+		os.chdir(app_root)
+		self.data_folder = app_root / 'Data'
+		self.data_folder.mkdir(parents=True, exist_ok=True)
+
 		self.session_event_data = pd.DataFrame()
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
