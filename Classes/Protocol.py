@@ -32,7 +32,7 @@ class ImageButton(ButtonBehavior, Image):
 	def __init__(self, **kwargs):
 
 		super(ImageButton, self).__init__(**kwargs)
-		
+		print(os.getcwd())
 		self.coord = None
 		self.fit_mode = 'fill'
 		self.touch_pos = (0, 0)
@@ -483,6 +483,16 @@ class ProtocolBase(Screen):
 		# Define App
 		
 		self.app = App.get_running_app()
+
+		# Folder
+
+		documents_path = pathlib.Path.home() / 'Documents'
+			
+		# Define a dedicated folder for your app's data within Documents
+		self.data_folder = documents_path / 'TouchCog' / 'Data'
+			
+		# Create the directory structure if it doesn't exist
+		self.data_folder.mkdir(parents=True, exist_ok=True)
 		
 		
 		# Define Folders
@@ -835,7 +845,7 @@ class ProtocolBase(Screen):
 	
 	def generate_output_files(self):
 
-		folder_path = pathlib.Path(self.app.data_folder, self.participant_id)
+		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 
 		if not folder_path.is_dir():
 			folder_path.mkdir()
@@ -863,7 +873,7 @@ class ProtocolBase(Screen):
 	
 	def metadata_output_generation(self):
 		
-		folder_path = pathlib.Path(self.app.data_folder, self.participant_id)
+		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		
 		meta_list = list()
 		

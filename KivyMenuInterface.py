@@ -21,6 +21,18 @@ import queue
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
 
+def get_base_path():
+	"""
+	Determines the correct base path for the executable, whether running
+	in a PyInstaller bundle or in development mode.
+	"""
+	if getattr(sys, 'frozen', False):
+		# Running as a PyInstaller executable: use the path of the exe itself
+		return pathlib.Path(sys.executable).resolve().parent
+	else:
+		# Running in development: use the script's current directory
+		return pathlib.Path(__file__).parent.resolve()
+
 from kivy.config import Config
 # Change current working directory to location of this file
 
@@ -102,9 +114,9 @@ def get_refresh_rate():
 
 # Change current working directory to location of this file
 
-os.chdir(pathlib.Path(__file__).parent.resolve())
+app_root = get_base_path()
 
-config_path = pathlib.Path('Screen.ini')
+config_path = app_root / 'Screen.ini'
 
 config_file = configparser.ConfigParser()
 config_file.read(config_path)
@@ -252,7 +264,6 @@ class MainMenu(Screen):
 	def __init__(self, **kwargs):
 		
 		super(MainMenu, self).__init__(**kwargs)
-		
 		self.name = 'mainmenu'
 		self.Menu_Layout = FloatLayout()
 		self.protocol_window = ''
@@ -449,19 +460,6 @@ class ProtocolBattery(Screen):
 class MenuApp(App):
 	
 	def build(self):
-
-		current_file = pathlib.Path(__file__).resolve()
-		if '_internal' in current_file.parts:
-			app_root = pathlib.Path(*current_file.parts[:current_file.parts.index('_internal')])
-		elif getattr(sys, 'frozen', False):
-			app_root = pathlib.Path(sys.executable).resolve().parent
-		else:
-			app_root = current_file.parent
-
-		os.chdir(app_root)
-		self.data_folder = app_root / 'Data'
-		self.data_folder.mkdir(parents=True, exist_ok=True)
-
 		self.session_event_data = pd.DataFrame()
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
@@ -529,6 +527,5 @@ class MenuApp(App):
 
 
 if __name__ == '__main__':
-	
 	MenuApp().run()
 

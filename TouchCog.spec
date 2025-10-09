@@ -4,8 +4,6 @@ from kivy_deps import sdl2, glew
 
 block_cipher = None
 
-# This is the standard, built-in way to include entire directories and files.
-# No external 'pyinstaller-utils' or 'Tree' function is needed.
 datas = [
     ('Screen.ini', '.'),
     ('Protocol', 'Protocol'),
@@ -42,8 +40,8 @@ exe = EXE(pyz,
           debug=False,
           strip=False,
           upx=True,
-          console=False,
-          icon='') # Optional: Add an icon file
+          console=True,
+          icon=None) # Optional: Add an icon file
 
 coll = COLLECT(exe,
                a.binaries,
