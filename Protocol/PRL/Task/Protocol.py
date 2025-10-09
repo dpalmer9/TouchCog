@@ -158,7 +158,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_index = -1
 
 		image_index_choice = [0, 1]
-		self.constrained_shuffle(image_index_choice)
+		self.image_index_choice = self.constrained_shuffle(image_index_choice)
 
 		self.target_image_index = image_index_choice[0]
 		self.nontarget_image_index = image_index_choice[1]
@@ -181,7 +181,7 @@ class ProtocolScreen(ProtocolBase):
 		# Define Variables - String
 
 		self.target_loc_list = ['Left', 'Right']
-		self.constrained_shuffle(self.target_loc_list)
+		self.target_loc_list = self.constrained_shuffle(self.target_loc_list)
 
 		self.target_loc_index = 0
 		self.nontarget_loc_index = 1
@@ -202,7 +202,7 @@ class ProtocolScreen(ProtocolBase):
 		for iTrial in range(int(self.nontarget_reward_probability * 5)):
 			self.trial_reward_list.append('Nonarget')
 		
-		self.constrained_shuffle(self.trial_reward_list)
+		self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list)
 
 	def _setup_image_widgets(self):
 		# Define Widgets - Images
@@ -673,7 +673,7 @@ class ProtocolScreen(ProtocolBase):
 				self.trial_reward_list_index += 1
 
 				if (self.trial_reward_list_index >= len(self.trial_reward_list)):
-					self.constrained_shuffle(self.trial_reward_list)
+					self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list)
 					self.trial_reward_list_index = 0
 
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Rewarded Side', self.trial_reward_list[self.trial_reward_list_index])
@@ -781,7 +781,7 @@ class ProtocolScreen(ProtocolBase):
 				self.target_image = self.target_image_list[self.target_image_index]
 				self.nontarget_image = self.target_image_list[self.nontarget_image_index]
 
-				self.constrained_shuffle(self.trial_reward_list)
+				self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list)
 				self.trial_reward_list_index = 0
 				
 				if self.trial_reward_list[self.trial_reward_list_index] == 'Target':

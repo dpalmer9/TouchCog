@@ -161,7 +161,7 @@ class ProtocolScreen(ProtocolBase):
 			self.stage_list.append('Delay')
 		
 		if len(self.stage_list) > 1:
-			self.constrained_shuffle(self.stage_list)
+			self.stage_list = self.constrained_shuffle(self.stage_list)
 
 		if self.parameters_dict['combined_probe']:
 			self.stage_list.append('Combo')
@@ -236,8 +236,8 @@ class ProtocolScreen(ProtocolBase):
 		self.space_trial_index = self.space_trial_index_list[0]
 		self.delay_trial_index = self.delay_trial_index_list[0]
 
-		self.constrained_shuffle(self.space_trial_index_list)
-		self.constrained_shuffle(self.delay_trial_index_list)
+		self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
+		self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
 
 		self.last_staircase_time_increase = self.staircase_delay_initial
 
@@ -1282,7 +1282,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				if self.trial_index >= len(self.space_trial_index_list):
 					self.trial_index = 0
-					self.constrained_shuffle(self.space_trial_index_list)
+					self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
 				
 				self.space_trial_index = self.space_trial_index_list[self.trial_index]
 				
@@ -1293,7 +1293,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				if self.trial_index >= len(self.delay_trial_index_list):
 					self.trial_index = 0
-					self.constrained_shuffle(self.delay_trial_index_list)
+					self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
 				
 				self.delay_trial_index = self.delay_trial_index_list[self.trial_index]
 				
@@ -1405,10 +1405,10 @@ class ProtocolScreen(ProtocolBase):
 			
 			
 			if self.current_stage == 'Space':
-				self.constrained_shuffle(self.space_trial_index_list)
+				self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
 			
 			elif self.current_stage == 'Delay':
-				self.constrained_shuffle(self.delay_trial_index_list)
+				self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
 						
 			elif self.current_stage == 'Combo':	
 				self.combo_trial_index = 0

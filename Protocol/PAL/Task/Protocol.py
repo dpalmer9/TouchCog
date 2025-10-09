@@ -885,7 +885,7 @@ class ProtocolScreen(ProtocolBase):
 			else:
 
 				if self.trial_list_index >= len(self.trial_list):
-					self.constrained_shuffle(self.trial_list)
+					self.trial_list = self.constrained_shuffle(self.trial_list)
 					self.trial_list_index = 0
 				
 				new_target_loc = self.trial_list[self.trial_list_index]
@@ -894,16 +894,16 @@ class ProtocolScreen(ProtocolBase):
 				if self.current_stage in ['dPAL', 'sPAL']:
 					pos_list = list(range(self.num_stimuli))
 					pos_list.remove(new_target_loc)
-					self.constrained_shuffle(pos_list)
+					pos_list = self.constrained_shuffle(pos_list)
 
 					new_nontarget_loc = pos_list[0]
 					new_nontarget_image_loc = pos_list[1]
 
-					if (new_target_loc == self.target_loc) \
-						and (new_nontarget_loc == self.nontarget_loc):
+					# if (new_target_loc == self.target_loc) \
+					# 	and (new_nontarget_loc == self.nontarget_loc):
 
-						new_nontarget_loc = pos_list[1]
-						new_nontarget_image_loc = pos_list[0]
+					# 	new_nontarget_loc = pos_list[1]
+					# 	new_nontarget_image_loc = pos_list[0]
 					
 					if self.current_stage == 'sPAL':
 						new_nontarget_image_loc = new_target_loc
@@ -1058,12 +1058,12 @@ class ProtocolScreen(ProtocolBase):
 				stimulus.bind(on_press=self.nontarget_pressed)
 				stimulus.unbind(on_press=self.nontarget_pressed)
 
-			self.constrained_shuffle(self.trial_list)
+			self.trial_list = self.constrained_shuffle(self.trial_list)
 			self.target_loc = self.trial_list[0]
 			
 			pos_list = list(range(self.num_stimuli))
 			pos_list.remove(self.target_loc)
-			self.constrained_shuffle(pos_list)
+			pos_list = self.constrained_shuffle(pos_list)
 
 			self.nontarget_loc = pos_list[0]
 			self.nontarget_image_loc = pos_list[1]

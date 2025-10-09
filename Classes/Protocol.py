@@ -628,50 +628,72 @@ class ProtocolBase(Screen):
 	def update_task(self):
 		
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
-		return
+		return	
 
-
-	def constrained_shuffle(self, seq, max_run=3, attempts=1000, rng=None):
+	def constrained_shuffle(self,seq, max_run=3, attempts=100, rng=None):
 		"""
-		Instance helper: constrained shuffle that returns a pseudorandom ordering
-		of seq where no value repeats more than max_run times consecutively.
+		Returns a pseudorandom ordering of a sequence where no value
+		repeats more than `max_run` times consecutively.
+
+		Args:
+			seq (list): The sequence to shuffle.
+			max_run (int): The maximum number of consecutive identical items.
+			attempts (int): The number of times to attempt the shuffle before failing.
+			rng (random.Random, optional): An instance of a random number generator.
+
+		Returns:
+			list: A new list with the shuffled sequence.
+
+		Raises:
+			ValueError: If a valid shuffle cannot be found within the given attempts.
 		"""
 		if rng is None:
 			rng = random
 		if not seq:
 			return []
+
 		n = len(seq)
-		counts = Counter(seq)
+		
 		for _ in range(attempts):
+			remaining = Counter(seq)
 			result = []
-			remaining = dict(counts)
+			
 			while len(result) < n:
-				candidates = [k for k, v in remaining.items() if v > 0 and not (
-					len(result) >= max_run and all(x == k for x in result[-max_run:])
-				)]
+				# Determine the last item to check for a run
+				last_item = result[-1] if result else None
+				
+				# Efficiently check if the last item has formed a disqualifying run
+				is_run = False
+				if len(result) >= max_run:
+					# Check if the last `max_run` items are all the same as `last_item`
+					if all(result[i] == last_item for i in range(-1, -max_run - 1, -1)):
+						is_run = True
+
+				# Get candidates whose counts are greater than 0
+				candidates = [item for item, count in remaining.items() if count > 0]
+				
+				# If the last item formed a run, it's forbidden in this step
+				if is_run and last_item in candidates:
+					candidates.remove(last_item)
+
 				if not candidates:
-					break
+					# This attempt is stuck (e.g., only 'A's are left but the run of 'A's is maxed out)
+					# Break the inner while loop to start a new attempt.
+					break 
+
+				# Weighted random choice from the valid candidates
 				weights = [remaining[k] for k in candidates]
 				choice = rng.choices(candidates, weights=weights, k=1)[0]
+				
 				result.append(choice)
 				remaining[choice] -= 1
+			
 			if len(result) == n:
+				# Successfully built a valid shuffle
 				return result
-		# fallback: try plain shuffle
-		for _ in range(attempts):
-			tmp = list(seq)
-			rng.shuffle(tmp)
-			ok = True
-			for i in range(len(tmp) - max_run):
-				if all(tmp[i + j] == tmp[i] for j in range(max_run + 1)):
-					ok = False
-					break
-			if ok:
-				return tmp
-		tmp = list(seq)
-		rng.shuffle(tmp)
-		return tmp
-	
+				
+		# If all attempts failed, raise an error
+		raise ValueError(f"Failed to find a valid constrained shuffle after {attempts} attempts.")
 	
 	
 	def load_images(self, image_list):
