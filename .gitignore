@@ -2,3 +2,6 @@
 *.MP4
 *.pyc
 .DS_Store
+build/
+dist/
+__pycache__/
