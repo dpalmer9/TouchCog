@@ -834,9 +834,9 @@ class ProtocolBase(Screen):
 	
 	
 	def generate_output_files(self):
-		
-		folder_path = pathlib.Path('Data', self.participant_id)
-		
+
+		folder_path = pathlib.Path(self.app.data_folder, self.participant_id)
+
 		if not folder_path.is_dir():
 			folder_path.mkdir()
 		
@@ -863,7 +863,7 @@ class ProtocolBase(Screen):
 	
 	def metadata_output_generation(self):
 		
-		folder_path = pathlib.Path('Data', self.participant_id)
+		folder_path = pathlib.Path(self.app.data_folder, self.participant_id)
 		
 		meta_list = list()
 		
