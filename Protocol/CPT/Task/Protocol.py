@@ -28,6 +28,7 @@ class ProtocolScreen(ProtocolBase):
 
 		super(ProtocolScreen, self).__init__(**kwargs)
 		self.protocol_name = 'CPT'
+		self.name = self.protocol_name + '_protocolscreen'
 		self.update_task()
 		
 		# Define Data Columns
@@ -96,110 +97,121 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config Import
 		
-		config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
+		self.config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
+		self.config_file = configparser.ConfigParser()
+		self.config_file.read(self.config_path)
 
 		self.debug_mode = False
 
-		if ('DebugParameters' in config_file) \
-			and (int(config_file['DebugParameters']['debug_mode']) == 1):
+		if ('DebugParameters' in self.config_file) \
+			and self.config_file.getboolean('DebugParameters', 'debug_mode'):
 
-			self.parameters_dict = config_file['DebugParameters']
+			self.parameters_dict = self.config_file['DebugParameters']
 			self.debug_mode = True
 		
 		else:
-			self.parameters_dict = config_file['TaskParameters']
+			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
+	
+	def _load_config_parameters(self, parameters_dict):
+		
+		self.participant_id = parameters_dict['participant_id']
+		
+		self.language = parameters_dict['language']
 
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
-		self.tutorial_video_duration = int(self.parameters_dict['tutorial_video_duration'])
+		self.skip_tutorial_video = parameters_dict['skip_tutorial_video']
+		self.tutorial_video_duration = float(parameters_dict['tutorial_video_duration'])
 
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
+		self.block_change_on_duration = parameters_dict['block_change_on_duration_only']
 		
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = parameters_dict['iti_fixed_or_range']
 		
-		iti_temp = self.parameters_dict['iti_length']
-		iti_temp = iti_temp.split(',')
 		
-		self.stimdur_import = self.parameters_dict['stimulus_duration']
+		self.iti_temp = parameters_dict['iti_length']
+		self.iti_temp = self.iti_temp.split(',')
+		
+		self.stimdur_import = parameters_dict['stimulus_duration']
 		self.stimdur_import = self.stimdur_import.split(',')
 		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration_staircase = int(self.parameters_dict['block_duration-staircase'])
-		self.block_duration_probe = int(self.parameters_dict['block_duration-probe'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
+		self.feedback_length = float(parameters_dict['feedback_length'])
+		self.block_duration_staircase = int(parameters_dict['block_duration-staircase'])
+		self.block_duration_probe = int(parameters_dict['block_duration-probe'])
+		self.block_min_rest_duration = float(parameters_dict['block_min_rest_duration'])
+		self.session_duration = float(parameters_dict['session_duration'])
 		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
-		self.block_trial_max = int(self.parameters_dict['block_trial_max'])
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
+		self.block_multiplier = int(parameters_dict['block_multiplier'])
+		self.block_trial_max = int(parameters_dict['block_trial_max'])
+		self.training_block_max_correct = int(parameters_dict['training_block_max_correct'])
 
-		self.target_prob_trial_num = int(self.parameters_dict['target_prob_over_num_trials'])
+		self.target_prob_trial_num = int(parameters_dict['target_prob_over_num_trials'])
 		
-		target_prob_import = self.parameters_dict['target_prob_list']
-		target_prob_import = target_prob_import.split(',')
+		self.target_prob_import = parameters_dict['target_prob_list']
+		self.target_prob_import = self.target_prob_import.split(',')
+		
+		self.target_prob_base = round(self.target_prob_trial_num * float(parameters_dict['target_prob_base']))
+		self.target_prob_sim = round(self.target_prob_trial_num * float(parameters_dict['target_prob_similarity']))
+		self.target_prob_flanker = round(self.target_prob_trial_num * float(parameters_dict['target_prob_flanker']))
+		
+		self.stimulus_family = parameters_dict['stimulus_family']
 
-		self.target_prob_base = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_base']))
-		self.target_prob_sim = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_similarity']))
-		self.target_prob_flanker = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_flanker']))
+		self.display_stimulus_outline = int(parameters_dict['display_stimulus_outline'])
+		self.mask_during_limhold = int(parameters_dict['mask_during_limhold'])
+		self.limhold_mask_type = parameters_dict['limhold_mask_type']
 
-		self.display_stimulus_outline = int(self.parameters_dict['display_stimulus_outline'])
-		self.mask_during_limhold = int(self.parameters_dict['mask_during_limhold'])
-		self.limhold_mask_type = self.parameters_dict['limhold_mask_type']
+		self.similarity_percentile_initial = float(parameters_dict['similarity_percentile_initial'])
+		self.similarity_percentile_range = float(parameters_dict['similarity_percentile_range'])
+
+		self.staircase_stimdur_frame_min = float(parameters_dict['staircase_stimdur_min_frames'])
+		self.staircase_stimdur_seconds_max = float(parameters_dict['staircase_stimdur_max_seconds'])
 		
-		self.similarity_percentile_initial = float(self.parameters_dict['similarity_percentile_initial'])
-		self.similarity_percentile_range = float(self.parameters_dict['similarity_percentile_range'])
-		self.staircase_stimdur_frame_min = float(self.parameters_dict['staircase_stimdur_min_frames'])
-		staircase_stimdur_seconds_max = float(self.parameters_dict['staircase_stimdur_max_seconds'])
-		
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
+		self.hold_image = self.config_file['Hold']['hold_image']
+		self.mask_image = self.config_file['Mask']['mask_image']
 		
 		
-		# Create stage list
+		# Create stage list and import stage parameters
 		
 		self.stage_list = list()
 		
-		if int(self.parameters_dict['training_task']) == 1:
+		if parameters_dict['training_task']:
 			self.stage_list.append('Training')
-		
-		if int(self.parameters_dict['limdur_scaling']) == 1:
+
+		if parameters_dict['limdur_scaling']:
 			self.stage_list.append('LimDur_Scaling')
-			
-		if int(self.parameters_dict['similarity_scaling']) == 1:
+
+		if parameters_dict['similarity_scaling']:
 			self.stage_list.append('Similarity_Scaling')
 			self.stimulus_family = 'Fb'
-		else:
-			self.stimulus_family = self.parameters_dict['stimulus_family']
 		
-		if int(self.parameters_dict['noise_scaling']) == 1 \
+		else:
+			self.stimulus_family = parameters_dict['stimulus_family']
+
+		if parameters_dict['noise_scaling'] \
 			and 'Similarity_Scaling' not in self.stage_list:
 			self.stage_list.append('Noise_Scaling')
-		
-		if int(self.parameters_dict['blur_scaling']) == 1 \
+
+		if parameters_dict['blur_scaling'] \
 			and 'Similarity_Scaling' not in self.stage_list:
 			self.stage_list.append('Blur_Scaling')
-		
-		if int(self.parameters_dict['noise_probe']) == 1:
+
+		if parameters_dict['noise_probe']:
 			self.stage_list.append('Noise_Probe')
-		
-		if int(self.parameters_dict['blur_probe']) == 1:
+
+		if parameters_dict['blur_probe']:
 			self.stage_list.append('Blur_Probe')
-		
-		if int(self.parameters_dict['stimdur_probe']) == 1:
+
+		if parameters_dict['stimdur_probe']:
 			self.stage_list.append('StimDur_Probe')
-		
-		if int(self.parameters_dict['flanker_probe']) == 1:
+
+		if parameters_dict['flanker_probe']:
 			self.stage_list.append('Flanker_Probe')
-		
-		if int(self.parameters_dict['tarprob_probe']) == 1:
+
+		if parameters_dict['tarprob_probe']:
 			self.stage_list.append('TarProb_Probe')
-		
-		if int(self.parameters_dict['sart_probe']) == 1:
+
+		if parameters_dict['sart_probe']:
 			self.stage_list.append('SART_Probe')
-		
-		
+	
+	def _load_task_variables(self):
 		# Set images
 
 		self.similarity_data = pd.DataFrame({})
@@ -280,6 +292,7 @@ class ProtocolScreen(ProtocolBase):
 		self.current_substage = ''
 		self.outcome_string = ''
 		self.stage_string = ''
+		self.current_stage = ''
 		
 		
 		# Define Variables - Time
@@ -292,10 +305,14 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_actual = 0.0
 		self.trial_end_time = 0.0
 
-		self.staircase_stimdur_frame_max = staircase_stimdur_seconds_max/self.frame_duration
-		
-		iti_temp = [float(iNum) for iNum in iti_temp]
-		self.iti_frame_range = sorted((np.array(iti_temp) // self.frame_duration).tolist(), reverse=True)
+		self.stimulus_image_proportion = 0.35
+		self.instruction_image_proportion = 0.25
+
+	def _load_staircase_variables(self):
+		self.staircase_stimdur_frame_max = self.staircase_stimdur_seconds_max/self.frame_duration
+
+		self.iti_temp = [float(iNum) for iNum in self.iti_temp]
+		self.iti_frame_range = sorted((np.array(self.iti_temp) // self.frame_duration).tolist(), reverse=True)
 		self.iti_frame_range = [int(iNum) for iNum in self.iti_frame_range]
 		self.iti_length = self.iti_frame_range[0] * self.frame_duration
 		
@@ -317,260 +334,19 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_base = self.stimdur_current_frames
 		self.stimdur_change = self.stimdur_current_frames
+
+		self.limhold = self.stimdur
+		self.limhold_base = self.limhold
 		
 		self.stimdur_use_steps = True
-		
-
-		# Define Clock
-		
-		self.block_check_clock = Clock
-		self.block_check_clock.interupt_next_only = False
-		self.block_check_event = self.block_check_clock.create_trigger(self.block_contingency, 0, interval=True)
-		
-		self.task_clock = Clock
-		self.task_clock.interupt_next_only = True
-
-		self.tutorial_video_end_event = self.task_clock.create_trigger(self.present_tutorial_video_start_button, 0)
-		self.stimdur_event = self.task_clock.create_trigger(self.stimulus_presentation, 0, interval=True)
-		self.trial_contingency_event = self.task_clock.create_trigger(self.trial_contingency, 0)
-		self.stimulus_present_event = self.task_clock.create_trigger(self.stimulus_present, -1)
-		self.stimulus_end_event = self.task_clock.create_trigger(self.stimulus_end, 0)
-		self.blur_preload_start_event = self.task_clock.create_trigger(self.blur_preload_start, 0)
-		self.blur_preload_end_event = self.task_clock.create_trigger(self.blur_preload_end, 0)
-
-
-		# Define Variables
-
-		self.target_prob_list = [int(float(iProb) * self.target_prob_trial_num) for iProb in target_prob_import]
-		
-		self.nontarget_prob_base = self.target_prob_trial_num - self.target_prob_base
-		
-		if 'Similarity_Scaling' in self.stage_list:
-			self.nontarget_prob_sim = self.target_prob_trial_num - self.target_prob_sim
-		
-		if 'Flanker_Probe' in self.stage_list:
-			self.flanker_stage_index = 0
-			self.flanker_stage_list = ['none', 'same', 'diff', 'none', 'same', 'diff']
-			random.shuffle(self.flanker_stage_list)
-			self.current_substage = ''
-			self.flanker_image = ''
-		
-		if 'SART_Probe' in self.stage_list:
-			self.target_prob_SART = max(self.target_prob_list)
-			self.nontarget_prob_SART = self.target_prob_trial_num - self.target_prob_SART
-		
-		
-		# Define Widgets - Images
-
-		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
-
-		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
-		
-		self.img_stimulus_C = ImageButton()
-		self.img_stimulus_L = ImageButton(source=self.mask_image_path)
-		self.img_stimulus_R = ImageButton(source=self.mask_image_path)
-
-		self.center_instr_image = ImageButton(source=self.mask_image_path)
-		self.left_instr_image = ImageButton(source=self.mask_image_path)
-		self.right_instr_image = ImageButton(source=self.mask_image_path)
-
-		self.img_noise_C = ImageButton()
-		self.img_outline_C = ImageButton()
-
-		# Define Widgets - Video
-
-		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
-		self.tutorial_outline = ImageButton(source=self.outline_mask_path)
-		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
-		self.tutorial_continue = Button(text='CONTINUE', font_size='48sp')
-		self.tutorial_continue.bind(on_press=self.tutorial_target_present_screen)
-		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
-		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
-		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
-		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
-		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
-		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
-		
-		
-		# Define Instruction Components
-
-		# Instruction - Dictionary
-		
-		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		
-		for stage in self.stage_list:
-
-			self.instruction_dict[stage] = {}
-			
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
 
 		
-		lang_folder_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language))
-		feedback_lang_path = str(pathlib.Path(lang_folder_path, 'Feedback.ini'))
-		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
-		feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
-
-		stim_feedback_too_slow_str = feedback_lang_config['Stimulus']['too_slow']
-		stim_feedback_too_slow_color = feedback_lang_config['Stimulus']['too_slow_colour']
-		if stim_feedback_too_slow_color != '':
-			color_text = '[color=%s]' % stim_feedback_too_slow_color
-			stim_feedback_too_slow_str = color_text + stim_feedback_too_slow_str + '[/color]'
-		self.feedback_dict['too_slow'] = stim_feedback_too_slow_str
-
-		stim_feedback_miss_str = feedback_lang_config['Stimulus']['miss']
-		stim_feedback_miss_color = feedback_lang_config['Stimulus']['miss_colour']
-		if stim_feedback_miss_color != '':
-			color_text = '[color=%s]' % stim_feedback_miss_color
-			stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
-		self.feedback_dict['miss'] = stim_feedback_miss_str
-		
-		
-		# Instruction - Text Widget
-		
-		self.section_instr_string = ''
-		
-		
-		# Instruction - Button Widget
-		
-		self.instruction_button = Button()
-		self.instruction_button.bind(on_press=self.section_start)
-		self.instruction_button_str = ''
-		
-		
-		# Stage Results - Button Widget
-		
-		self.stage_continue_button = Button()
-		self.stage_continue_button.bind(on_press=self.block_contingency)
-		
-		self.session_end_button = Button()
-		self.session_end_button.bind(on_press=self.protocol_end)
-	
-	
-	
-	def load_parameters(self, parameter_dict):
-		
-		# Import parameters from config file
-		
-		self.parameters_dict = parameter_dict
-		
-		self.participant_id = self.parameters_dict['participant_id']
-		
-		self.language = self.parameters_dict['language']
-
-		self.skip_tutorial_video = int(self.parameters_dict['skip_tutorial_video'])
-		self.tutorial_video_duration = int(self.parameters_dict['tutorial_video_duration'])
-
-		self.block_change_on_duration = int(self.parameters_dict['block_change_on_duration_only'])
-		
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
-		
-		
-		iti_temp = self.parameters_dict['iti_length']
-		iti_temp = iti_temp.split(',')
-		
-		self.stimdur_import = self.parameters_dict['stimulus_duration']
-		self.stimdur_import = self.stimdur_import.split(',')
-		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration_staircase = int(self.parameters_dict['block_duration-staircase'])
-		self.block_duration_probe = int(self.parameters_dict['block_duration-probe'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
-		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
-		self.block_trial_max = int(self.parameters_dict['block_trial_max'])
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
-
-		self.target_prob_trial_num = int(self.parameters_dict['target_prob_over_num_trials'])
-		
-		target_prob_import = self.parameters_dict['target_prob_list']
-		target_prob_import = target_prob_import.split(',')
-		
-		self.target_prob_base = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_base']))
-		self.target_prob_sim = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_similarity']))
-		self.target_prob_flanker = round(self.target_prob_trial_num * float(self.parameters_dict['target_prob_flanker']))
-		
-		self.stimulus_family = self.parameters_dict['stimulus_family']
-
-		self.display_stimulus_outline = int(self.parameters_dict['display_stimulus_outline'])
-		self.mask_during_limhold = int(self.parameters_dict['mask_during_limhold'])
-		self.limhold_mask_type = self.parameters_dict['limhold_mask_type']
-
-		self.similarity_percentile_initial = float(self.parameters_dict['similarity_percentile_initial'])
-		self.similarity_percentile_range = float(self.parameters_dict['similarity_percentile_range'])
-
-		self.staircase_stimdur_frame_min = float(self.parameters_dict['staircase_stimdur_min_frames'])
-		staircase_stimdur_seconds_max = float(self.parameters_dict['staircase_stimdur_max_seconds'])
-		
-		
-		config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
-		config_file = configparser.ConfigParser()
-		config_file.read(config_path)
-		
-		self.hold_image = config_file['Hold']['hold_image']
-		self.mask_image = config_file['Mask']['mask_image']
-		
-		
-		# Create stage list and import stage parameters
-		
-		self.stage_list = list()
-		
-		if int(self.parameters_dict['training_task']) == 1:
-			self.stage_list.append('Training')
-		
-		if int(self.parameters_dict['limdur_scaling']) == 1:
-			self.stage_list.append('LimDur_Scaling')
-			
-		if int(self.parameters_dict['similarity_scaling']) == 1:
-			self.stage_list.append('Similarity_Scaling')
-			self.stimulus_family = 'Fb'
-		
-		else:
-			self.stimulus_family = self.parameters_dict['stimulus_family']
-		
-		if int(self.parameters_dict['noise_scaling']) == 1 \
-			and 'Similarity_Scaling' not in self.stage_list:
-			self.stage_list.append('Noise_Scaling')
-		
-		if int(self.parameters_dict['blur_scaling']) == 1 \
-			and 'Similarity_Scaling' not in self.stage_list:
-			self.stage_list.append('Blur_Scaling')
-		
-		if int(self.parameters_dict['noise_probe']) == 1:
-			self.stage_list.append('Noise_Probe')
-		
-		if int(self.parameters_dict['blur_probe']) == 1:
-			self.stage_list.append('Blur_Probe')
-		
-		if int(self.parameters_dict['stimdur_probe']) == 1:
-			self.stage_list.append('StimDur_Probe')
-		
-		if int(self.parameters_dict['flanker_probe']) == 1:
-			self.stage_list.append('Flanker_Probe')
-		
-		if int(self.parameters_dict['tarprob_probe']) == 1:
-			self.stage_list.append('TarProb_Probe')
-		
-		if int(self.parameters_dict['sart_probe']) == 1:
-			self.stage_list.append('SART_Probe')
-
-		
-		# Convert parameters to useable types
-
-		
+	def _setup_session_stages(self):
 		# General properties
-		
 		self.trial_list = list()
 		self.trial_list_base = list()
 
-		self.target_prob_list = [int(float(iProb) * self.target_prob_trial_num) for iProb in target_prob_import]
+		self.target_prob_list = [int(float(iProb) * self.target_prob_trial_num) for iProb in self.target_prob_import]
 		self.target_prob_list = self.constrained_shuffle(self.target_prob_list, max_run=3)
 
 		self.nontarget_prob_base = self.target_prob_trial_num - self.target_prob_base
@@ -628,9 +404,12 @@ class ProtocolScreen(ProtocolBase):
 			self.flanker_stage_list = self.constrained_shuffle(self.flanker_stage_list, max_run=3)
 			self.current_substage = ''
 			self.flanker_image = ''
-		
-		
+	
+	def _setup_image_widgets(self):
 		# Set images
+		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+
+		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
 
 		self.fribble_folder = pathlib.Path('Fribbles', self.stimulus_family)
 
@@ -713,7 +492,6 @@ class ProtocolScreen(ProtocolBase):
 
 		total_image_list = self.stimulus_image_path_list
 
-
 		# Staircasing - Noise Masks
 
 		self.noise_mask_index = 0
@@ -728,146 +506,7 @@ class ProtocolScreen(ProtocolBase):
 
 		total_image_list += self.noise_mask_paths
 
-		
-		# Load images
-
-		self.hold_image_path = str(self.image_folder / (self.hold_image + '.png'))
-		self.mask_image_path = str(self.image_folder / (self.mask_image + '.png'))
-		self.outline_mask_path = str(self.image_folder / 'whitecircle.png')
-
-		total_image_list += [self.hold_image_path, self.mask_image_path]
-		self.load_images(total_image_list)
-		
-		
-		# Define Language
-		
-		self.set_language(self.language)
-		self.stage_instructions = ''
-		
-		
-		# Define Variables - Boolean
-		
-		self.stage_screen_started = False
-		self.limhold_started = False
-		self.response_made = False
-		self.hold_active = False
-		self.stimulus_mask_on_screen = False
-		self.training_complete = False
-		
-		
-		# Define Variables - Count
-		
-		self.current_block = -1
-		self.current_block_trial = 0
-		self.current_hits = 0
-		self.block_max_count = self.block_multiplier
-		self.trial_outcome = 0 # 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Correct, no center touch,6-Incorrect, no center touch
-		self.contingency = 0
-		self.response = 0
-		self.stage_index = -1
-		self.trial_index = 0
-
-		self.target_probability = 1.0
-
-		self.block_target_total = 0
-		self.block_false_alarms = 0
-		self.block_hits = 0
-		
-		
-		# Define Variables - Staircasing
-		
-		self.last_response = 0
-		
-		self.response_tracking = list()
-		self.blur_tracking = list()
-		self.noise_tracking = list()
-		self.stimdur_frame_tracking = list()
-
-		self.similarity_tracking = list()
-
-		self.current_similarity = 0.0
-		
-		self.outcome_value = 0.0
-
-		self.noise_mask_index_change = 2
-
-		image_texture_for_size = Image(source=str(self.stimulus_image_path_list[0]))
-		self.image_texture_size = image_texture_for_size.texture_size
-
-		# print(self.image_texture_size)
-
-		self.blur_level = 0
-		self.blur_base = 0
-		self.blur_change = 30
-		
-		
-		# Define Variables - String
-		
-		self.center_image = self.mask_image
-		self.left_image = self.mask_image
-		self.right_image = self.mask_image
-		
-		self.current_stage = ''
-		self.current_substage = ''
-		self.outcome_string = ''
-		self.stage_string = ''
-		
-		
-		# Define Variables - Time
-		
-		self.stimulus_start_time = 0.0
-		self.response_latency = 0.0
-		self.stimulus_press_latency = 0.0
-		self.movement_latency = 0.0
-		self.frame_duration = 1/self.maxfps
-		self.stimdur_actual = 0.0
-		self.trial_end_time = 0.0
-
-		self.staircase_stimdur_frame_max = staircase_stimdur_seconds_max/self.frame_duration
-		
-		iti_temp = [float(iNum) for iNum in iti_temp]
-		self.iti_frame_range = sorted((np.array(iti_temp) // self.frame_duration).tolist(), reverse=True)
-		self.iti_frame_range = [int(iNum) for iNum in self.iti_frame_range]
-		self.iti_length = self.iti_frame_range[0] * self.frame_duration
-		
-		self.stimdur_import = [float(iNum) for iNum in self.stimdur_import]
-
-		stimdur_frame_steps = np.round(np.array(self.stimdur_import) / self.frame_duration)
-		
-		if 0 in stimdur_frame_steps:
-			stimdur_frame_steps += 1
-		
-
-		self.stimdur_frames = sorted(stimdur_frame_steps.tolist(), reverse=True)
-		self.stimdur_index = 0
-
-		self.stimdur_current_frames = self.stimdur_frames[self.stimdur_index]
-
-		self.stimdur = self.stimdur_current_frames * self.frame_duration
-
-		if self.staircase_stimdur_frame_min < 1:
-			self.staircase_stimdur_frame_min = 1
-		
-
-		self.stimdur_base = self.stimdur_current_frames
-		self.stimdur_change = self.stimdur_current_frames//2
-		
-		self.stimdur_use_steps = True
-
-		self.limhold = self.stimdur
-		self.limhold_base = self.limhold
-		
-		
-		# Define Session Event
-		
-		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_duration, interval=False)
-
-
-		# Define GUI Sizes and Pos
-
-		self.stimulus_image_proportion = 0.35
-		self.instruction_image_proportion = 0.25
-
+		# GUI Parameters
 		self.stimulus_image_size = ((self.stimulus_image_proportion * self.width_adjust), (self.stimulus_image_proportion * self.height_adjust))
 		self.instruction_image_size = ((self.instruction_image_proportion * self.width_adjust), (self.instruction_image_proportion * self.height_adjust))
 		self.stimulus_mask_size = (self.stimulus_image_size[0] * 1.2, self.stimulus_image_size[1] * 1.2)
@@ -882,9 +521,20 @@ class ProtocolScreen(ProtocolBase):
 		self.text_button_pos_UC = {"center_x": 0.50, "center_y": 0.92}
 		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
 		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
-		
-		
+
+		# Load images
+
+		self.hold_image_path = str(self.image_folder / (self.hold_image + '.png'))
+		self.mask_image_path = str(self.image_folder / (self.mask_image + '.png'))
+		self.outline_mask_path = str(self.image_folder / 'whitecircle.png')
+
+		total_image_list += [self.hold_image_path, self.mask_image_path]
+		self.load_images(total_image_list)
+
+		# Create ImageButton Widgets
 		# Define Widgets - Images
+
+		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		
 		self.hold_button.source = self.hold_image_path
 		self.hold_button.bind(on_press=self.iti_start)
@@ -957,32 +607,35 @@ class ProtocolScreen(ProtocolBase):
 		if any(True for stage in ['Blur_Scaling', 'Blur_Probe'] if stage in self.stage_list):
 			self.blur_widget = EffectWidget()
 			self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
-		
+	
+
+	def _setup_language_localization(self):		
+		self.set_language(self.language)
+		self.stage_instructions = ''
+
+	def _load_video_and_instruction_components(self):
 
 		# Instruction Import
 
-		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
 
 
-		if (lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_path = str(list((lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
+			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
-				, allow_stretch = True
-				, options = {'eos': 'stop'}
-				, state = 'stop'
 				)
+			self.tutorial_video.fit_mode = 'fill'
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
 
-		
 		# Define Instruction Components
 		
 		# Instruction - Dictionary
 		
-		self.instruction_path = str(lang_folder_path / 'Instructions.ini')
+		self.instruction_path = str(self.lang_folder_path / 'Instructions.ini')
 		
 		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
 		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
@@ -1006,7 +659,7 @@ class ProtocolScreen(ProtocolBase):
 			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
 
 
-		feedback_lang_path = str(lang_folder_path / 'Feedback.ini')
+		feedback_lang_path = str(self.lang_folder_path / 'Feedback.ini')
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
 		feedback_lang_config.read(feedback_lang_path, encoding="utf-8")
 
@@ -1024,11 +677,24 @@ class ProtocolScreen(ProtocolBase):
 			color_text = '[color=%s]' % stim_feedback_miss_color
 			stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
 		self.feedback_dict['miss'] = stim_feedback_miss_str
+
+		# Instruction - ImageButton
+		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
+		self.tutorial_outline = ImageButton(source=self.outline_mask_path)
+		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
+		self.tutorial_continue = Button(text='CONTINUE', font_size='48sp')
+		self.tutorial_continue.bind(on_press=self.tutorial_target_present_screen)
+		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
+		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
+		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
+		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
+		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 		
 		
 		# Instruction - Text Widget
-		
-		self.section_instr_string = self.instruction_label.text
+		self.section_instr_string = ''
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
 		self.section_instr_label.size_hint = {0.58, 0.7}
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.35}
@@ -1060,7 +726,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint = self.text_button_pos_UC
 		self.stage_continue_button.text = 'CONTINUE'
-		self.stage_continue_button.bind(on_press=self.block_check_event)
+		self.stage_continue_button.bind(on_press=self.block_contingency)
 		
 		self.session_end_button = Button(font_size='60sp')
 		self.session_end_button.size_hint = self.text_button_size
@@ -1072,16 +738,24 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 		
 		
-		# Begin Task
+	def load_parameters(self, parameters_dict):
+		self.parameters_dict = parameters_dict
+		self._load_config_parameters(self.parameters_dict)
+		self._load_task_variables()
+		self._load_staircase_variables()
+		self._setup_session_stages()
+		self._setup_image_widgets()
+		self._setup_language_localization()
+		self._load_video_and_instruction_components()
 
-		if (lang_folder_path / 'Tutorial_Video').is_dir() \
-			and (self.skip_tutorial_video == 0):
+		self.start_clock()
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
+			and not self.skip_tutorial_video:
 
 			self.protocol_floatlayout.clear_widgets()
 			self.present_tutorial_video()
 		
 		else:
-			
 			self.present_instructions()
 
 
@@ -1120,14 +794,12 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'play'
 		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 
-		self.tutorial_video_end_event = self.task_clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+		self.tutorial_video_end_event = Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
 		return
 
 
 	def present_tutorial_video_start_button(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 
 		self.protocol_floatlayout.add_widget(self.tutorial_continue)
 		self.protocol_floatlayout.add_widget(self.tutorial_restart)
@@ -1135,8 +807,6 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def tutorial_target_present_screen(self, *args):
-
-		self.tutorial_video_end_event.cancel()
 
 		self.tutorial_video.state = 'stop'
 
@@ -1157,7 +827,6 @@ class ProtocolScreen(ProtocolBase):
 		self.generate_output_files()
 		self.metadata_output_generation()
 
-		self.start_clock()
 		self.block_contingency()
 		return
 
@@ -1165,25 +834,20 @@ class ProtocolScreen(ProtocolBase):
 
 	def blur_preload_start(self, *args):
 
-		self.blur_preload_start_event.cancel()
-
 		self.img_stimulus_C.texture = self.image_dict[self.mask_image].image.texture
 
 		self.protocol_floatlayout.add_widget(self.blur_widget)
 		self.blur_widget.add_widget(self.img_stimulus_C)
 
-		self.blur_preload_end_event()
+		self.blur_preload_end()
 
 
 
 	def blur_preload_end(self, *args):
-
-		self.blur_preload_end_event.cancel()
-
 		self.protocol_floatlayout.remove_widget(self.blur_widget)
 		self.blur_widget.remove_widget(self.img_stimulus_C)
 
-		self.trial_contingency_event()
+		self.trial_contingency()
 
 
 
@@ -1194,6 +858,20 @@ class ProtocolScreen(ProtocolBase):
 			self.blur_widget.add_widget(self.img_stimulus_C)
 			self.protocol_floatlayout.add_widget(self.img_noise_C)
 			
+			self.protocol_floatlayout.add_object_event('Display', 'Mask', 'Noise', 'Center', self.noise_mask_value)
+		else:
+			
+			self.protocol_floatlayout.add_widget(self.img_stimulus_C)
+
+		self.stimulus_start_time = time.perf_counter()
+		
+		self.stimulus_on_screen = True
+
+		if 'Noise_Scaling' in self.stage_list \
+			or self.current_stage == 'Noise_Probe':
+
+			self.protocol_floatlayout.add_widget(self.img_noise_C)
+
 			self.protocol_floatlayout.add_object_event('Display', 'Mask', 'Noise', 'Center', self.noise_mask_value)
 		
 
@@ -1214,6 +892,8 @@ class ProtocolScreen(ProtocolBase):
 
 
 		Clock.schedule_once(self.stimulus_end, self.stimdur)
+
+		Clock.schedule_once(self.center_notpressed, self.limhold)
 
 
 
@@ -1248,7 +928,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.stimulus_mask_on_screen = True
 
-		self.stimdur_actual = time.time() - self.stimulus_start_time
+		self.stimdur_actual = time.perf_counter() - self.stimulus_start_time
 		
 		self.stimulus_on_screen = False
 		self.limhold_started = True
@@ -1258,25 +938,9 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Remove'
-				, 'Stimulus'
-				, 'Flanker'
-				, 'Left'
-				, 'Image Name'
-				, self.img_stimulus_L
-				])
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
 			
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Object Remove'
-				, 'Stimulus'
-				, 'Flanker'
-				, 'Right'
-				, 'Image Name'
-				, self.img_stimulus_R
-				])
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
 
 
 
@@ -1291,16 +955,13 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.unbind(on_release=self.premature_response)
 			self.hold_button.bind(on_release=self.stimulus_response)
 			
-			self.stimulus_present_event()
-
-			Clock.schedule_once(self.stimulus_end, self.stimdur)
-
-			Clock.schedule_once(self.center_notpressed, self.limhold)
+			self.stimulus_present()
 
 
 
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
 
+		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return None
 		
@@ -1324,22 +985,29 @@ class ProtocolScreen(ProtocolBase):
 		self.write_trial()
 
 		self.iti_active = False
-		
-		if (self.current_block == 0) \
-			or (self.current_stage == 'Training'):
 
-			self.feedback_label.text = self.feedback_dict['wait']
+		self.feedback_label.text = self.feedback_dict['wait']
 			
-			if not self.feedback_on_screen:
-				self.protocol_floatlayout.add_widget(self.feedback_label)
+		if not self.feedback_on_screen:
+			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-				self.feedback_start_time = time.time()
-				self.feedback_on_screen = True
+			self.feedback_start_time = time.perf_counter()
+			self.feedback_on_screen = True
 
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+		else:
+			Clock.unschedule(self.remove_feedback)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_press=self.premature_resolved)
+
+	def premature_resolved(self, *args):
+		Clock.unschedule(self.remove_feedback)
+		self.remove_feedback()
+		self.hold_button_pressed = True
+		self.hold_button.bind(on_release=self.premature_response)
+		self.iti_start()
+		return
 	
 	
 	
@@ -1348,7 +1016,7 @@ class ProtocolScreen(ProtocolBase):
 	def stimulus_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press
 										# Contingencies: 0: Incorrect; 1: Correct; 2: Response, no center touch; 3: Premature response
 
-		self.response_time = time.time()
+		self.response_time = time.perf_counter()
 		self.response_latency = self.response_time - self.stimulus_start_time
 		
 		self.response_made = True
@@ -1398,15 +1066,14 @@ class ProtocolScreen(ProtocolBase):
 	# Tracks contingencies based on responses direectly to the stimulus image
 	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Premature,6-Dual Image, wrong side
 		
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
-		self.stimdur_event.cancel()
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
 
 		self.hold_active = False
 
 		self.hold_button.unbind(on_press=self.response_cancelled)
 		
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.stimulus_press_latency = self.stimulus_press_time - self.stimulus_start_time
 		self.movement_latency = self.stimulus_press_latency - self.response_latency
 
@@ -1505,28 +1172,27 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-			self.feedback_start_time = time.time()
+			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 
 		self.write_trial()
 
+		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_release=self.premature_response)
+
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
 
-			self.blur_preload_start_event()
+			self.blur_preload_start()
 		
 		else:
-			self.trial_contingency_event()
+			self.trial_contingency()
 
 
 
 	def center_notpressed(self, *args):
-		
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
-		self.stimdur_event.cancel()
 
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
@@ -1626,7 +1292,7 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 
-			self.feedback_start_time = time.time()
+			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
@@ -1635,13 +1301,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.write_trial()
 
+		self.hold_button.bind(on_press=self.iti_start)
+		self.hold_button.bind(on_release=self.premature_response)
+
 		if 'Blur_Scaling' in self.stage_list \
 			or self.current_stage == 'Blur_Probe':
 
-			self.blur_preload_start_event()
+			self.blur_preload_start()
 		
 		else:
-			self.trial_contingency_event()
+			self.trial_contingency()
 	
 	
 	
@@ -1679,7 +1348,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_object_event('Remove', 'Button', 'Continue', 'Section')
 		
-		self.trial_end_time = time.time()
+		self.trial_end_time = time.perf_counter()
 		self.block_end()
 
 
@@ -1720,8 +1389,6 @@ class ProtocolScreen(ProtocolBase):
 		# Trial Contingencies: 0-Incorrect; 1-Correct; 2-Response, no center touch; 3-Premature
 		# Trial Outcomes: 0-Premature; 1-Hit; 2-Miss; 3-False Alarm; 4-Correct Rejection; 5-Hit, no center touch; 6-False Alarm, no center touch
 		try:
-
-			self.trial_contingency_event.cancel()
 			## ENCODE TRIAL OUTCOME AS last_response FOR EACH CONTINGENCY ##
 			# Check that current block trial is not the first trial of the block
 			if self.current_block_trial != 0:
@@ -1821,7 +1488,7 @@ class ProtocolScreen(ProtocolBase):
 						self.similarity_tracking.append(self.current_similarity)
 						# If tracking list is greater than or equal to 20 trials and block change on duration is not equal to 1
 						if len(self.similarity_tracking) >= 20 \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 							# If the length of similarity_tracking is equal to 0
 							if len(self.similarity_tracking) == 0:
 								# Take a float value of the similarity of the last nontarget image in the current nontarget image list
@@ -1839,7 +1506,7 @@ class ProtocolScreen(ProtocolBase):
 							if (sum(self.response_tracking[-10:]) <= 4) \
 								or ((sum(self.response_tracking[-10:] >= 6)) and (statistics.mean(self.similarity_tracking[-10:]) > 0.90)):
 						
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Type', 'Mode')	
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Mode')	
 								baseline_nontarget_image_list = self.similarity_data.loc[
 									(self.similarity_data[self.target_image] <= self.outcome_value)
 									, 'Nontarget'
@@ -1852,9 +1519,9 @@ class ProtocolScreen(ProtocolBase):
 								else:
 									self.current_nontarget_image_list = baseline_nontarget_image_list[-(self.similarity_index_range * 2):]
 								
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Baseline', 'Units', 'Min')
-								
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]),'Baseline', 'Min')
+
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Baseline', 'Max')
 								self.current_block += 1
 								self.protocol_floatlayout.remove_widget(self.hold_button)
 								self.stage_screen_start()
@@ -1868,9 +1535,9 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 							
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Staircasing', 'Units', 'Min')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]),'Staircasing','Min')
 						
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Staircasing', 'Max')
 
 					# Adjust Staircasing for Blur Scaling or Blur Probe
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
@@ -1879,7 +1546,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of the blur tracking list is greater than or equal to 20 and the difference between the maximum and minimum of the last 6 values in the blur tracking list is less than or equal to 2 and block change on duration is not equal to 1
 						if (len(self.blur_tracking) >= 20) \
 							and ((max(self.blur_tracking[-6:]) - min(self.blur_tracking[-6:])) <= 2) \
-							and (self.block_change_on_duration != 1):
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.blur_tracking)
 
@@ -1890,13 +1557,13 @@ class ProtocolScreen(ProtocolBase):
 							else:
 								self.outcome_value = int(block_outcome[0])
 
-							self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Type', 'Mode')
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Mode')
 
 							# If the current stage is Blur Scaling
 							if self.current_stage == 'Blur_Scaling':
 								self.blur_base = int(self.outcome_value * 0.9)
 
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Type', 'Baseline')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Baseline')
 
 							self.blur_tracking = list()
 							self.last_response = 0
@@ -1906,7 +1573,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.blur_level += self.blur_change
 
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Type', 'Staircasing')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Staircasing')
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
@@ -1917,7 +1584,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of noise_tracking is greater than 20 and the difference between the maximum and minimum of the last 6 values in the noise tracking list is less than or equal to 15 and block change on duration is not equal to 1
 						if len(self.noise_tracking) >= 20 \
 							and ((max(self.noise_tracking[-6:]) - min(self.noise_tracking[-6:])) <= 15) \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.noise_tracking) # Gets a vector of the most common values
 
@@ -1928,7 +1595,7 @@ class ProtocolScreen(ProtocolBase):
 							else:
 								self.outcome_value = float(block_outcome[0])
 
-							self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Mode')
 							
 							# If the current stage is Noise Scaling
 							if self.current_stage == 'Noise_Scaling':
@@ -1938,7 +1605,7 @@ class ProtocolScreen(ProtocolBase):
 								if self.noise_base < 0:
 									self.noise_base = 0
 								
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_base, 'Type', 'Baseline')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_base,'Baseline')
 
 							self.noise_mask_index = round(self.noise_base/5) - 1
 
@@ -1964,7 +1631,7 @@ class ProtocolScreen(ProtocolBase):
 							self.img_noise_C_path = str(self.noise_mask_paths[self.noise_mask_index])
 							self.noise_mask_value = self.noise_mask_list[self.noise_mask_index]
 
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Type', 'Staircasing')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Staircasing')
 
 						self.img_noise_C.texture = self.image_dict[self.noise_mask_value].image.texture
 
@@ -1975,7 +1642,7 @@ class ProtocolScreen(ProtocolBase):
 						# If the length of stimdur_frame_tracking is greater than 20 and the difference between the maximum and minimum of the last 10 values in the stimdur_frame_tracking list is less than or equal to 12 and block change on duration is not equal to 1
 						if (len(self.stimdur_frame_tracking) > 20) \
 							and ((max(self.stimdur_frame_tracking[-10:]) - min(self.stimdur_frame_tracking[-10:])) <= 12) \
-							and self.block_change_on_duration != 1:
+							and not self.block_change_on_duration:
 
 							block_outcome = statistics.multimode(self.stimdur_frame_tracking)
 
@@ -2006,21 +1673,21 @@ class ProtocolScreen(ProtocolBase):
 
 								self.limhold = self.limhold_base
 								
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Mode', 'Frames')
 
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Mode', 'Seconds')
 
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration), 'Mode', 'Seconds')
 
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Type', 'Baseline', 'Units', 'Frames')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Baseline', 'Frames')
 
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Type', 'Baseline', 'Units', 'Seconds')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Baseline', 'Seconds')
 
-								self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Type', 'Baseline', 'Units', 'Seconds')
+								self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Baseline', 'Seconds')
 
 							else:
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
-								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Mode', 'Frames')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Mode', 'Seconds')
 
 							self.stimdur_frame_tracking = list()
 							
@@ -2071,13 +1738,13 @@ class ProtocolScreen(ProtocolBase):
 						if self.stimdur_current_frames < self.staircase_stimdur_frame_min:
 							self.stimdur_current_frames = self.staircase_stimdur_frame_min
 						
-						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Staircasing', 'Units', 'Frames')
-						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Staircasing', 'Units', 'Seconds')
+						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Staircasing', 'Frames')
+						self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Staircasing', 'Seconds')
 
 						if self.current_stage == 'LimDur_Scaling':
 							self.limhold = self.stimdur_current_frames * self.frame_duration
-							
-							self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', self.limhold, 'Type', 'Staircasing', 'Units', 'Seconds')
+
+							self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', self.limhold, 'Staircasing', 'Seconds')
 				
 				# If current/last_response was equal to -1
 				## CONDUCT STAIRCASE ADJUSTMENTS FOR NEGATIVE OUTCOME ##
@@ -2102,9 +1769,9 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 							
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Staircasing', 'Units', 'Min')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]),'Staircasing','Min')
 
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Staircasing', 'Units', 'Max')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]),'Staircasing', 'Max')
 
 					# Adjust Staircasing for Blur Scaling or Blur Probe
 					elif self.current_stage in ['Blur_Scaling', 'Blur_Probe']:
@@ -2126,7 +1793,7 @@ class ProtocolScreen(ProtocolBase):
 						if self.blur_level < 0:
 							self.blur_level = 0
 
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Type', 'Staircasing')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_level, 'Staircasing')
 
 						self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
 
@@ -2153,7 +1820,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.img_noise_C.texture = self.image_dict[self.noise_mask_value].image.texture
 						
-						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Type', 'Staircasing')
+						self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', self.noise_mask_value, 'Staircasing')
 					
 					# Adjust Staircasing for Limited Duration Scaling or Stimulus Duration Probe
 					elif self.current_stage in ['LimDur_Scaling', 'StimDur_Probe']:
@@ -2212,7 +1879,7 @@ class ProtocolScreen(ProtocolBase):
 				else:
 					self.iti_length = random.randint(min(self.iti_frame_range), max(self.iti_frame_range)) * self.frame_duration
 				
-				self.protocol_floatlayout.add_variable_event('Parameter', 'Current ITI', self.iti_length, 'Units', 'Seconds')
+				self.protocol_floatlayout.add_variable_event('Parameter', 'Current ITI', self.iti_length, 'Seconds')
 
 			# Stimulus duration/limited hold frames
 			# If first block of training, set stimdur to base value
@@ -2238,12 +1905,12 @@ class ProtocolScreen(ProtocolBase):
 			if (self.contingency == 0) \
 				and (self.response == 0) \
 				and (self.current_stage == 'SART_Probe'):
-				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','SART Correction')
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'SART Correction')
 			
 			# Premature response
 			elif self.contingency == 3:
-				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','Premature')
-			
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Premature')
+
 			# Hit or miss
 			else: # Set next stimulus image
 				self.trial_index += 1
@@ -2275,8 +1942,8 @@ class ProtocolScreen(ProtocolBase):
 				self.img_stimulus_C_image_path = str(self.image_folder / self.center_image) + '.png'
 				self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
 
-				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Type','Novel')
-			
+				self.protocol_floatlayout.add_variable_event('Parameter','Stimulus', self.center_image,'Novel')
+
 			# Flanker probe - set flankers
 
 			if self.current_stage == 'Flanker_Probe':
@@ -2292,12 +1959,12 @@ class ProtocolScreen(ProtocolBase):
 				if self.current_substage == 'none':
 					self.flanker_image = 'black'
 					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Blank')
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Blank')
 
 				elif self.current_substage == 'same':
 					self.flanker_image = self.center_image
 					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Congruent')
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Congruent')
 				
 				elif self.current_substage == 'diff':
 					
@@ -2306,9 +1973,9 @@ class ProtocolScreen(ProtocolBase):
 					
 					else:
 						self.flanker_image = self.target_image
-					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Type', 'Incongruent')
-				
+
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Flanker', self.flanker_image, 'Incongruent')
+
 				self.img_stimulus_L.texture = self.image_dict[self.flanker_image].image.texture
 				self.img_stimulus_R.texture = self.image_dict[self.flanker_image].image.texture			
 			
@@ -2323,11 +1990,7 @@ class ProtocolScreen(ProtocolBase):
 			if (self.current_stage == 'Training') \
 				and (sum(self.response_tracking) >= self.training_block_max_correct):
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'Block End'
-					])
+				self.protocol_floatlayout.add_stage_event('Block End')
 				
 				self.hold_button.unbind(on_release=self.stimulus_response)
 				self.contingency = 0
@@ -2337,16 +2000,12 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.remove_widget(self.hold_button)
 				
-				self.block_check_event()
+				self.block_contingency()
 			
 			elif (self.current_trial > self.session_trial_max) \
-				or ((time.time() - self.start_time) >= self.session_length_max):
+				or ((time.perf_counter() - self.start_time) >= self.session_length_max):
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'Session End'
-					])
+				self.protocol_floatlayout.add_stage_event('Session End')
 
 				self.hold_button.unbind(on_release=self.stimulus_response)
 				self.session_event.cancel()
@@ -2355,13 +2014,9 @@ class ProtocolScreen(ProtocolBase):
 			# Over block length/duration?
 			
 			elif (self.current_block_trial > self.block_trial_max) \
-				or ((time.time() - self.block_start) >= self.block_duration):
+				or ((time.perf_counter() - self.block_start) >= self.block_duration):
 
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'Block End'
-					])
+				self.protocol_floatlayout.add_stage_event('Block End')
 				
 				self.hold_button.unbind(on_release=self.stimulus_response)
 				self.contingency = 0
@@ -2381,7 +2036,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = max(self.similarity_tracking)
 
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Type', 'Mode')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Similarity', self.outcome_value, 'Mode')
 
 					baseline_nontarget_image_list = self.similarity_data.loc[
 						(self.similarity_data[self.target_image] <= self.outcome_value)
@@ -2390,9 +2045,9 @@ class ProtocolScreen(ProtocolBase):
 					
 					self.current_nontarget_image_list = baseline_nontarget_image_list[-self.similarity_index_range:]
 					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Type', 'Baseline', 'Units', 'Min')
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[0])]), 'Baseline', 'Min')
 					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Type', 'Baseline', 'Units', 'Max')
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]), 'Baseline', 'Max')
 
 					self.similarity_tracking = list()
 
@@ -2408,11 +2063,11 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Type', 'Mode')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Blur', self.outcome_value, 'Mode')
 
 					self.blur_base = int(self.outcome_value * 0.9)
-					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Type', 'Baseline')
+
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Blur', self.blur_base, 'Baseline')
 
 					self.blur_tracking = list()
 
@@ -2428,7 +2083,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 					
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Mode')
 
 					self.noise_base = int(self.outcome_value - 10)
 
@@ -2440,7 +2095,7 @@ class ProtocolScreen(ProtocolBase):
 					if self.noise_mask_index < 0:
 						self.noise_mask_index = 0
 					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', str(self.noise_base), 'Type', 'Baseline')
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Noise', str(self.noise_base), 'Baseline')
 
 					self.noise_tracking = list()
 
@@ -2464,18 +2119,18 @@ class ProtocolScreen(ProtocolBase):
 					self.limhold_base = self.stimdur_base * self.frame_duration
 					self.limhold = self.limhold_base
 					
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value,'Mode', 'Frames')
 					
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Mode', 'Seconds')
 					
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
-					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Type', 'Baseline', 'Units', 'Frames')
-					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Type', 'Baseline', 'Units', 'Seconds')
-					
-					self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Type', 'Baseline', 'Units', 'Seconds')
-					
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.outcome_value * self.frame_duration),'Mode', 'Seconds')
+
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_base, 'Baseline', 'Frames')
+
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_base * self.frame_duration), 'Baseline', 'Seconds')
+
+					self.protocol_floatlayout.add_variable_event('Parameter', 'Limited Hold', self.limhold, 'Baseline', 'Seconds')
+
 					self.stimdur_frame_tracking = list()
 
 				elif self.current_stage == 'Noise_Probe':
@@ -2490,7 +2145,7 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = float(block_outcome[0])
 					
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Type', 'Mode')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Noise', self.outcome_value, 'Mode')
 					
 					self.noise_tracking = list()
 
@@ -2509,28 +2164,28 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.outcome_value = int(block_outcome[0])
 
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Type', 'Mode', 'Units', 'Frames')
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Mode', 'Frames')
 
-					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Type', 'Mode', 'Units', 'Seconds')
-					
+					self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Mode', 'Seconds')
+
 					self.stimdur_frame_tracking = list()
 				
 				self.protocol_floatlayout.remove_widget(self.hold_button)
 				
 				if self.current_stage == 'Training':
 					self.block_contingency()
+					return
 
 				else:
 					self.current_block += 1
-					self.stage_screen()
+					self.start_stage_screen()
+					return
 
 			# print('Trial contingency end')
 
-			self.hold_button.bind(on_press=self.iti_start)
-
-			self.trial_end_time = time.time()
+			self.trial_end_time = time.perf_counter()
 			
-			if self.hold_active == True:
+			if self.hold_button_pressed == True:
 				self.iti_start()
 		
 		
@@ -2540,20 +2195,17 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_end()
 		
 		except:
-			
-			print('Error; program terminated.')
+
+			print('Error; program terminated by Trial Contingency.')
 			self.protocol_end()
 
 	def start_stage_screen(self, *args):
-		self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Stage Change'
-				, 'Stage End'
-				])
+		self.protocol_floatlayout.add_stage_event('Stage End')
 
-		self.stimdur_event.cancel()
-		self.stimulus_present_event.cancel()
-		self.stimulus_end_event.cancel()
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
+		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.remove_feedback)
 
 		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
@@ -2599,7 +2251,7 @@ class ProtocolScreen(ProtocolBase):
 			
 		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
-		self.stage_screen_time = time.time()
+		self.stage_screen_time = time.perf_counter()
 		self.stage_screen_started = True
 		self.block_started = True
 
@@ -2618,38 +2270,15 @@ class ProtocolScreen(ProtocolBase):
 	def block_contingency(self, *args):
 		
 		try:
-			
-			self.stimulus_present_event.cancel() ##
-			self.stimulus_end_event.cancel() ##
-			self.stimdur_event.cancel() ##
-			
-			if self.feedback_on_screen: ## REPLACE WITH FEEDBACK REMOVAL EVENT
-				
-				if (time.time() - self.feedback_start_time) >= self.feedback_length:
-					self.block_check_event.cancel()
-					self.protocol_floatlayout.remove_widget(self.feedback_label)
-					self.feedback_label.text = ''
-					self.feedback_on_screen = False
-
-				else:
-					return
-				
-			else:
-				self.block_check_event.cancel()
+			Clock.unschedule(self.stimulus_end)
+			Clock.unschedule(self.center_notpressed)
+			Clock.unschedule(self.iti_end)
 		
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Stage Change'
-				, 'Block Contingency'
-				])
+			self.protocol_floatlayout.add_stage_event('Block Contingency')
 
 			self.protocol_floatlayout.clear_widgets()
 		
-			self.protocol_floatlayout.add_event([
-				(time.time() - self.start_time)
-				, 'Stage Change'
-				, 'Screen Cleared'
-				])
+			self.protocol_floatlayout.add_stage_event('Screen Cleared')
 
 			self.previous_stage = self.current_stage
 
@@ -2664,20 +2293,13 @@ class ProtocolScreen(ProtocolBase):
 				self.current_block = 1
 	
 				if self.stage_index >= len(self.stage_list): # Check if all stages complete
-					self.session_event.cancel()
 					self.protocol_end()
 
 				else:
 					self.current_stage = self.stage_list[self.stage_index]
 					self.current_substage = ''
 			
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'Stage Change'
-					, 'Current Stage'
-					, self.current_stage
-					])
+				self.protocol_floatlayout.add_stage_event(self.current_stage)
 				
 				self.trial_list = ['Target']
 
@@ -2695,18 +2317,13 @@ class ProtocolScreen(ProtocolBase):
 			
 			if self.stage_index >= len(self.stage_list): # Check if all stages complete again
 			
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Stage Change'
-					, 'Protocol End'
-					])
-				self.session_event.cancel()
+				self.protocol_floatlayout.add_stage_event('Protocol End')
 				self.protocol_end()
 			
 
 			# If current stage is training and tutorial video has not been skipped and training not yet complete
 			if (self.current_stage == 'Training') \
-				and (self.skip_tutorial_video == 0) \
+				and not self.skip_tutorial_video \
 				and not self.training_complete:
 
 				self.trial_list = ['Target']
@@ -2716,7 +2333,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
-				self.block_start = time.time()
+				self.block_start = time.perf_counter()
 				self.block_started = False
 				self.training_complete = True
 
@@ -2724,11 +2341,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_widget(self.hold_button)
 				
-				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time)
-					, 'Button Displayed'
-					, 'Hold Button'
-					])
+				self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 
 			# If current block is 0 (instructions for block 1)
 			elif self.current_block == 0:
@@ -2746,7 +2359,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
 				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time),
+					(time.perf_counter() - self.start_time),
 					'Object Attribute',
 					'Text',
 					'Block',
@@ -2757,7 +2370,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions')
 				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time),
+					(time.perf_counter() - self.start_time),
 					'Object Attribute',
 					'Button',
 					'Block',
@@ -2820,7 +2433,7 @@ class ProtocolScreen(ProtocolBase):
 					for iTrial in range((self.target_prob_trial_num - self.target_prob_list[self.target_prob_list_index])):
 						self.trial_list.append('Nontarget')
 
-					random.shuffle(self.trial_list)
+					self.trial_list = self.constrained_shuffle(self.trial_list)
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'SART_Probe':
@@ -2848,7 +2461,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
 				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time),
+					(time.perf_counter() - self.start_time),
 					'Object Attribute',
 					'Text',
 					'Block',
@@ -2859,7 +2472,7 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions')
 				self.protocol_floatlayout.add_event([
-					(time.time() - self.start_time),
+					(time.perf_counter() - self.start_time),
 					'Object Attribute',
 					'Button',
 					'Block',
@@ -2887,18 +2500,17 @@ class ProtocolScreen(ProtocolBase):
 					for iTrial in range((self.target_prob_trial_num - self.target_prob_list[self.target_prob_list_index])):
 						self.trial_list.append('Nontarget')
 
-					random.shuffle(self.trial_list)
+					self.trial_list = self.constrained_shuffle(self.trial_list)
 
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				self.block_started = False
-				self.block_event()
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames), 'Type', 'Staircasing', 'Units', 'Frames')
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames),'Staircasing', 'Frames')
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames * self.frame_duration), 'Type', 'Staircasing', 'Units', 'Seconds')
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_current_frames * self.frame_duration), 'Staircasing', 'Seconds')
 
-			self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.limhold), 'Type', 'Staircasing', 'Units', 'Seconds')
+			self.protocol_floatlayout.add_variable_event('Outcome', 'Limited Hold', str(self.limhold), 'Staircasing', 'Seconds')
 
 			self.current_hits = 0
 			self.last_response = 0
@@ -2912,19 +2524,19 @@ class ProtocolScreen(ProtocolBase):
 
 			self.response_tracking = list()
 			
-			random.shuffle(self.trial_list)
+			self.trial_list = self.constrained_shuffle(self.trial_list)
 
-			self.block_start = time.time()
+			self.block_start = time.perf_counter()
 			
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Block Start Time', str(self.block_start))
 
 			if 'Blur_Scaling' in self.stage_list \
 				or self.current_stage == 'Blur_Probe':
 
-				self.blur_preload_start_event()
+				self.blur_preload_start()
 			
 			else:
-				self.trial_contingency_event()
+				self.trial_contingency()
 		
 
 		except KeyboardInterrupt:
@@ -2934,5 +2546,5 @@ class ProtocolScreen(ProtocolBase):
 		
 		except:
 			
-			print('Error; program terminated.')
+			print('Error; program terminated from Block Contingency.')
 			self.protocol_end()
