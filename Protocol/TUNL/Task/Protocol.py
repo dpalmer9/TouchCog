@@ -374,7 +374,6 @@ class ProtocolScreen(ProtocolBase):
 		else:
 			self.delay_video_path = self.delay_video_path_list[0]
 
-		#self.delay_video_path = 'C:\\Users\\MOUSETRAP-DAN\\Documents\\TouchCog\\TouchCog\\Protocol\\TUNL\\Language\\English\\Tutorial_Video\\2025-07-25 TUNL Instruction Video 1.5-1080p.mp4'
 		self.delay_video = Video(source = str(self.delay_video_path), options = {'eos': 'loop'})
 		self.delay_video.fit_mode = 'fill'
 		self.delay_video.state = 'stop'
