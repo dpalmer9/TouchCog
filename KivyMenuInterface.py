@@ -194,6 +194,8 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.widget import Widget
 from kivy.uix.checkbox import CheckBox
+from kivy.uix.scrollview import ScrollView
+from kivy.graphics import Color, Line
 
 
 
@@ -382,74 +384,241 @@ class ProtocolBattery(Screen):
 		self.name = 'protocolbattery'
 
 		self.protocol_list = search_protocols()
+		self.available_protocols = self.protocol_list.copy()
+		self.selected_protocols = []
 
-		# Build tight horizontal rows: each row is a BoxLayout with checkbox directly to the left of the label
 		if len(self.protocol_list) == 0:
 			no_label = Label(text='No protocols found', size_hint=(0.8, 0.1), pos_hint={'x':0.1,'y':0.45})
 			self.protocol_battery_layout.add_widget(no_label)
 		else:
-			# single column grid where each child is a horizontal row (BoxLayout)
-			# center the grid and make it occupy ~50% of vertical space
-			self._protocol_grid = GridLayout(cols=1, spacing=10, padding=[10,10,10,10], size_hint=(0.8, 0.5), pos_hint={'x':0.1, 'y':0.25})
-			self.protocol_checkboxes = {}
+			# Title labels
+			available_title = Label(text='Available Protocols', size_hint=(0.35, 0.05), pos_hint={'x':0.05, 'y':0.85}, font_size='20sp', bold=True)
+			self.protocol_battery_layout.add_widget(available_title)
+			
+			selected_title = Label(text='Selected Protocols (in order)', size_hint=(0.35, 0.05), pos_hint={'x':0.6, 'y':0.85}, font_size='20sp', bold=True)
+			self.protocol_battery_layout.add_widget(selected_title)
 
-			for protocol in self.protocol_list:
-				# each row is tighter horizontally but taller to accommodate larger checkbox and font
-				row = BoxLayout(orientation='horizontal', spacing=8, size_hint_y=None, height=64)
-				cb = CheckBox(size_hint=(None, None), size=(48, 48))
-				# larger label font and vertically centered
-				lbl = Label(text=protocol, valign='middle', halign='left', size_hint_x=1, font_size='28sp')
-				# ensure label text is constrained to the widget bounds for proper alignment
-				lbl.bind(size=lambda instance, value: setattr(instance, 'text_size', (instance.width, instance.height)))
-				self.protocol_checkboxes[protocol] = cb
-				row.add_widget(cb)
-				row.add_widget(lbl)
-				self._protocol_grid.add_widget(row)
+			# Create bordered containers for the lists
+			# Left box container with border
+			available_container = FloatLayout(size_hint=(0.35, 0.6), pos_hint={'x':0.05, 'y':0.2})
+			with available_container.canvas.before:
+				Color(0.5, 0.5, 0.5, 1)  # Gray border
+				self.available_border = Line(rectangle=(0, 0, 1, 1), width=2)
+			available_container.bind(pos=self.update_available_border, size=self.update_available_border)
+			
+			# ScrollView for available protocols
+			available_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x':0, 'y':0})
+			self.available_grid = GridLayout(cols=1, spacing=5, padding=[5,5,5,5], size_hint_y=None)
+			self.available_grid.bind(minimum_height=self.available_grid.setter('height'))
+			available_scroll.add_widget(self.available_grid)
+			available_container.add_widget(available_scroll)
+			self.protocol_battery_layout.add_widget(available_container)
+			
+			# Right box container with border
+			selected_container = FloatLayout(size_hint=(0.35, 0.6), pos_hint={'x':0.6, 'y':0.2})
+			with selected_container.canvas.before:
+				Color(0.5, 0.5, 0.5, 1)  # Gray border
+				self.selected_border = Line(rectangle=(0, 0, 1, 1), width=2)
+			selected_container.bind(pos=self.update_selected_border, size=self.update_selected_border)
+			
+			# ScrollView for selected protocols
+			selected_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x':0, 'y':0})
+			self.selected_grid = GridLayout(cols=1, spacing=5, padding=[5,5,5,5], size_hint_y=None)
+			self.selected_grid.bind(minimum_height=self.selected_grid.setter('height'))
+			selected_scroll.add_widget(self.selected_grid)
+			selected_container.add_widget(selected_scroll)
+			self.protocol_battery_layout.add_widget(selected_container)
 
-			self.protocol_battery_layout.add_widget(self._protocol_grid)
+			# Control buttons in the middle
+			move_right_button = Button(text='Add >>', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.6}, font_size='18sp')
+			move_right_button.bind(on_press=self.move_to_selected)
+			self.protocol_battery_layout.add_widget(move_right_button)
+
+			move_left_button = Button(text='<< Remove', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.5}, font_size='18sp')
+			move_left_button.bind(on_press=self.move_to_available)
+			self.protocol_battery_layout.add_widget(move_left_button)
+
+			move_up_button = Button(text='Move Up', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.4}, font_size='18sp')
+			move_up_button.bind(on_press=self.move_up)
+			self.protocol_battery_layout.add_widget(move_up_button)
+
+			move_down_button = Button(text='Move Down', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.3}, font_size='18sp')
+			move_down_button.bind(on_press=self.move_down)
+			self.protocol_battery_layout.add_widget(move_down_button)
+
+			# Bottom buttons
+			battery_start_button = Button(text='Start Battery')
+			battery_start_button.size_hint = (0.2, 0.1)
+			battery_start_button.pos_hint = {'x': 0.25, 'y': 0.05}
+			battery_start_button.bind(on_press=self.start_battery)
+			self.protocol_battery_layout.add_widget(battery_start_button)
+		
+			cancel_button = Button(text='Cancel')
+			cancel_button.size_hint = (0.2, 0.1)
+			cancel_button.pos_hint = {'x': 0.55, 'y': 0.05}
+			cancel_button.bind(on_press=self.cancel_battery)
+			self.protocol_battery_layout.add_widget(cancel_button)
+
+			# Track selected items (now using sets for multi-select)
+			self.selected_available_items = set()
+			self.selected_selected_items = set()
+		
+			# Keep track of button widgets for color management
+			self.available_buttons = {}
+			self.selected_buttons = {}
+
+			# Populate available protocols
+			self.refresh_lists()
 
 		self.add_widget(self.protocol_battery_layout)
 
+	def update_available_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.available_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+	
+	def update_selected_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.selected_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+
+	def refresh_lists(self):
+		"""Refresh both protocol lists"""
+		self.available_grid.clear_widgets()
+		self.selected_grid.clear_widgets()
+		self.available_buttons.clear()
+		self.selected_buttons.clear()
 		
-		battery_start_button = Button(text='Start Battery')
-		battery_start_button.size_hint = (0.2, 0.1)
-		battery_start_button.pos_hint = {'x': 0.25, 'y': 0.1}
-		battery_start_button.bind(on_press=self.start_battery)
-		self.protocol_battery_layout.add_widget(battery_start_button)
-		cancel_button = Button(text='Cancel')
-		cancel_button.size_hint = (0.2, 0.1)
-		cancel_button.pos_hint = {'x': 0.5, 'y': 0.1}
-		cancel_button.bind(on_press=self.cancel_battery)
-		self.protocol_battery_layout.add_widget(cancel_button)
+		# Populate available protocols list
+		for protocol in self.available_protocols:
+			btn = Button(text=protocol, size_hint_y=None, height=50, font_size='18sp')
+			btn.bind(on_press=partial(self.toggle_available_item, protocol))
+			self.available_buttons[protocol] = btn
+			
+			# Restore highlighting if previously selected
+			if protocol in self.selected_available_items:
+				btn.background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+			
+			self.available_grid.add_widget(btn)
+		
+		# Populate selected protocols list
+		for protocol in self.selected_protocols:
+			btn = Button(text=protocol, size_hint_y=None, height=50, font_size='18sp')
+			btn.bind(on_press=partial(self.toggle_selected_item, protocol))
+			self.selected_buttons[protocol] = btn
+			
+			# Restore highlighting if previously selected
+			if protocol in self.selected_selected_items:
+				btn.background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+			
+			self.selected_grid.add_widget(btn)
+
+	def toggle_available_item(self, protocol, *args):
+		"""Toggle selection of an item in the available list"""
+		if protocol in self.selected_available_items:
+			self.selected_available_items.remove(protocol)
+			if protocol in self.available_buttons:
+				self.available_buttons[protocol].background_color = (1, 1, 1, 1)  # Default color
+		else:
+			self.selected_available_items.add(protocol)
+			if protocol in self.available_buttons:
+				self.available_buttons[protocol].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+		
+		# Clear selections in the other list
+		self.selected_selected_items.clear()
+		for btn in self.selected_buttons.values():
+			btn.background_color = (1, 1, 1, 1)
+
+	def toggle_selected_item(self, protocol, *args):
+		"""Toggle selection of an item in the selected list"""
+		if protocol in self.selected_selected_items:
+			self.selected_selected_items.remove(protocol)
+			if protocol in self.selected_buttons:
+				self.selected_buttons[protocol].background_color = (1, 1, 1, 1)  # Default color
+		else:
+			self.selected_selected_items.add(protocol)
+			if protocol in self.selected_buttons:
+				self.selected_buttons[protocol].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+		
+		# Clear selections in the other list
+		self.selected_available_items.clear()
+		for btn in self.available_buttons.values():
+			btn.background_color = (1, 1, 1, 1)
+
+	def move_to_selected(self, *args):
+		"""Move selected protocols from available to selected list"""
+		if self.selected_available_items:
+			# Convert to list and sort to maintain consistent order
+			items_to_move = sorted(list(self.selected_available_items))
+			for protocol in items_to_move:
+				if protocol in self.available_protocols:
+					self.available_protocols.remove(protocol)
+					self.selected_protocols.append(protocol)
+			
+			self.selected_available_items.clear()
+			self.refresh_lists()
+
+	def move_to_available(self, *args):
+		"""Move selected protocols from selected to available list"""
+		if self.selected_selected_items:
+			# Convert to list to process
+			items_to_move = list(self.selected_selected_items)
+			for protocol in items_to_move:
+				if protocol in self.selected_protocols:
+					self.selected_protocols.remove(protocol)
+					self.available_protocols.append(protocol)
+			
+			self.selected_selected_items.clear()
+			self.refresh_lists()
+
+	def move_up(self, *args):
+		"""Move selected protocols up in the selected list"""
+		if not self.selected_selected_items:
+			return
+		
+		# Get indices of selected items, sorted
+		indices = sorted([self.selected_protocols.index(p) for p in self.selected_selected_items if p in self.selected_protocols])
+		
+		# Move each selected item up, starting from the top
+		for idx in indices:
+			if idx > 0 and self.selected_protocols[idx-1] not in self.selected_selected_items:
+				# Swap with the item above
+				self.selected_protocols[idx], self.selected_protocols[idx-1] = \
+					self.selected_protocols[idx-1], self.selected_protocols[idx]
+		
+		self.refresh_lists()
+
+	def move_down(self, *args):
+		"""Move selected protocols down in the selected list"""
+		if not self.selected_selected_items:
+			return
+		
+		# Get indices of selected items, sorted in reverse
+		indices = sorted([self.selected_protocols.index(p) for p in self.selected_selected_items if p in self.selected_protocols], reverse=True)
+		
+		# Move each selected item down, starting from the bottom
+		for idx in indices:
+			if idx < len(self.selected_protocols) - 1 and self.selected_protocols[idx+1] not in self.selected_selected_items:
+				# Swap with the item below
+				self.selected_protocols[idx], self.selected_protocols[idx+1] = \
+					self.selected_protocols[idx+1], self.selected_protocols[idx]
+		
+		self.refresh_lists()
 
 	def cancel_battery(self, *args):
-
 		self.manager.current = 'mainmenu'
 
 	def start_battery(self, *args):
-		# gather selected protocols from the checkbox widgets
-		selected = []
-		if hasattr(self, 'protocol_checkboxes') and isinstance(self.protocol_checkboxes, dict):
-			for name, cb in self.protocol_checkboxes.items():
-				# Kivy CheckBox uses the 'active' attribute
-				try:
-					if getattr(cb, 'active', False):
-						selected.append(name)
-				except Exception:
-					# ignore widgets that don't expose active
-					continue
+		"""Start battery with protocols in the order they appear in selected list"""
+		# Use the selected_protocols list which maintains order
+		self.app.battery_protocols = self.selected_protocols.copy()
+		self.app.battery_active = len(self.selected_protocols) > 0
 
-		# store on the running app instance
-		self.app.battery_protocols = selected
-		# set battery_active True if any were selected, otherwise False
-		self.app.battery_active = len(selected) > 0
-
-		for battery in self.app.battery_protocols:
+		if self.app.battery_active:
+			# Start the configuration process for the first protocol
 			self.app.start_next_battery_config()
+		else:
+			# No protocols selected, return to main menu
+			self.manager.current = 'mainmenu'
 
-		# Optional: you may want to proceed to main menu or start the selected protocols here
-		return
-	
 	def start_battery_task(self, *args):
 		return
 
