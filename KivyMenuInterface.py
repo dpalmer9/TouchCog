@@ -116,7 +116,7 @@ def get_refresh_rate():
 
 app_root = get_base_path()
 
-config_path = app_root / 'Screen.ini'
+config_path = app_root / 'Config.ini'
 
 config_file = configparser.ConfigParser()
 config_file.read(config_path)
@@ -859,7 +859,9 @@ class MenuApp(App):
 		self.battery_configs = {}
 
 		self.s_manager = ScreenManager()
-		self.language = 'English'
+		self.config = configparser.ConfigParser()
+		self.config.read('Config.ini')
+		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
 		self.s_manager.add_widget(self.language_menu)
 		
