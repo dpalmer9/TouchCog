@@ -483,6 +483,7 @@ class ProtocolBase(Screen):
 		# Define App
 		
 		self.app = App.get_running_app()
+		self.language = self.app.language
 
 		# Folder
 

@@ -1,0 +1,277 @@
+{
+	"application_name" : "TouchCog",
+	"current_version" : "2.0.0",
+	"languages" : [
+	{
+		"English" : [
+		{
+			"Videos" : [
+			{
+				"name" : "2025-07-23 CPT Instruction Video 1.4-1080p.mp4",
+				"task" : "CPT",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/Tutorial_Video/"
+			},
+			{
+				"name" : "2025-07-25 PAL [Part 1] Instruction Video 1.1-1080p.mp4",
+				"task" : "PAL",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/Tutorial_Video/"
+			},
+			{
+				"name" : "2025-07-25 PAL [Part 2] Instruction Video 1.2-1080p.mp4",
+				"task" : "PAL",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/Tutorial_Video/"
+			},
+			{
+				"name" : "2025-06-16 PR Instruction Video 1.1-1080p.mp4",
+				"task" : "PR",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/Tutorial_Video/"
+			},
+			{
+				"name" : "2025-06-16 PRL Instruction Video 1.0-1080p.mp4",
+				"task" : "PRL",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/Tutorial_Video/"
+			},
+			{
+				"name" : "2025-07-25 TUNL Instruction Video 1.5-1080p.mp4",
+				"task" : "TUNL",
+				"type" : "Instruction",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/Tutorial_Video/"
+			},
+			],
+			"Text" : [
+			{
+				"name" : "Break.txt",
+				"task" : "CPT",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "Button.ini",
+				"task" : "CPT",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "End.txt",
+				"task" : "CPT",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "Feedback.ini",
+				"task" : "CPT",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "Instruction.ini",
+				"task" : "CPT",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "Start.txt",
+				"task" : "CPT",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/CPT/Language/English/"
+			},
+			{
+				"name" : "Break.txt",
+				"task" : "PAL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "Button.ini",
+				"task" : "PAL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "End.txt",
+				"task" : "PAL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "Feedback.ini",
+				"task" : "PAL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "Instruction.ini",
+				"task" : "PAL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "Start.txt",
+				"task" : "PAL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PAL/Language/English/"
+			},
+			{
+				"name" : "Break.txt",
+				"task" : "PR",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "Button.ini",
+				"task" : "PR",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "End.txt",
+				"task" : "PR",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "Feedback.ini",
+				"task" : "PR",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "Instruction.ini",
+				"task" : "PR",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "Start.txt",
+				"task" : "PR",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PR/Language/English/"
+			},
+			{
+				"name" : "Break.txt",
+				"task" : "PRL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "Button.ini",
+				"task" : "PRL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "End.txt",
+				"task" : "PRL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "Feedback.ini",
+				"task" : "PRL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "Instruction.ini",
+				"task" : "PRL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "Start.txt",
+				"task" : "PRL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/PRL/Language/English/"
+			},
+			{
+				"name" : "Break.txt",
+				"task" : "TUNL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			{
+				"name" : "Button.ini",
+				"task" : "TUNL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			{
+				"name" : "End.txt",
+				"task" : "TUNL",
+				"filetype" : "txt",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			{
+				"name" : "Feedback.ini",
+				"task" : "TUNL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			{
+				"name" : "Instruction.ini",
+				"task" : "TUNL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			{
+				"name" : "Start.txt",
+				"task" : "TUNL",
+				"filetype" : "ini",
+				"server_path" : "",
+				"destination_path" : "/Protocol/TUNL/Language/English/"
+			},
+			]
+		}
+		],
+	}
+	],
+	"Videos" : [
+	{
+		"name" : "Carnival_of_Ivrea.mp4",
+		"task" : "TUNL",
+		"type" : "Instruction",
+		"server_path" : "",
+		"destination_path" : "/Protocol/TUNL/Image/Delay_Videos/"
+			},
+	],
+}

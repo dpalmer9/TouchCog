@@ -116,7 +116,7 @@ def get_refresh_rate():
 
 app_root = get_base_path()
 
-config_path = app_root / 'Screen.ini'
+config_path = app_root / 'Config.ini'
 
 config_file = configparser.ConfigParser()
 config_file.read(config_path)
@@ -173,6 +173,9 @@ import os
 import pandas as pd
 import sys
 import zipimport
+import json
+import threading
+import urllib.request
 
 from Classes.Menu import MenuBase
 
@@ -196,6 +199,9 @@ from kivy.uix.widget import Widget
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, Line
+from kivy.uix.dropdown import DropDown
+from kivy.uix.progressbar import ProgressBar
+from kivy.uix.popup import Popup
 
 
 
@@ -261,27 +267,229 @@ class ScreenManager(ScreenManager):
 
 # Class Task Selection #
 
+class LanguageMenu(Screen):
+	
+	def __init__(self, **kwargs):
+		
+		super(LanguageMenu, self).__init__(**kwargs)
+		self.name = 'languagemenu'
+		self.app = App.get_running_app()
+		self.Language_Layout = FloatLayout()
+		self.add_widget(self.Language_Layout)
+
+		self.manifest_path = 'http://nyx.canspace.ca/uploads/Touchscreen%20Tasks/manifest.json'
+
+		self.language_list = list()
+		with os.scandir(pathlib.Path('Language')) as entries:
+			for entry in entries:
+				if entry.is_dir():
+					self.language_list.append(entry.name)
+		self.language_dropdown = DropDown()
+		self.language_drop_button = Button(text='Select Language')
+		# Position dropdown near top middle
+		self.language_drop_button.size_hint = (0.4, 0.08)
+		self.language_drop_button.pos_hint = {'x': 0.3, 'y': 0.5}
+		for language in self.language_list:
+			btn = Button(text=language, size_hint_y=None, height=44)
+			btn.bind(on_release=lambda btn: self.language_dropdown.select(btn.text))
+			self.language_dropdown.add_widget(btn)
+
+		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.language_drop_button, 'text', x))
+		self.language_drop_button.bind(on_release=self.language_dropdown.open)
+		self.Language_Layout.add_widget(self.language_drop_button)
+
+		self.start_button = Button(text='Start')
+		# Position start button near bottom center
+		self.start_button.size_hint = (0.3, 0.12)
+		self.start_button.pos_hint = {'x': 0.35, 'y': 0.08}
+		self.start_button.bind(on_press=self.start_touchcog)
+
+		self.Language_Layout.add_widget(self.start_button)
+	
+	def start_touchcog(self, *args):
+		self.app.language = self.language_drop_button.text
+		# If no language selected, just go to main menu
+		if self.app.language == 'Select Language' or not self.app.language:
+			self.app.language = 'English'
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Fetch manifest (from web then fallback to local file)
+		manifest = self._fetch_manifest()
+		if manifest is None:
+			# Couldn't load manifest; proceed to main menu
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Extract language entries
+		language_entries = None
+		try:
+			for lang_block in manifest.get('languages', []):
+				if self.app.language in lang_block:
+					# lang_block[self.app.language] is a list with one dict
+					language_entries = lang_block[self.app.language][0]
+					break
+		except Exception:
+			language_entries = None
+
+		if not language_entries:
+			# Nothing to download for this language
+			self.main_menu = MainMenu(self.app.language)
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Collect files from Videos and Text keys
+		file_list = []
+		for key in ('Videos', 'Text'):
+			items = language_entries.get(key, [])
+			for item in items:
+				file_list.append(item)
+
+		# Prepare UI: popup with progress bar and filename label
+		self._download_popup_content = BoxLayout(orientation='vertical', spacing=10, padding=10)
+		self._download_label = Label(text='Preparing downloads...')
+		self._download_bar = ProgressBar(max=100, value=0)
+		self._download_popup_content.add_widget(self._download_label)
+		self._download_popup_content.add_widget(self._download_bar)
+		self._download_popup = Popup(title='Downloading language files', content=self._download_popup_content, size_hint=(0.6, 0.3))
+		self._download_popup.open()
+
+		# Run downloads in background thread
+		thread = threading.Thread(target=self._download_files_thread, args=(file_list,))
+		thread.daemon = True
+		thread.start()
+
+		# When downloads complete, the thread will switch to main menu
+
+
+	def _fetch_manifest(self):
+		# Try to fetch JSON from manifest_path; fallback to local manifest.json
+		try:
+			with urllib.request.urlopen(self.manifest_path, timeout=10) as resp:
+				data = resp.read().decode('utf-8')
+				return json.loads(data)
+		except Exception:
+			# Fallback to local file in project root
+			local_path = app_root / 'manifest.json'
+			try:
+				with open(local_path, 'r', encoding='utf-8') as f:
+					return json.load(f)
+			except Exception:
+				return None
+
+
+	def _ensure_destination(self, destination_path):
+		# destination_path is like '/Protocol/CPT/Language/English/' in manifest
+		# Convert to local path under app_root
+		# Strip leading slash if present
+		rel = destination_path.lstrip('/').replace('/', os.sep)
+		full = app_root / rel
+		if not full.exists():
+			full.mkdir(parents=True, exist_ok=True)
+		return full
+
+
+	def _download_files_thread(self, file_list):
+		total = len(file_list)
+		completed = 0
+		for entry in file_list:
+			name = entry.get('name')
+			server_path = entry.get('server_path', '')
+			destination_path = entry.get('destination_path', '')
+
+			# Update label to current file
+			Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Downloading: {n}'))
+
+			# Determine local destination
+			local_dest_dir = self._ensure_destination(destination_path)
+			local_file = local_dest_dir / name
+
+			# If file exists, skip
+			if local_file.exists():
+				completed += 1
+				pct = int((completed / total) * 100)
+				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+				continue
+
+			# If no server_path provided, skip
+			if not server_path:
+				completed += 1
+				pct = int((completed / total) * 100)
+				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+				continue
+
+			# Attempt download with progress
+			try:
+				with urllib.request.urlopen(server_path, timeout=30) as resp:
+					length = resp.getheader('Content-Length')
+					if length:
+						total_size = int(length)
+						bytes_so_far = 0
+						with open(local_file, 'wb') as out:
+							while True:
+								chunk = resp.read(8192)
+								if not chunk:
+									break
+								out.write(chunk)
+								bytes_so_far += len(chunk)
+								pct = int(((completed + bytes_so_far / total_size) / total) * 100)
+								Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+					else:
+						# Unknown total size: stream to file without progress
+						with open(local_file, 'wb') as out:
+							out.write(resp.read())
+			except Exception:
+				# On failure, ensure file doesn't exist
+				try:
+					if local_file.exists():
+						local_file.unlink()
+				except Exception:
+					pass
+			# Mark completed
+			completed += 1
+			pct = int((completed / total) * 100)
+			Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+
+		# Close popup and proceed to main menu
+		Clock.schedule_once(lambda dt: self._download_popup.dismiss())
+		Clock.schedule_once(lambda dt: self._open_main_menu())
+
+
+	def _open_main_menu(self, *args):
+		self.main_menu = MainMenu()
+		self.manager.add_widget(self.main_menu)
+		self.manager.current = 'mainmenu'
+
+
 class MainMenu(Screen):
 	
 	def __init__(self, **kwargs):
 		
 		super(MainMenu, self).__init__(**kwargs)
 		self.name = 'mainmenu'
+		self.app = App.get_running_app()
 		self.Menu_Layout = FloatLayout()
 		self.protocol_window = ''
+		self.language = self.app.language
 		self.add_widget(self.Menu_Layout)
-		launch_button = Button(text='Start Session')
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(pathlib.Path('Language', self.language, 'mainmenu.ini'))
+		launch_button = Button(text=self.menu_config['Text']['launch_button'])
 		launch_button.size_hint = (0.3, 0.2)
 		launch_button.pos_hint = {'x': 0.35, 'y': 0.6}
 		launch_button.bind(on_press=self.load_protocol_menu)
 		self.Menu_Layout.add_widget(launch_button)
-		battery_button = Button(text='Protocol Battery')
+		battery_button = Button(text=self.menu_config['Text']['battery_button'])
 		battery_button.size_hint = (0.3, 0.2)
 		battery_button.pos_hint = {'x': 0.35, 'y': 0.4}
 		battery_button.bind(on_press=self.load_battery_menu)
 		self.Menu_Layout.add_widget(battery_button)
-		
-		exit_button = Button(text='Close Program')
+		exit_button = Button(text=self.menu_config['Text']['exit_button'])
 		exit_button.size_hint = (0.3, 0.2)
 		exit_button.pos_hint = {'x': 0.35, 'y': 0.2}
 		exit_button.bind(on_press=self.exit_program)
@@ -320,17 +528,20 @@ class MainMenu(Screen):
 # Class Protocol Selection #
 
 class ProtocolMenu(Screen):
-	
+
 	def __init__(self, **kwargs):
-		
+
 		super(ProtocolMenu, self).__init__(**kwargs)
 		
 		self.Protocol_Layout = FloatLayout()
 		self.Protocol_Configure_Screen = ''
 		self.name = 'protocolmenu'
-		
+		self.app = App.get_running_app()
+		self.language = self.app.language
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(pathlib.Path('Language', self.language, 'protocolmenu.ini'))
 		self.Protocol_Configure_Screen = MenuBase()
-		
 		protocol_list = search_protocols()
 		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
 		protocol_index = 0
@@ -344,8 +555,8 @@ class ProtocolMenu(Screen):
 		self.Protocol_List.size_hint = (0.8, 0.7)
 		self.Protocol_List.pos_hint = {'x': 0.1, 'y': 0.3}
 		self.Protocol_Layout.add_widget(self.Protocol_List)
-		
-		cancel_button = Button(text='Cancel')
+
+		cancel_button = Button(text=self.menu_config['Text']['cancel_button'])
 		cancel_button.size_hint = (0.2, 0.1)
 		cancel_button.pos_hint = {'x': 0.4, 'y': 0.1}
 		cancel_button.bind(on_press=self.cancel_protocol)
@@ -382,20 +593,25 @@ class ProtocolBattery(Screen):
 		self.protocol_battery_layout = FloatLayout()
 		self.protocol_configure_screen = MenuBase()
 		self.name = 'protocolbattery'
+		
+		self.language = self.app.language
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(pathlib.Path('Language', self.language, 'batterymenu.ini'))
 
 		self.protocol_list = search_protocols()
 		self.available_protocols = self.protocol_list.copy()
 		self.selected_protocols = []
 
 		if len(self.protocol_list) == 0:
-			no_label = Label(text='No protocols found', size_hint=(0.8, 0.1), pos_hint={'x':0.1,'y':0.45})
+			no_label = Label(text=self.menu_config['Text']['no_label'], size_hint=(0.8, 0.1), pos_hint={'x':0.1,'y':0.45})
 			self.protocol_battery_layout.add_widget(no_label)
 		else:
 			# Title labels
-			available_title = Label(text='Available Protocols', size_hint=(0.35, 0.05), pos_hint={'x':0.05, 'y':0.85}, font_size='20sp', bold=True)
+			available_title = Label(text=self.menu_config['Text']['available_title'], size_hint=(0.35, 0.05), pos_hint={'x':0.05, 'y':0.85}, font_size='20sp', bold=True)
 			self.protocol_battery_layout.add_widget(available_title)
-			
-			selected_title = Label(text='Selected Protocols (in order)', size_hint=(0.35, 0.05), pos_hint={'x':0.6, 'y':0.85}, font_size='20sp', bold=True)
+
+			selected_title = Label(text=self.menu_config['Text']['selected_title'], size_hint=(0.35, 0.05), pos_hint={'x':0.6, 'y':0.85}, font_size='20sp', bold=True)
 			self.protocol_battery_layout.add_widget(selected_title)
 
 			# Create bordered containers for the lists
@@ -430,30 +646,30 @@ class ProtocolBattery(Screen):
 			self.protocol_battery_layout.add_widget(selected_container)
 
 			# Control buttons in the middle
-			move_right_button = Button(text='Add >>', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.6}, font_size='18sp')
+			move_right_button = Button(text=self.menu_config['Text']['move_right_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.6}, font_size='18sp')
 			move_right_button.bind(on_press=self.move_to_selected)
 			self.protocol_battery_layout.add_widget(move_right_button)
 
-			move_left_button = Button(text='<< Remove', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.5}, font_size='18sp')
+			move_left_button = Button(text=self.menu_config['Text']['move_left_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.5}, font_size='18sp')
 			move_left_button.bind(on_press=self.move_to_available)
 			self.protocol_battery_layout.add_widget(move_left_button)
 
-			move_up_button = Button(text='Move Up', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.4}, font_size='18sp')
+			move_up_button = Button(text=self.menu_config['Text']['move_up_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.4}, font_size='18sp')
 			move_up_button.bind(on_press=self.move_up)
 			self.protocol_battery_layout.add_widget(move_up_button)
 
-			move_down_button = Button(text='Move Down', size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.3}, font_size='18sp')
+			move_down_button = Button(text=self.menu_config['Text']['move_down_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.3}, font_size='18sp')
 			move_down_button.bind(on_press=self.move_down)
 			self.protocol_battery_layout.add_widget(move_down_button)
 
 			# Bottom buttons
-			battery_start_button = Button(text='Start Battery')
+			battery_start_button = Button(text=self.menu_config['Text']['battery_start_button'])
 			battery_start_button.size_hint = (0.2, 0.1)
 			battery_start_button.pos_hint = {'x': 0.25, 'y': 0.05}
 			battery_start_button.bind(on_press=self.start_battery)
 			self.protocol_battery_layout.add_widget(battery_start_button)
-		
-			cancel_button = Button(text='Cancel')
+
+			cancel_button = Button(text=self.menu_config['Text']['cancel_button'])
 			cancel_button.size_hint = (0.2, 0.1)
 			cancel_button.pos_hint = {'x': 0.55, 'y': 0.05}
 			cancel_button.bind(on_press=self.cancel_battery)
@@ -643,8 +859,11 @@ class MenuApp(App):
 		self.battery_configs = {}
 
 		self.s_manager = ScreenManager()
-		self.main_menu = MainMenu()
-		self.s_manager.add_widget(self.main_menu)
+		self.config = configparser.ConfigParser()
+		self.config.read('Config.ini')
+		self.language = self.config.get('language', 'language', fallback='English')
+		self.language_menu = LanguageMenu()
+		self.s_manager.add_widget(self.language_menu)
 		
 		return self.s_manager
 	
