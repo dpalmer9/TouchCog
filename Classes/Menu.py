@@ -125,11 +125,11 @@ class ImageSetDropdown(BoxLayout):
 
 class MenuBase(Screen):
 	
-	
-	
-	def __init__(self, language, **kwargs):
-		
-		
+
+
+	def __init__(self, **kwargs):
+
+
 		super(MenuBase, self).__init__(**kwargs)
 		
 		self.name = 'menuscreen'
@@ -137,7 +137,10 @@ class MenuBase(Screen):
 
 		self.app = App.get_running_app()
 
-		self.language = language
+		self.language = self.app.language
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(pathlib.Path('Language', self.language, 'menubase.ini'))
 
 		self.is_battery_mode = False
 		
@@ -156,22 +159,22 @@ class MenuBase(Screen):
 		self.setting_scrollview.add_widget(self.setting_gridlayout)
 
 		self.id_grid = GridLayout(cols=2, rows=1)
-		self.id_label = Label(text='Participant ID')
-		self.id_entry = TextInput(text='Default')
+		self.id_label = Label(text=self.menu_config['Text']['id_label'])
+		self.id_entry = TextInput(text=self.menu_config['Text']['id_entry'])
 		self.id_grid.add_widget(self.id_label)
 		self.id_grid.add_widget(self.id_entry)
 		self.id_grid.size_hint = (0.85, 0.05)
 		self.id_grid.pos_hint = {'x': 0.1, 'y': 0.3}
 
-		self.back_button = Button(text='Back')
+		self.back_button = Button(text=self.menu_config['Text']['back_button'])
 		self.back_button.size_hint = (0.1, 0.1)
 		self.back_button.pos_hint = {'x': 0.4, 'y': 0.1}
 		self.back_button.bind(on_press=self.return_menu)
 
 		if self.is_battery_mode:
-			button_string = 'Continue'
+			button_string = self.menu_config['Text']['start_button_battery']
 		else:
-			button_string = 'Start Task'
+			button_string = self.menu_config['Text']['start_button_regular']
 		self.start_button = Button(text=button_string)
 		self.start_button.size_hint = (0.1, 0.1)
 		self.start_button.pos_hint = {'x': 0.6, 'y': 0.1}
@@ -190,11 +193,11 @@ class MenuBase(Screen):
 	def update_battery_mode(self, is_battery):
 		if is_battery:
 			self.is_battery_mode = True
-			self.start_button.text = 'Continue'
+			self.start_button.text = self.menu_config['Text']['start_button_battery']
 		else:
 			self.is_battery_mode = False
-			self.start_button.text = 'Start Task'
-	
+			self.start_button.text = self.menu_config['Text']['start_button_regular']
+
 	def start_protocol(self, *args):
 		
 		
@@ -240,8 +243,6 @@ class MenuBase(Screen):
 		
 		
 		parameter_dict['participant_id'] = self.id_entry.text
-
-		parameter_dict['language'] = self.language
 
 		
 		# Start or protocol or continue battery
@@ -304,7 +305,7 @@ class MenuBase(Screen):
 		num_parameters = len(self.parameters_config)
 
 		self.setting_gridlayout.clear_widgets()
-		self.setting_gridlayout.rows = (num_parameters + int(len(self.settings_widgets) / 2))
+		self.setting_gridlayout.rows = (num_parameters)
 		self.setting_gridlayout.cols = 2
 
 		for parameter in self.parameters_config:
@@ -317,12 +318,6 @@ class MenuBase(Screen):
 				text_input = TextInput(text=self.parameters_config[parameter], size_hint_y=None, height=50)
 				self.setting_gridlayout.add_widget(label)
 				self.setting_gridlayout.add_widget(text_input)
-
-		for wid in self.settings_widgets:
-			if isinstance(wid, (Label, Button)):
-				wid.size_hint_y = None
-				wid.height = 50
-			self.setting_gridlayout.add_widget(wid)
 
 	# Height is now automatically bound to minimum_height
 
