@@ -173,6 +173,9 @@ import os
 import pandas as pd
 import sys
 import zipimport
+import json
+import threading
+import urllib.request
 
 from Classes.Menu import MenuBase
 
@@ -196,6 +199,9 @@ from kivy.uix.widget import Widget
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, Line
+from kivy.uix.dropdown import DropDown
+from kivy.uix.progressbar import ProgressBar
+from kivy.uix.popup import Popup
 
 
 
@@ -260,6 +266,202 @@ class ScreenManager(ScreenManager):
 
 
 # Class Task Selection #
+
+class LanguageMenu(Screen):
+	
+	def __init__(self, **kwargs):
+		
+		super(LanguageMenu, self).__init__(**kwargs)
+		self.name = 'languagemenu'
+		self.Language_Layout = FloatLayout()
+		self.add_widget(self.Language_Layout)
+
+		self.manifest_path = 'http://nyx.canspace.ca/uploads/Touchscreen%20Tasks/manifest.json'
+
+		self.language_list = list()
+		with os.scandir(pathlib.Path('Language')) as entries:
+			for entry in entries:
+				if entry.is_dir():
+					self.language_list.append(entry.name)
+		self.language_dropdown = DropDown()
+		self.language_drop_button = Button(text='Select Language')
+		# Position dropdown near top middle
+		self.language_drop_button.size_hint = (0.4, 0.08)
+		self.language_drop_button.pos_hint = {'x': 0.3, 'y': 0.5}
+		for language in self.language_list:
+			btn = Button(text=language, size_hint_y=None, height=44)
+			self.language_dropdown.add_widget(btn)
+
+		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.language_drop_button, 'text', x))
+		self.language_drop_button.bind(on_release=self.language_dropdown.open)
+		self.Language_Layout.add_widget(self.language_drop_button)
+
+		self.start_button = Button(text='Start')
+		# Position start button near bottom center
+		self.start_button.size_hint = (0.3, 0.12)
+		self.start_button.pos_hint = {'x': 0.35, 'y': 0.08}
+		self.start_button.bind(on_press=self.start_touchcog)
+
+		self.Language_Layout.add_widget(self.start_button)
+	
+	def start_touchcog(self, *args):
+		selected_language = self.language_drop_button.text
+		# If no language selected, just go to main menu
+		if selected_language == 'Select Language' or not selected_language:
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Fetch manifest (from web then fallback to local file)
+		manifest = self._fetch_manifest()
+		if manifest is None:
+			# Couldn't load manifest; proceed to main menu
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Extract language entries
+		language_entries = None
+		try:
+			for lang_block in manifest.get('languages', []):
+				if selected_language in lang_block:
+					# lang_block[selected_language] is a list with one dict
+					language_entries = lang_block[selected_language][0]
+					break
+		except Exception:
+			language_entries = None
+
+		if not language_entries:
+			# Nothing to download for this language
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Collect files from Videos and Text keys
+		file_list = []
+		for key in ('Videos', 'Text'):
+			items = language_entries.get(key, [])
+			for item in items:
+				file_list.append(item)
+
+		# Prepare UI: popup with progress bar and filename label
+		self._download_popup_content = BoxLayout(orientation='vertical', spacing=10, padding=10)
+		self._download_label = Label(text='Preparing downloads...')
+		self._download_bar = ProgressBar(max=100, value=0)
+		self._download_popup_content.add_widget(self._download_label)
+		self._download_popup_content.add_widget(self._download_bar)
+		self._download_popup = Popup(title='Downloading language files', content=self._download_popup_content, size_hint=(0.6, 0.3))
+		self._download_popup.open()
+
+		# Run downloads in background thread
+		thread = threading.Thread(target=self._download_files_thread, args=(file_list,))
+		thread.daemon = True
+		thread.start()
+
+		# When downloads complete, the thread will switch to main menu
+
+
+	def _fetch_manifest(self):
+		# Try to fetch JSON from manifest_path; fallback to local manifest.json
+		try:
+			with urllib.request.urlopen(self.manifest_path, timeout=10) as resp:
+				data = resp.read().decode('utf-8')
+				return json.loads(data)
+		except Exception:
+			# Fallback to local file in project root
+			local_path = app_root / 'manifest.json'
+			try:
+				with open(local_path, 'r', encoding='utf-8') as f:
+					return json.load(f)
+			except Exception:
+				return None
+
+
+	def _ensure_destination(self, destination_path):
+		# destination_path is like '/Protocol/CPT/Language/English/' in manifest
+		# Convert to local path under app_root
+		# Strip leading slash if present
+		rel = destination_path.lstrip('/').replace('/', os.sep)
+		full = app_root / rel
+		if not full.exists():
+			full.mkdir(parents=True, exist_ok=True)
+		return full
+
+
+	def _download_files_thread(self, file_list):
+		total = len(file_list)
+		completed = 0
+		for entry in file_list:
+			name = entry.get('name')
+			server_path = entry.get('server_path', '')
+			destination_path = entry.get('destination_path', '')
+
+			# Update label to current file
+			Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Downloading: {n}'))
+
+			# Determine local destination
+			local_dest_dir = self._ensure_destination(destination_path)
+			local_file = local_dest_dir / name
+
+			# If file exists, skip
+			if local_file.exists():
+				completed += 1
+				pct = int((completed / total) * 100)
+				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+				continue
+
+			# If no server_path provided, skip
+			if not server_path:
+				completed += 1
+				pct = int((completed / total) * 100)
+				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+				continue
+
+			# Attempt download with progress
+			try:
+				with urllib.request.urlopen(server_path, timeout=30) as resp:
+					length = resp.getheader('Content-Length')
+					if length:
+						total_size = int(length)
+						bytes_so_far = 0
+						with open(local_file, 'wb') as out:
+							while True:
+								chunk = resp.read(8192)
+								if not chunk:
+									break
+								out.write(chunk)
+								bytes_so_far += len(chunk)
+								pct = int(((completed + bytes_so_far / total_size) / total) * 100)
+								Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+					else:
+						# Unknown total size: stream to file without progress
+						with open(local_file, 'wb') as out:
+							out.write(resp.read())
+			except Exception:
+				# On failure, ensure file doesn't exist
+				try:
+					if local_file.exists():
+						local_file.unlink()
+				except Exception:
+					pass
+			# Mark completed
+			completed += 1
+			pct = int((completed / total) * 100)
+			Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+
+		# Close popup and proceed to main menu
+		Clock.schedule_once(lambda dt: self._download_popup.dismiss())
+		Clock.schedule_once(lambda dt: self._open_main_menu())
+
+
+	def _open_main_menu(self, *args):
+		self.main_menu = MainMenu()
+		self.manager.add_widget(self.main_menu)
+		self.manager.current = 'mainmenu'
+
 
 class MainMenu(Screen):
 	
@@ -643,8 +845,8 @@ class MenuApp(App):
 		self.battery_configs = {}
 
 		self.s_manager = ScreenManager()
-		self.main_menu = MainMenu()
-		self.s_manager.add_widget(self.main_menu)
+		self.language_menu = LanguageMenu()
+		self.s_manager.add_widget(self.language_menu)
 		
 		return self.s_manager
 	
