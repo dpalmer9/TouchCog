@@ -127,7 +127,7 @@ class MenuBase(Screen):
 	
 	
 	
-	def __init__(self, **kwargs):
+	def __init__(self, language, **kwargs):
 		
 		
 		super(MenuBase, self).__init__(**kwargs)
@@ -136,6 +136,8 @@ class MenuBase(Screen):
 		self.main_layout = FloatLayout()
 
 		self.app = App.get_running_app()
+
+		self.language = language
 
 		self.is_battery_mode = False
 		
@@ -152,18 +154,6 @@ class MenuBase(Screen):
 		self.setting_gridlayout.size_hint_x = 1
 		self.setting_gridlayout.bind(minimum_height=self.setting_gridlayout.setter('height'))
 		self.setting_scrollview.add_widget(self.setting_gridlayout)
-
-		self.language_dropdown = DropDown()
-		self.dropdown_main = Button(text='Select Language')
-		self.language_list = ['English', 'French']
-
-		for language in self.language_list:
-			lang_button = Button(text=language, size_hint_y=None, height=100)
-			lang_button.bind(on_release=lambda lang_button: self.language_dropdown.select(lang_button.text))
-			self.language_dropdown.add_widget(lang_button)
-
-		self.dropdown_main.bind(on_release=self.language_dropdown.open)
-		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.dropdown_main, 'text', x))
 
 		self.id_grid = GridLayout(cols=2, rows=1)
 		self.id_label = Label(text='Participant ID')
@@ -186,8 +176,6 @@ class MenuBase(Screen):
 		self.start_button.size_hint = (0.1, 0.1)
 		self.start_button.pos_hint = {'x': 0.6, 'y': 0.1}
 		self.start_button.bind(on_press=self.start_protocol)
-
-		self.settings_widgets = [Label(text='Language'), self.dropdown_main]
 
 		# Add scrollview and other widgets to main_layout only once
 		self.setting_scrollview.pos_hint = {'x': 0.1, 'y': 0.4}
@@ -252,17 +240,9 @@ class MenuBase(Screen):
 		
 		
 		parameter_dict['participant_id'] = self.id_entry.text
-		
-		if self.dropdown_main.text == 'Select Language':
-			
-			
-			parameter_dict['language'] = 'English'
-		
-		
-		else:
-			
-			
-			parameter_dict['language'] = self.dropdown_main.text
+
+		parameter_dict['language'] = self.language
+
 		
 		# Start or protocol or continue battery
 		if not self.is_battery_mode:
