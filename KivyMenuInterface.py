@@ -274,6 +274,8 @@ class LanguageMenu(Screen):
 		super(LanguageMenu, self).__init__(**kwargs)
 		self.name = 'languagemenu'
 		self.app = App.get_running_app()
+		self.config = configparser.ConfigParser()
+		self.config.read('Config.ini')
 		self.Language_Layout = FloatLayout()
 		self.add_widget(self.Language_Layout)
 
@@ -310,7 +312,7 @@ class LanguageMenu(Screen):
 		self.app.language = self.language_drop_button.text
 		# If no language selected, just go to main menu
 		if self.app.language == 'Select Language' or not self.app.language:
-			self.app.language = 'English'
+			self.app.language = self.config['language']['language']
 			self.main_menu = MainMenu()
 			self.manager.add_widget(self.main_menu)
 			self.manager.current = 'mainmenu'
@@ -320,12 +322,15 @@ class LanguageMenu(Screen):
 		manifest = self._fetch_manifest()
 		if manifest is None:
 			# Couldn't load manifest; proceed to main menu
+			self.app.language = self.config['language']['language']
 			self.main_menu = MainMenu()
 			self.manager.add_widget(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
 
 		# Extract language entries
+		self.config['language']['language'] = self.app.language
+		self.config.write(open('Config.ini', 'w'))
 		language_entries = None
 		try:
 			for lang_block in manifest.get('languages', []):
@@ -461,6 +466,7 @@ class LanguageMenu(Screen):
 
 
 	def _open_main_menu(self, *args):
+		self.app.language = self.config['language']['language']
 		self.main_menu = MainMenu()
 		self.manager.add_widget(self.main_menu)
 		self.manager.current = 'mainmenu'
