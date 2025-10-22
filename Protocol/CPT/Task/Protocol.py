@@ -116,8 +116,6 @@ class ProtocolScreen(ProtocolBase):
 	def _load_config_parameters(self, parameters_dict):
 		
 		self.participant_id = parameters_dict['participant_id']
-		
-		self.language = parameters_dict['language']
 
 		self.skip_tutorial_video = parameters_dict['skip_tutorial_video']
 		self.tutorial_video_duration = float(parameters_dict['tutorial_video_duration'])
@@ -223,8 +221,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		
 		# Define Language
-		
-		self.language = 'English'
 		self.set_language(self.language)
 		self.stage_instructions = ''
 		

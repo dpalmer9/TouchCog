@@ -91,7 +91,6 @@ class ProtocolScreen(ProtocolBase):
 		self.parameters_dict = parameters_dict
 	
 		self.participant_id = self.parameters_dict['participant_id']
-		self.language = self.parameters_dict['language']
 
 		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
 		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
