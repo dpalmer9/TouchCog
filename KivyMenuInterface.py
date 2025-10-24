@@ -274,6 +274,7 @@ class LanguageMenu(Screen):
 		super(LanguageMenu, self).__init__(**kwargs)
 		self.name = 'languagemenu'
 		self.app = App.get_running_app()
+		self.app.active_screen = self.name
 		self.config = configparser.ConfigParser()
 		self.config.read('Config.ini')
 		self.Language_Layout = FloatLayout()
@@ -479,6 +480,7 @@ class MainMenu(Screen):
 		super(MainMenu, self).__init__(**kwargs)
 		self.name = 'mainmenu'
 		self.app = App.get_running_app()
+		self.app.active_screen = self.name
 		self.Menu_Layout = FloatLayout()
 		self.protocol_window = ''
 		self.language = self.app.language
@@ -543,6 +545,7 @@ class ProtocolMenu(Screen):
 		self.Protocol_Configure_Screen = ''
 		self.name = 'protocolmenu'
 		self.app = App.get_running_app()
+		self.app.active_screen = self.name
 		self.language = self.app.language
 
 		self.menu_config = configparser.ConfigParser()
@@ -581,6 +584,7 @@ class ProtocolMenu(Screen):
 		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
+		self.app.active_screen = self.Protocol_Configure_Screen.name
 		self.manager.current = self.Protocol_Configure_Screen.name
 	
 	
@@ -599,6 +603,7 @@ class ProtocolBattery(Screen):
 		self.protocol_battery_layout = FloatLayout()
 		self.protocol_configure_screen = MenuBase()
 		self.name = 'protocolbattery'
+		self.app.active_screen = self.name
 		
 		self.language = self.app.language
 
@@ -865,11 +870,13 @@ class MenuApp(App):
 		self.battery_configs = {}
 
 		self.s_manager = ScreenManager()
+		self.active_screen = ''
 		self.config = configparser.ConfigParser()
 		self.config.read('Config.ini')
 		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
 		self.s_manager.add_widget(self.language_menu)
+		self.active_screen = self.language_menu.name
 		
 		return self.s_manager
 	

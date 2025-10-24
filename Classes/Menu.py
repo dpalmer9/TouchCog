@@ -253,7 +253,7 @@ class MenuBase(Screen):
 			try:
 			
 			
-				self.manager.remove_widget(self.manager.get_screen('protocolscreen'))
+				self.manager.remove_widget(self.manager.get_screen(protocol_task_screen.name))
 				self.manager.add_widget(protocol_task_screen)
 		
 		
@@ -264,6 +264,7 @@ class MenuBase(Screen):
 		
 			protocol_task_screen.load_parameters(parameter_dict)
 		
+			self.app.active_screen = protocol_task_screen.name
 			self.manager.current = protocol_task_screen.name
 		
 		else:
