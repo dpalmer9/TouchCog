@@ -51,6 +51,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'dpal_probe'
 			, 'spal_probe'
 			, 'recall_probe'
+			, 'correction_trials'
 			, 'iti_fixed_or_range'
 			, 'iti_length'
 			, 'feedback_length'
@@ -102,6 +103,8 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
 
 		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		
+		self.use_correction_trials = self.parameters_dict['correction_trials']
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
@@ -871,17 +874,26 @@ class ProtocolScreen(ProtocolBase):
 					)
 
 			# Set target/nontarget stimuli
-
+			# Set training stimuli
 			if self.current_stage == 'Training':
 				self.target_loc = random.choice(list(range(self.num_stimuli)))
-				self.nontarget_loc = -1
-				self.nontarget_image_loc = -1
+				self.nontarget_loc = np.nan
+				self.nontarget_image_loc = np.nan
 				
 				self.target_image = self.training_image
 				self.nontarget_image = self.mask_image
 				self.blank_image = self.mask_image
 				self.recall_image = self.mask_image
 
+			# If correction trial, retain stimuli from previous trial
+			elif (self.last_response == 0) \
+				and (self.current_stage == 'dPAL') \
+				and self.use_correction_trials:
+
+				# Correction trial; dPAL only
+				pass
+			
+			# Else, set stimuli for subsequent trial
 			else:
 
 				if self.trial_list_index >= len(self.trial_list):
@@ -1000,6 +1012,7 @@ class ProtocolScreen(ProtocolBase):
 				self.session_event.cancel()
 				self.protocol_end()
 				return
+			
 			elif pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Tutorial_Video').is_dir() \
 					and not self.skip_tutorial_video \
 					and (self.stage_list[self.stage_index] == 'Recall') \
@@ -1013,6 +1026,7 @@ class ProtocolScreen(ProtocolBase):
 				self.recall_video_presented = True
 				self.present_tutorial_video()
 				return
+			
 			else:
 				self.current_stage = self.stage_list[self.stage_index]
 				self.protocol_floatlayout.add_stage_event('Stage Change')
