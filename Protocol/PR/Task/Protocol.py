@@ -52,11 +52,11 @@ class ProtocolScreen(ProtocolBase):
 			, 'block_min_rest_duration'
 			, 'session_duration'
 			, 'stimulus_image'
+			, 'stimulus_pressed_image'
+			, 'stimulus_size'
+			, 'stimulus_distance'
 			, 'response_level_start'
 			, 'response_level_end'
-			, 'grid_squares_x'
-			, 'grid_squares_y'
-			, 'min_separation'
 			, 'use_confirmation'
 			]
 		
@@ -104,18 +104,14 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
 
-		self.background_grid_image = self.parameters_dict['background_grid_image']
 		self.stimulus_image = self.parameters_dict['stimulus_image']
 		self.stimulus_pressed_image = self.parameters_dict['stimulus_pressed_image']
+		self.stimulus_size = float(self.parameters_dict['stimulus_size'])
+		self.stimulus_distance = float(self.parameters_dict['stimulus_distance'])
 		
 		self.response_level = int(self.parameters_dict['response_level_start'])
 		self.response_level_end = int(self.parameters_dict['response_level_end'])
 
-		self.grid_squares_x = int(self.parameters_dict['grid_squares_x'])
-		self.grid_squares_y = int(self.parameters_dict['grid_squares_y'])
-		
-		self.min_separation = int(self.parameters_dict['min_separation'])
-		
 		self.use_confirmation = self.parameters_dict['use_confirmation']
 
 		self.hold_image = self.config_file['Hold']['hold_image']
@@ -147,9 +143,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 
 	def _setup_session_stages(self):
-		self.target_x_pos = random.randint(0, self.grid_squares_x - 1)
-		self.target_y_pos = random.randint(1, self.grid_squares_y - 1)
-
 		self.task_clock = Clock
 		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
 		self.no_response_event.cancel()
@@ -181,7 +174,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
 
-		self.background_grid_image_path = str(self.image_folder / str(self.background_grid_image + '.png'))
 		self.stimulus_image_path = str(self.image_folder / str(self.stimulus_image + '.png'))
 		self.stimulus_pressed_image_path = str(self.image_folder / str(self.stimulus_pressed_image + '.png'))
 		self.hold_image_path = str(self.image_folder / str(self.hold_image + '.png'))
@@ -191,54 +183,59 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
 
-		self.target_x_pos = 0
-		self.target_y_pos = 1
+		# self.target_x_pos = 0
+		# self.target_y_pos = 1
 
-		self.cell_proportion = 0.07
-		self.cell_size = ((self.cell_proportion * self.width_adjust), (self.cell_proportion * self.height_adjust))
+		# Stimulus distance variable gives stimulus location as proportion of vertical screen size
+		# Stimulus location based on distance from center of hold button
+		# main_move gives maximum vertical screen proportion distance between center of hold button and center of stimulus
+		# Horizontal distance between stimulus and hold button adjusted by width_adjust to maintain consistent physical distance
+		# x and y boundaries provide horizontal/vertical min/max values for possible stimulus locations relative to hold button center
 
-		min_y_pos = float(self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2) + (self.cell_size[1]/2) + 0.005)
+		# First, verify that max vertical distance does not put stimulus outside screen boundaries
+		if (self.stimulus_distance + ((self.stimulus_size * self.height_adjust) / 2) + 0.005) > 1:
+			self.stimulus_distance = 1 - ((self.stimulus_size * self.height_adjust) / 2) - 0.005
 
-		self.x_boundaries = [(0.005 + (self.cell_size[0]/2)), (0.995 - (self.cell_size[0]/2))]
-		self.y_boundaries = [min_y_pos, (0.995 - (self.cell_size[1]/2))]
+		# Next, identify distance relative to hold button center
+		self.main_move = self.stimulus_distance - self.hold_button.pos_hint['center_y']
 
-		self.x_dim_hint = np.linspace(self.x_boundaries[0], self.x_boundaries[1], self.grid_squares_x).tolist()
-		self.y_dim_hint = np.linspace(self.y_boundaries[0], self.y_boundaries[1], self.grid_squares_y).tolist()
-		self.background_grid_list = [ImageButton() for square in range((self.grid_squares_x * self.grid_squares_y))]
+		# Set Y boundaries based on hold button position and max distance
+		self.y_boundaries = [
+			round((self.hold_button.pos_hint['center_y'] \
+				+ (self.hold_button.size_hint[1] / 2) \
+				+ ((self.stimulus_size * self.height_adjust) / 2) \
+				+ 0.005), 3)
+			, self.stimulus_distance
+			]
 
-		x_pos = 0
-		y_pos = 0
+		# Set X boundaries based on move distance from center of hold button
+		self.x_boundaries = [
+			round((self.hold_button.pos_hint['center_x'] \
+				- (self.main_move * self.width_adjust)), 3)
+			, round((self.hold_button.pos_hint['center_x'] \
+				+ (self.main_move * self.width_adjust)), 3)
+			]
 
-		for cell in self.background_grid_list:
-			cell.fit_mode = 'fill'
-			cell.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
+		# Ensure possible x locations don't put stimulus outside edge of screen
+		if ((min(self.x_boundaries) - ((self.stimulus_size * self.width_adjust) / 2) - 0.005) < 0) \
+			or ((max(self.x_boundaries) + ((self.stimulus_size * self.width_adjust) / 2) + 0.005) > 1):
 
-			if x_pos >= self.grid_squares_x:
-				x_pos = 0
-				y_pos = y_pos + 1
+			# If X boundaries put any portion of stimulus outside screen area, change X boundaries to keep stimulus completely within screen
+			self.x_boundaries = [
+				round((((self.stimulus_size * self.width_adjust) / 2) + 0.005), 3)
+				, round((1 - ((self.stimulus_size * self.width_adjust) / 2) - 0.005), 3)
+				]
 
-			cell.pos_hint = {"center_x": self.x_dim_hint[x_pos], "center_y": self.y_dim_hint[y_pos]}
-			cell.source = self.background_grid_image_path
-			x_pos = x_pos + 1
+		self.stimulus_pos = {'center_x': self.hold_button.pos_hint['center_x'], 'center_y': self.stimulus_distance}
 
 		self.stimulus_button = ImageButton(source=self.stimulus_image_path)
-
-		self.stimulus_button.pos_hint = {
-			"center_x": self.x_dim_hint[self.target_x_pos]
-			, "center_y": self.y_dim_hint[self.target_y_pos]
-			}
-		
-		self.stimulus_button.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
+		self.stimulus_button.pos_hint = self.stimulus_pos
+		self.stimulus_button.size_hint = (self.stimulus_size * self.width_adjust, self.stimulus_size * self.height_adjust)
 		self.stimulus_button.bind(on_press=self.target_pressed)
 
-		self.stimulus_pressed_button = ImageButton(source=self.stimulus_pressed_image_path)
-
-		self.stimulus_pressed_button.pos_hint = {
-			"center_x": self.x_dim_hint[self.target_x_pos]
-			, "center_y": self.y_dim_hint[self.target_y_pos]
-			}
-		
-		self.stimulus_pressed_button.size_hint = (self.cell_proportion * self.width_adjust, self.cell_proportion * self.height_adjust)
+		self.stimulus_button_pressed = ImageButton(source=self.stimulus_pressed_image_path)
+		self.stimulus_button_pressed.pos_hint = self.stimulus_button.pos_hint
+		self.stimulus_button_pressed.size_hint = self.stimulus_button.size_hint
 
 		self.reward_image = Image(source=self.checkmark_image_path)
 		self.reward_image.pos_hint = {"center_x": 0.5, "center_y": 0.8}
@@ -247,7 +244,6 @@ class ProtocolScreen(ProtocolBase):
 		total_image_list = [
 			self.stimulus_image_path
 			, self.stimulus_pressed_image_path
-			, self.background_grid_image_path
 			, self.hold_image_path
 			, self.mask_image_path
 			, self.checkmark_image_path
@@ -255,13 +251,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.hold_button.source = self.hold_image_path
 
-		self.x_dim_hint = np.linspace(self.x_boundaries[0], self.x_boundaries[1], self.grid_squares_x).tolist()
-		self.y_dim_hint = np.linspace(self.y_boundaries[0], self.y_boundaries[1], self.grid_squares_y).tolist()
-	
 	def _setup_language_localization(self):
 		self.set_language(self.language)
-		self.feedback_dict = {}
-
 		self.feedback_label = Label(font_size='32sp')
 		self.feedback_label.size_hint = (0.8, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
@@ -319,6 +310,47 @@ class ProtocolScreen(ProtocolBase):
 		
 		else:
 			self.present_instructions()
+
+
+
+	def generate_stimulus_pos(
+		self
+		, *args
+		):
+
+		# This function requires task-level x and y boundary and main_move variables (can be adjusted to take all of these as arguments instead)
+		# Stimulus Y position is always positive relative to hold button
+		# Select X position from x boundaries, then derive Y postion from there
+		# Every X position has only one Y location associated with it to equal Euclidean distance
+
+		x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+
+		# If difference between existing and new x position is less than 10% of screen width, select new location
+		while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+
+		x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
+
+		y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+		y_pos = self.hold_button.pos_hint['center_y'] + y_move
+
+		while (y_pos < min(self.y_boundaries)) \
+			or (y_pos > max(self.y_boundaries)):
+
+			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+
+			# If difference between existing and new x position is less than 10% of screen width, select new location
+			while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+				x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+
+			x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
+
+			y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+			y_pos = self.hold_button.pos_hint['center_y'] + y_move
+		
+		stimulus_pos = {'center_x': x_pos, 'center_y': y_pos}
+
+		return stimulus_pos
 
 
 
@@ -471,12 +503,12 @@ class ProtocolScreen(ProtocolBase):
 
 			self.hold_button.unbind(on_press=self.target_pressed)
 			self.protocol_floatlayout.remove_widget(self.hold_button)
-			self.protocol_floatlayout.remove_widget(self.stimulus_pressed_button)
+			self.protocol_floatlayout.remove_widget(self.stimulus_button_pressed)
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Hold Button')
 		else:
 			self.protocol_floatlayout.remove_widget(self.stimulus_button)
-			self.protocol_floatlayout.add_widget(self.stimulus_pressed_button)
+			self.protocol_floatlayout.add_widget(self.stimulus_button_pressed)
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', str(self.stimulus_button.pos_hint))
 		
@@ -506,8 +538,8 @@ class ProtocolScreen(ProtocolBase):
 			, self.current_block_trial
 			, self.total_hit_count
 			, self.response_level
-			, self.target_x_pos
-			, self.target_y_pos
+			, self.stimulus_button.pos_hint['center_x']
+			, self.stimulus_button.pos_hint['center_y']
 			, self.response_latency
 			]
 		
@@ -556,31 +588,13 @@ class ProtocolScreen(ProtocolBase):
 
 
 				else:
-					new_x_pos = random.randint(0, self.grid_squares_x - 1)
-					new_y_pos = random.randint(1, self.grid_squares_y - 1)
+					self.stimulus_pos = self.generate_stimulus_pos()
 
-					while (
-						abs(new_x_pos - self.target_x_pos) \
-						+ abs(new_y_pos - self.target_y_pos)
-						) <= self.min_separation:
-
-						new_x_pos = random.randint(0, self.grid_squares_x - 1)
-						new_y_pos = random.randint(1, self.grid_squares_y - 1)
-
-					self.target_x_pos = new_x_pos
-					self.target_y_pos = new_y_pos
-					
-					self.stimulus_button.pos_hint = {
-						'center_x': self.x_dim_hint[self.target_x_pos]
-						, 'center_y': self.y_dim_hint[self.target_y_pos]
-						}
-					
-					self.stimulus_pressed_button.pos_hint = {
-						'center_x': self.x_dim_hint[self.target_x_pos]
-						, 'center_y': self.y_dim_hint[self.target_y_pos]
-						}
+					self.stimulus_button.pos_hint = self.stimulus_pos
+					self.stimulus_button_pressed.pos_hint = self.stimulus_button.pos_hint
 
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Target Location', self.stimulus_button.pos_hint)
+
 				self.stimulus_presentation()
 		
 		except KeyboardInterrupt:
@@ -593,6 +607,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Error; program terminated.')
 			self.protocol_end()
 	
+
+
+	def block_screen_display_hold_button(self, *args):
+		self.protocol_floatlayout.add_widget(self.hold_button)
 
 
 	# Block start function (add widgets and set block start time)
@@ -613,9 +631,6 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.bind(on_press=self.iti_start)
 
 		self.hold_button.bind(on_release=self.premature_response)
-
-		for grid_square in self.background_grid_list:
-			self.protocol_floatlayout.add_widget(grid_square)
 
 		if self.hold_button_pressed:
 			self.iti_start()
@@ -655,8 +670,6 @@ class ProtocolScreen(ProtocolBase):
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
 					
-					self.protocol_floatlayout.add_widget(self.hold_button)
-				
 				else:
 					self.feedback_label.text = 'Block complete!\n\nPress and hold the white button to start the next \ntrial, or press "End Task" to end the task.'
 
@@ -668,8 +681,6 @@ class ProtocolScreen(ProtocolBase):
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
 					
-					self.protocol_floatlayout.add_widget(self.hold_button)
-			
 			# Set ITI
 
 			if len(self.iti_range) > 1:
@@ -682,22 +693,16 @@ class ProtocolScreen(ProtocolBase):
 				
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Current ITI', self.iti_length)
 
-			self.target_x_pos = random.randint(0, self.grid_squares_x - 1)
-			self.target_y_pos = random.randint(1, self.grid_squares_y - 1)
+			self.stimulus_pos = self.generate_stimulus_pos()
 
-			self.stimulus_button.pos_hint = {
-				'center_x': self.x_dim_hint[self.target_x_pos]
-				, 'center_y': self.y_dim_hint[self.target_y_pos]
-				}
+			self.stimulus_button.pos_hint = self.stimulus_pos
+			self.stimulus_button_pressed.pos_hint = self.stimulus_button.pos_hint
 					
-			self.stimulus_pressed_button.pos_hint = {
-				'center_x': self.x_dim_hint[self.target_x_pos]
-				, 'center_y': self.y_dim_hint[self.target_y_pos]
-				}
-
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Location', self.stimulus_button.pos_hint)
 
 			self.current_block_trial = 1		
+
+			Clock.schedule_once(self.block_screen_display_hold_button, self.block_min_rest_duration)
 
 		except KeyboardInterrupt:
 			
