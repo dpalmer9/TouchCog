@@ -994,7 +994,8 @@ class ProtocolBase(Screen):
 	def return_to_main(self, *args):
 		
 		self.manager.current = 'mainmenu'
-		self.manager.remove_widget(self.name)
+		self.current_widget = self.manager.get_screen(self.name)
+		self.manager.remove_widget(self.current_widget)
 
 		return
 	
