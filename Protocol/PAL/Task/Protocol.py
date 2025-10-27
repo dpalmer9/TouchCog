@@ -51,6 +51,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'dpal_probe'
 			, 'spal_probe'
 			, 'recall_probe'
+			, 'correction_trials'
 			, 'iti_fixed_or_range'
 			, 'iti_length'
 			, 'feedback_length'
@@ -100,6 +101,8 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
 
 		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		
+		self.use_correction_trials = self.parameters_dict['correction_trials']
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
@@ -880,6 +883,15 @@ class ProtocolScreen(ProtocolBase):
 				self.blank_image = self.mask_image
 				self.recall_image = self.mask_image
 
+			# If correction trial, retain stimuli from previous trial
+			elif (self.last_response == 0) \
+				and (self.current_stage == 'dPAL') \
+				and self.use_correction_trials:
+
+				# Correction trial; dPAL only
+				self.current_block_trial -= 1
+			
+			# Else, set stimuli for subsequent trial
 			else:
 
 				if self.trial_list_index >= len(self.trial_list):
