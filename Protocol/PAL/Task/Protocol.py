@@ -645,6 +645,8 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.clear_widgets()
+		self.recall_stimulus.size_hint = [0.3 * self.width_adjust, 0.3 * self.height_adjust]
+		self.recall_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.85}
 		self.protocol_floatlayout.add_widget(self.recall_stimulus)
 				
 		for stimulus in self.stimulus_grid_list:
