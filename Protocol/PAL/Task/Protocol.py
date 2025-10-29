@@ -33,6 +33,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'CurrentStage'
 			, 'CurrentBlock'
 			, 'BlockTrial'
+			,'CorrectionTrial'
 			, 'TargetImage'
 			, 'TargetLoc'
 			, 'NontargetImage'
@@ -51,6 +52,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'dpal_probe'
 			, 'spal_probe'
 			, 'recall_probe'
+			, 'correction_trials'
 			, 'iti_fixed_or_range'
 			, 'iti_length'
 			, 'feedback_length'
@@ -100,6 +102,8 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
 
 		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		
+		self.use_correction_trials = self.parameters_dict['correction_trials']
 		
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
@@ -163,6 +167,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.current_block = -1
 		self.current_block_trial = 0
+
+		self.current_correction_trial = 0
 		
 		self.stage_index = -1
 		self.recall_img_index = 0
@@ -170,11 +176,12 @@ class ProtocolScreen(ProtocolBase):
 		self.block_max_count = self.block_multiplier
 		self.block_trial_max = 120
 
-		self.last_response = 0
+		self.last_response = -1 # Modified to -1 to indicate no response yet
 
 		self.response_tracking = list()
 
 		self.recall_video_presented = False
+		self.recall_instruction_target_display_started = False
 
 		self.target_loc = 0
 		self.nontarget_loc = 1
@@ -638,6 +645,8 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.clear_widgets()
+		self.recall_stimulus.size_hint = [0.3 * self.width_adjust, 0.3 * self.height_adjust]
+		self.recall_stimulus.pos_hint = {"center_x": 0.5, "center_y": 0.85}
 		self.protocol_floatlayout.add_widget(self.recall_stimulus)
 				
 		for stimulus in self.stimulus_grid_list:
@@ -790,6 +799,7 @@ class ProtocolScreen(ProtocolBase):
 			, self.current_stage
 			, self.current_block
 			, self.current_block_trial
+			, self.current_correction_trial
 			, self.target_image
 			, self.target_loc
 			, self.nontarget_image_string
@@ -880,8 +890,19 @@ class ProtocolScreen(ProtocolBase):
 				self.blank_image = self.mask_image
 				self.recall_image = self.mask_image
 
-			else:
+			# If correction trial, retain stimuli from previous trial
+			elif (self.last_response == 0) \
+				and (self.current_stage == 'dPAL') \
+				and self.use_correction_trials:
 
+				# Correction trial; dPAL only
+				self.current_block_trial -= 1
+				self.current_trial -= 1
+				self.current_correction_trial = 1
+			
+			# Else, set stimuli for subsequent trial
+			else:
+				self.current_correction_trial = 0
 				if self.trial_list_index >= len(self.trial_list):
 					self.trial_list = self.constrained_shuffle(self.trial_list)
 					self.trial_list_index = 0
@@ -1067,7 +1088,7 @@ class ProtocolScreen(ProtocolBase):
 			self.nontarget_image_loc = pos_list[1]
 
 			self.response_tracking = list()
-			self.last_response = 0
+			self.last_response = -1
 			self.current_block_trial = 0
 
 			if self.current_block == 1:
