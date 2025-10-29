@@ -173,7 +173,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_max_count = self.block_multiplier
 		self.block_trial_max = 120
 
-		self.last_response = 0
+		self.last_response = -1 # Modified to -1 to indicate no response yet
 
 		self.response_tracking = list()
 
@@ -1079,7 +1079,7 @@ class ProtocolScreen(ProtocolBase):
 			self.nontarget_image_loc = pos_list[1]
 
 			self.response_tracking = list()
-			self.last_response = 0
+			self.last_response = -1
 			self.current_block_trial = 0
 
 			if self.current_block == 1:
