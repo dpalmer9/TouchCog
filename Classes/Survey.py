@@ -9,6 +9,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.slider import Slider
 from kivy.uix.widget import Widget
+from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Line, Color, Ellipse
 from kivy.core.window import Window
 import pandas as pd
@@ -21,12 +22,27 @@ import pathlib
 class LikertScale(Widget):
     """
     A custom Likert scale widget with a horizontal draggable indicator.
+    Supports both numeric ranges and labeled options.
     """
-    def __init__(self, scale_min, scale_max, **kwargs):
+    def __init__(self, options=None, scale_min=None, scale_max=None, **kwargs):
         super(LikertScale, self).__init__(**kwargs)
-        self.scale_min = scale_min
-        self.scale_max = scale_max
-        self.current_value = scale_min
+        
+        # Handle both old format (scale_min, scale_max) and new format (options dict)
+        if options is not None:
+            # New format: options is a dict with keys as IDs and values as labels
+            self.options = options
+            self.option_keys = list(options.keys())
+            self.scale_min = 0
+            self.scale_max = len(self.option_keys) - 1
+            self.current_value = 0
+        else:
+            # Old format: numeric range
+            self.scale_min = scale_min if scale_min is not None else 0
+            self.scale_max = scale_max if scale_max is not None else 5
+            self.options = None
+            self.option_keys = None
+            self.current_value = self.scale_min
+        
         self.indicator_size = 30
         self.padding = 40
         
@@ -120,6 +136,9 @@ class LikertScale(Widget):
     
     def get_value(self):
         """Get the current Likert scale value."""
+        if self.options is not None and self.option_keys is not None:
+            # Return the option key corresponding to current value
+            return self.option_keys[self.current_value]
         return self.current_value
 
 
@@ -163,19 +182,40 @@ class SurveyBase(Screen):
         self.app.screen_manager.current = "mainmenu"
 
 
-    def _create_multile_choice_question(self, layout,question_text, options):
+    def _create_multile_choice_question(self, layout, question_text, options):
         """
         Create a multiple choice question with given text and options.
+        Handles "Other" option with text entry.
         """
+        question_label = Label(text=question_text, size_hint_y=None, height=60)
+        layout.add_widget(question_label)
 
-        question_label = Label(text=question_text)
-        self.question_layout.add_widget(question_label)
+        # Create scrollable container for options
+        scroll_view = ScrollView(size_hint=(1, 0.7))
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+        options_container.bind(minimum_height=options_container.setter('height'))
 
+        # Track if "Other" option exists
+        other_text_input = None
+        
         for option in options:
-            option_button = Button(text=option)
-            layout.add_widget(option_button)
+            if option.lower() == "other":
+                # Create horizontal layout for "Other" with text entry
+                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
+                other_button = Button(text=option, size_hint_x=0.3)
+                other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
+                other_text_input.hint_text = "Specify other"
+                other_row.add_widget(other_button)
+                other_row.add_widget(other_text_input)
+                options_container.add_widget(other_row)
+            else:
+                option_button = Button(text=option, size_hint_y=None, height=50)
+                options_container.add_widget(option_button)
 
-        survey_continue_button = Button(text="Next", size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5})
+        scroll_view.add_widget(options_container)
+        layout.add_widget(scroll_view)
+
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
         survey_continue_button.bind(on_press=self.advance_survey)
         layout.add_widget(survey_continue_button)
 
@@ -185,14 +225,18 @@ class SurveyBase(Screen):
         """
         Create a text input question with given text.
         """
-        question_label = Label(text=question_text)
+        question_label = Label(text=question_text, size_hint_y=None, height=60)
         layout.add_widget(question_label)
+
+        # Add spacer to push content up
+        spacer = Widget(size_hint_y=0.3)
+        layout.add_widget(spacer)
 
         from kivy.uix.textinput import TextInput
-        text_input = TextInput(multiline=False)
+        text_input = TextInput(multiline=False, size_hint_y=None, height=50)
         layout.add_widget(text_input)
 
-        survey_continue_button = Button(text="Next", size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5})
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
         survey_continue_button.bind(on_press=self.advance_survey)
         layout.add_widget(survey_continue_button)
 
@@ -201,15 +245,34 @@ class SurveyBase(Screen):
     def _create_multi_response_question(self, layout, question_text, options):
         """
         Create a multi-response question with given text and options.
+        Handles "Other" option with text entry.
         """
-        question_label = Label(text=question_text)
+        question_label = Label(text=question_text, size_hint_y=None, height=60)
         layout.add_widget(question_label)
 
-        for option in options:
-            option_button = Button(text=option)
-            layout.add_widget(option_button)
+        # Create scrollable container for options
+        scroll_view = ScrollView(size_hint=(1, 0.7))
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+        options_container.bind(minimum_height=options_container.setter('height'))
 
-        survey_continue_button = Button(text="Next", size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5})
+        for option in options:
+            if option.lower() == "other":
+                # Create horizontal layout for "Other" with text entry
+                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
+                other_button = Button(text=option, size_hint_x=0.3)
+                other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
+                other_text_input.hint_text = "Specify other"
+                other_row.add_widget(other_button)
+                other_row.add_widget(other_text_input)
+                options_container.add_widget(other_row)
+            else:
+                option_button = Button(text=option, size_hint_y=None, height=50)
+                options_container.add_widget(option_button)
+
+        scroll_view.add_widget(options_container)
+        layout.add_widget(scroll_view)
+
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
         survey_continue_button.bind(on_press=self.advance_survey)
         layout.add_widget(survey_continue_button)
 
@@ -217,50 +280,90 @@ class SurveyBase(Screen):
 
     def _create_multi_response_question(self, layout, question_text, options):
         """
-        Create a multi-response question with given text and options.
+        Create a multi-response question with checkboxes for given text and options.
+        Handles "Other" option with text entry instead of label.
         """
-        question_label = Label(text=question_text)
+        question_label = Label(text=question_text, size_hint_y=None, height=60)
         layout.add_widget(question_label)
 
+        # Create scrollable container for options
+        scroll_view = ScrollView(size_hint=(1, 0.7))
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+        options_container.bind(minimum_height=options_container.setter('height'))
+
         for option in options:
-            option_checkbox = CheckBox()
-            layout.add_widget(option_checkbox)
-            option_label = Label(text=option)
-            layout.add_widget(option_label)
+            if option.lower() == "other":
+                # For "Other", replace label with text entry
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
+                option_checkbox = CheckBox(size_hint_x=None, width=50)
+                option_row.add_widget(option_checkbox)
+                # Use the "Other" label as hint text in the entry field
+                other_text_input = TextInput(multiline=False, hint_text=option, size_hint_x=1.0)
+                option_row.add_widget(other_text_input)
+                options_container.add_widget(option_row)
+            else:
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
+                option_checkbox = CheckBox(size_hint_x=None, width=50)
+                option_row.add_widget(option_checkbox)
+                option_label = Label(text=option, halign='left')
+                option_row.add_widget(option_label)
+                options_container.add_widget(option_row)
+
+        scroll_view.add_widget(options_container)
+        layout.add_widget(scroll_view)
         
-        survey_continue_button = Button(text="Next", size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5})
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
         survey_continue_button.bind(on_press=self.advance_survey)
         layout.add_widget(survey_continue_button)
 
         return layout
 
-    def _create_rating_scale_question(self, layout, question_text, scale_min, scale_max):
+    def _create_rating_scale_question(self, layout, question_text, options):
         """
         Create a Likert scale question with a draggable horizontal indicator.
+        Options can be either a dict {key: label, ...} or a tuple (min, max).
         """
-        question_label = Label(text=question_text, size_hint_y=None, height=40)
+        question_label = Label(text=question_text, size_hint_y=None, height=60)
         layout.add_widget(question_label)
 
         # Create a container for the scale with labels
-        scale_container = BoxLayout(orientation='vertical', size_hint_y=None, height=100, spacing=5)
+        scale_container = BoxLayout(orientation='vertical', size_hint_y=None, height=150, spacing=5, padding=10)
         
         # Add the Likert scale widget
-        likert_scale = LikertScale(scale_min=scale_min, scale_max=scale_max, size_hint_y=0.6)
-        scale_container.add_widget(likert_scale)
-        
-        # Add label row with min and max labels
-        label_row = BoxLayout(size_hint_y=0.4, spacing=10)
-        min_label = Label(text=str(scale_min), size_hint_x=None, width=40)
-        max_label = Label(text=str(scale_max), size_hint_x=None, width=40)
-        spacer = Widget()
-        label_row.add_widget(min_label)
-        label_row.add_widget(spacer)
-        label_row.add_widget(max_label)
-        scale_container.add_widget(label_row)
+        if isinstance(options, dict):
+            # New format: options dict with keys and labels
+            likert_scale = LikertScale(options=options, size_hint_y=0.5)
+            scale_container.add_widget(likert_scale)
+            
+            # Add label row with option labels
+            label_row = BoxLayout(size_hint_y=0.5, spacing=5)
+            option_values = list(options.values())
+            num_options = len(option_values)
+            
+            for label_text in option_values:
+                option_label = Label(text=label_text, size_hint_x=1.0 / num_options)
+                label_row.add_widget(option_label)
+            
+            scale_container.add_widget(label_row)
+        else:
+            # Old format: numeric range (scale_min, scale_max)
+            scale_min, scale_max = options[0], options[1]
+            likert_scale = LikertScale(scale_min=scale_min, scale_max=scale_max, size_hint_y=0.6)
+            scale_container.add_widget(likert_scale)
+            
+            # Add label row with min and max labels
+            label_row = BoxLayout(size_hint_y=0.4, spacing=10)
+            min_label = Label(text=str(scale_min), size_hint_x=None, width=40)
+            max_label = Label(text=str(scale_max), size_hint_x=None, width=40)
+            spacer = Widget()
+            label_row.add_widget(min_label)
+            label_row.add_widget(spacer)
+            label_row.add_widget(max_label)
+            scale_container.add_widget(label_row)
 
         layout.add_widget(scale_container)
 
-        survey_continue_button = Button(text="Next", size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5, 'center_y': 0.15})
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
         survey_continue_button.bind(on_press=self.advance_survey)
         layout.add_widget(survey_continue_button)
 
@@ -270,15 +373,23 @@ class SurveyBase(Screen):
         """
         Create a survey question with given text and options.
         """
-        question_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        # Create outer container with scroll view
+        outer_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        question_layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint_y=None)
+        question_layout.bind(minimum_height=question_layout.setter('height'))
+        
         if question_type == "multiple_choice":
-            question_layout = self._create_multile_choice_question(question_layout, question_text, options)
+            # options should be a dict {key: label, ...}
+            question_layout = self._create_multile_choice_question(question_layout, question_text, options.values() if isinstance(options, dict) else options)
         elif question_type == "text_input":
             question_layout = self._create_text_input_question(question_layout, question_text)
         elif question_type == "multi_response":
-            question_layout = self._create_multi_response_question(question_layout, question_text, options)
+            # options should be a dict {key: label, ...}
+            question_layout = self._create_multi_response_question(question_layout, question_text, options.values() if isinstance(options, dict) else options)
         elif question_type == "rating_scale":
-            question_layout = self._create_rating_scale_question(question_layout, question_text, options[0], options[1])
+            # options is now passed directly (dict or tuple)
+            question_layout = self._create_rating_scale_question(question_layout, question_text, options)
 
         self.question_list.append(question_layout)
 
@@ -322,21 +433,37 @@ class SurveyBase(Screen):
             q_options = question.get('options', None)
             self.create_question(q_text, q_options, q_type)
     
-    def advance_survey(self):
+    def advance_survey(self, *args):
         """
         Advance to the next question in the survey.
         """
         self.remove_question()
         self.question_index += 1
         if self.question_index < len(self.question_list):
-            self.main_layout.add_widget(self.question_list[self.question_index])
+            self._display_question(self.question_list[self.question_index])
         else:
             # Survey is complete
             self.end_survey()
 
     def run_survey(self, *args):
         self.main_layout.clear_widgets()
-        self.main_layout.add_widget(self.question_list[self.question_index])
+        self._display_question(self.question_list[self.question_index])
+    
+    def _display_question(self, question_layout):
+        """
+        Display a question centered in the middle of the screen.
+        """
+        from kivy.uix.floatlayout import FloatLayout
+        
+        # Create a centered container
+        container = FloatLayout()
+        
+        # Add question layout centered in the screen
+        question_layout.size_hint = (0.8, 0.8)
+        question_layout.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+        container.add_widget(question_layout)
+        
+        self.main_layout.add_widget(container)
 
     def start_screen(self):
         self.main_layout.clear_widgets()
