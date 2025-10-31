@@ -705,15 +705,20 @@ class BatteryMenu(Screen):
 			self.battery_grid.add_widget(btn)
 	
 	def select_battery(self, battery_name, *args):
-		"""Select a battery from the list"""
-		# Deselect previous selection
-		if self.selected_battery and self.selected_battery in self.battery_buttons:
-			self.battery_buttons[self.selected_battery].background_color = (1, 1, 1, 1)
-		
-		# Select new battery
-		self.selected_battery = battery_name
-		if battery_name in self.battery_buttons:
-			self.battery_buttons[battery_name].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+		"""Toggle selection of a battery from the list"""
+		# If clicking the same battery, deselect it
+		if self.selected_battery == battery_name:
+			self.battery_buttons[battery_name].background_color = (1, 1, 1, 1)
+			self.selected_battery = None
+		else:
+			# Deselect previous selection
+			if self.selected_battery and self.selected_battery in self.battery_buttons:
+				self.battery_buttons[self.selected_battery].background_color = (1, 1, 1, 1)
+			
+			# Select new battery
+			self.selected_battery = battery_name
+			if battery_name in self.battery_buttons:
+				self.battery_buttons[battery_name].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
 	
 	def start_battery(self, *args):
 		"""Start the selected battery"""
