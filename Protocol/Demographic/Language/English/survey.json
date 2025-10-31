@@ -1,0 +1,9 @@
+{
+    "questions" : [
+        {
+            "text" : "How satisfied are you with our service?",
+            "type" : "rating_scale",
+            "options" : [1, 5]
+        }
+    ]
+}
