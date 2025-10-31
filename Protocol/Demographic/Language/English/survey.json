@@ -1,9 +1,140 @@
 {
     "questions" : [
         {
-            "text" : "How satisfied are you with our service?",
+            "text" : "What is your name?",
+            "type" : "text_input"
+        },
+        {
+            "text" : "What is your age?",
+            "type" : "text_input"
+        },
+        {
+            "text" : "What was your assigned sex at birth?",
+            "type" : "multiple_choice",
+            "options" : {
+                "male": "Male",
+                "female": "Female",
+                "nodisclose": "Prefer not to disclose"
+            }
+        },
+        {
+            "text" : "What was your assigned sex at birth?",
+            "type" : "multi_response",
+            "options" : {
+                "male": "Man",
+                "woman": "Woman",
+                "nonbinary": "Non-binary",
+                "fluid": "Gender Fluid",
+                "other" : "Other"
+            }
+        },
+        {
+            "text" : "Do you self-identify as an Indigenous Person that is First Nations, Metis, or Inuk (Inuit)?",
+            "type" : "multiple_choice",
+            "options" : {
+                "yes": "Yes",
+                "no": "No",
+                "prefer_not_to_say": "Prefer not to say"
+            }
+        },
+        {
+            "text" : "What racial and/or ethnic groups do you self-identify with?",
+            "type" : "multi_response",
+            "options" : {
+                "arab": "Arab",
+                "black": "Black",
+                "chinese": "Chinese",
+                "filipino": "Filipino",
+                "japanese": "Japanese",
+                "korean": "Korean",
+                "latin_american": "Latin American",
+                "south_asian": "South Asian (e.g., East Indian, Pakistani, Sri Lankan)",
+                "southeast_asian": "Southeast Asian (e.g., Cambodian, Laotian, Vietnamese)",
+                "west_asian": "West Asian (e.g., Iranian, Afghan)",
+                "white": "White",
+                "other": "Other"
+            }
+        },
+        {
+            "text" : "Do you identify as a person with a disability?",
+            "type" : "multiple_choice",
+            "options" : {
+                "yes": "Yes",
+                "no": "No",
+                "prefer_not_to_say": "Prefer not to say"
+            }
+        },
+        {
+            "text" : "Your disability is related to... (Please check all boxes that apply to you)",
+            "type" : "multi_response",
+            "options" : {
+                "dexterity": "Dexterity",
+                "flexibility": "Flexibility",
+                "hearing": "Hearing",
+                "learning": "Learning",
+                "memory": "Memory",
+                "mental_health": "Mental Health",
+                "mobility": "Mobility",
+                "pain": "Pain",
+                "vision": "Vision",
+                "not_represented": "My disability is not represented in this list"
+            }
+        },
+        {
+            "text" : "Please indicate your current sexual identity based on the following response options. Select all that apply.",
+            "type" : "multi_response",
+            "options" : {
+                "asexual": "Asexual",
+                "bisexual": "Bisexual",
+                "gay": "Gay",
+                "heterosexual": "Heterosexual",
+                "lesbian": "Lesbian",
+                "queer": "Queer",
+                "other": "Other"
+            }
+        },
+        {
+            "text" : "What are the first 3 digits of your postal Code?",
+            "type" : "text_input"
+        },
+        {
+            "text" : "What is your household income range?",
+            "type" : "multiple_choice",
+            "options" : {
+                "1" : "Less than $50,000",
+                "2" : "$50,000 to $59,999",
+                "3" : "$60,000 to $69,999",
+                "4" : "$70,000 to $79,999",
+                "5" : "$80,000 to $89,999",
+                "6" : "$90,000 to $99,999",
+                "7" : "$100,000 to $109,999",
+                "8" : "$110,000 to $119,999",
+                "9" : "$120,000 or more",
+                "prefer_not_to_say" : "Prefer not to say"
+            }
+        },
+        {
+            "text" : "What best describes your current employment status?",
+            "type" : "multiple_choice",
+            "options" : {
+                "employed" : "Employed (full-time or part-time)",
+                "self_employed" : "Self-employed (full-time or part-time)",
+                "unemployed" : "Unemployed",
+                "student" : "Student",
+                "retired" : "Retired",
+                "prefer_not_to_say" : "Prefer not to say"
+            }
+        },
+        {
+            "text" : "How Comfortable are you using technology, like an tablet/iPad?",
             "type" : "rating_scale",
-            "options" : [1, 5]
+            "options" : {
+                "1" : "not at all comfortable",
+                "2" : "slightly comfortable",
+                "3" : "moderately comfortable",
+                "4" : "very comfortable",
+                "5" : "extremely comfortable"
+            }
         }
     ]
 }
