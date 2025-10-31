@@ -178,6 +178,7 @@ import threading
 import urllib.request
 
 from Classes.Menu import MenuBase
+from Classes.Survey import SurveyBase
 
 from functools import partial
 
@@ -550,7 +551,7 @@ class ProtocolMenu(Screen):
 
 		self.menu_config = configparser.ConfigParser()
 		self.menu_config.read(pathlib.Path('Language', self.language, 'protocolmenu.ini'))
-		self.Protocol_Configure_Screen = MenuBase()
+		self.Protocol_Configure_Screen = None
 		protocol_list = search_protocols()
 		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
 		protocol_index = 0
@@ -579,9 +580,16 @@ class ProtocolMenu(Screen):
 		
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
-		
-		task_module = protocol_constructor(label, 'Menu')
-		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
+		elif isinstance(self.Protocol_Configure_Screen, SurveyBase):
+			self.manager.remove_widget(self.Protocol_Configure_Screen)
+
+		if pathlib.Path('Protocol', label, 'Task', 'Menu.py').is_file():
+			task_module = protocol_constructor(label, 'Menu')
+			self.Protocol_Configure_Screen = task_module.ConfigureScreen()
+		else:
+			task_module = protocol_constructor(label, 'Protocol')
+			self.Protocol_Configure_Screen = task_module.SurveyProtocol()
+
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
 		self.app.active_screen = self.Protocol_Configure_Screen.name
