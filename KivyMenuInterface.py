@@ -518,13 +518,13 @@ class MainMenu(Screen):
 	
 	def load_battery_menu(self, *args):
 		
-		if isinstance(self.protocol_window, ProtocolBattery):
-			self.manager.current = 'protocolbattery'
+		if isinstance(self.protocol_window, BatteryMenu):
+			self.manager.current = 'batterymenu'
 		
 		else:
-			self.protocol_window = ProtocolBattery()
+			self.protocol_window = BatteryMenu()
 			self.manager.add_widget(self.protocol_window)
-			self.manager.current = 'protocolbattery'
+			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
 		
@@ -599,6 +599,158 @@ class ProtocolMenu(Screen):
 	
 	def cancel_protocol(self, *args):
 		
+		self.manager.current = 'mainmenu'
+
+class BatteryMenu(Screen):
+	def __init__(self, **kwargs):
+		super(BatteryMenu, self).__init__(**kwargs)
+		self.name = 'batterymenu'
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
+		self.language = self.app.language
+		
+		# Load language config
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(pathlib.Path('Language', self.language, 'batterymenu.ini'))
+		
+		self.Battery_Layout = FloatLayout()
+		
+		# Load available batteries from Battery/ directory
+		self.batteries = self._load_batteries()
+		self.selected_battery = None
+		self.battery_buttons = {}
+		
+		# Title
+		title = Label(text='Select Battery', size_hint=(1, 0.1), pos_hint={'x': 0, 'y': 0.9}, font_size='24sp', bold=True)
+		self.Battery_Layout.add_widget(title)
+		
+		# Create bordered container for battery list
+		battery_container = FloatLayout(size_hint=(0.6, 0.6), pos_hint={'x': 0.2, 'y': 0.25})
+		with battery_container.canvas.before:
+			Color(1, 1, 1, 1)  # White border
+			self.battery_border = Line(rectangle=(0, 0, 1, 1), width=3)
+		battery_container.bind(pos=self.update_battery_border, size=self.update_battery_border)
+		
+		# ScrollView for battery list
+		battery_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x': 0, 'y': 0})
+		self.battery_grid = GridLayout(cols=1, spacing=5, padding=[10, 10, 10, 10], size_hint_y=None)
+		self.battery_grid.bind(minimum_height=self.battery_grid.setter('height'))
+		battery_scroll.add_widget(self.battery_grid)
+		battery_container.add_widget(battery_scroll)
+		self.Battery_Layout.add_widget(battery_container)
+		
+		# Populate battery list
+		self.refresh_battery_list()
+		
+		# Start button
+		start_button = Button(text='Start Selected Battery', size_hint=(0.25, 0.1), pos_hint={'x': 0.1, 'y': 0.05})
+		start_button.bind(on_press=self.start_battery)
+		self.Battery_Layout.add_widget(start_button)
+		
+		# Manual battery button
+		manual_button = Button(text='Manual Battery', size_hint=(0.25, 0.1), pos_hint={'x': 0.4, 'y': 0.05})
+		manual_button.bind(on_press=self.load_protocol_battery)
+		self.Battery_Layout.add_widget(manual_button)
+		
+		# Cancel button
+		cancel_button = Button(text=self.menu_config['Text']['cancel_button'], size_hint=(0.25, 0.1), pos_hint={'x': 0.65, 'y': 0.05})
+		cancel_button.bind(on_press=self.cancel_battery)
+		self.Battery_Layout.add_widget(cancel_button)
+		
+		self.add_widget(self.Battery_Layout)
+	
+	def update_battery_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.battery_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+	
+	def _load_batteries(self):
+		"""Load all battery JSON files from Battery/ directory"""
+		batteries = []
+		battery_path = pathlib.Path('Battery')
+		
+		if not battery_path.exists():
+			return batteries
+		
+		try:
+			for json_file in battery_path.glob('*.json'):
+				try:
+					with open(json_file, 'r', encoding='utf-8') as f:
+						battery_data = json.load(f)
+						batteries.append({
+							'name': battery_data.get('name', json_file.stem),
+							'path': json_file,
+							'data': battery_data
+						})
+				except Exception as e:
+					print(f"Error loading battery file {json_file}: {e}")
+		except Exception as e:
+			print(f"Error accessing Battery directory: {e}")
+		
+		return batteries
+	
+	def refresh_battery_list(self):
+		"""Refresh the battery list display"""
+		self.battery_grid.clear_widgets()
+		self.battery_buttons.clear()
+		
+		if not self.batteries:
+			no_label = Label(text='No batteries found', size_hint_y=None, height=50)
+			self.battery_grid.add_widget(no_label)
+			return
+		
+		for battery in self.batteries:
+			btn = Button(text=battery['name'], size_hint_y=None, height=60, font_size='16sp')
+			btn.bind(on_press=partial(self.select_battery, battery['name']))
+			self.battery_buttons[battery['name']] = btn
+			self.battery_grid.add_widget(btn)
+	
+	def select_battery(self, battery_name, *args):
+		"""Select a battery from the list"""
+		# Deselect previous selection
+		if self.selected_battery and self.selected_battery in self.battery_buttons:
+			self.battery_buttons[self.selected_battery].background_color = (1, 1, 1, 1)
+		
+		# Select new battery
+		self.selected_battery = battery_name
+		if battery_name in self.battery_buttons:
+			self.battery_buttons[battery_name].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+	
+	def start_battery(self, *args):
+		"""Start the selected battery"""
+		if not self.selected_battery:
+			print("No battery selected")
+			return
+		
+		# Find the selected battery data
+		battery_data = None
+		for battery in self.batteries:
+			if battery['name'] == self.selected_battery:
+				battery_data = battery['data']
+				break
+		
+		if not battery_data:
+			return
+		
+		# Extract protocol list from battery
+		protocols = []
+		for task in battery_data.get('tasks', []):
+			protocols.append(task.get('task'))
+		
+		# Set battery data in app
+		self.app.battery_protocols = protocols
+		self.app.battery_active = len(protocols) > 0
+		self.app.battery_configs = {task.get('task'): task.get('overrides', {}) for task in battery_data.get('tasks', [])}
+		
+		if self.app.battery_active:
+			# Start the configuration process for the first protocol
+			self.app.start_next_battery_config()
+	
+	def load_protocol_battery(self, *args):
+		"""Load the manual ProtocolBattery screen"""
+		self.manager.current = 'protocolbattery'
+	
+	def cancel_battery(self, *args):
+		"""Cancel and return to main menu"""
 		self.manager.current = 'mainmenu'
 
 class ProtocolBattery(Screen):
