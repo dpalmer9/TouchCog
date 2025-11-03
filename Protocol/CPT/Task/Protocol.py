@@ -2407,6 +2407,7 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)
 				
 				elif self.current_stage == 'Flanker_Probe':
+					self.block_duration = self.block_duration_probe
 					self.trial_list = self.trial_list_flanker
 					self.target_probability = self.target_prob_sim / self.target_prob_trial_num
 
