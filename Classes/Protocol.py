@@ -997,6 +997,16 @@ class ProtocolBase(Screen):
 		self.current_widget = self.manager.get_screen(self.name)
 		self.manager.remove_widget(self.current_widget)
 
+		# If a battery run is active, notify the app so it can advance to next task
+		try:
+			if getattr(self.app, 'battery_active', False):
+				# delegate to MenuApp to advance and start next battery task
+				if hasattr(self.app, 'battery_task_finished'):
+					self.app.battery_task_finished()
+		except Exception:
+			# best-effort: ignore failures here
+			pass
+
 		return
 	
 	

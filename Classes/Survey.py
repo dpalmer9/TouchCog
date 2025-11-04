@@ -179,8 +179,21 @@ class SurveyBase(Screen):
         self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5})
 
     def _return_to_main_menu(self, instance):
-        self.app.screen_manager.current = "mainmenu"
+        try:
+            if getattr(self.app, 'battery_active', False):
+				# delegate to MenuApp to advance and start next battery task
+                if hasattr(self.app, 'battery_task_finished'):
+                    self.app.battery_task_finished()
+                    return
+        except Exception:
+			# best-effort: ignore failures here
+            pass
 
+        try:
+            self.app.root.current = 'mainscreen'
+            return
+        except Exception:
+            pass
 
     def _create_multile_choice_question(self, layout, question_text, options):
         """
