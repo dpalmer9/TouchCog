@@ -5,8 +5,9 @@
     "author": "Daniel Palmer, PhD",
     "tasks": [
         {
-            "task": "Demographics",
+            "task": "Demographic",
             "name": "Demographic Survey",
+            "type": "survey",
             "description": "A survey to collect demographic information from participants.",
             "overrides": {
 
@@ -15,6 +16,7 @@
         {
             "task": "CPT",
             "name": "Continuous Performance Task",
+            "type": "task",
             "description": "A task measuring sustained attention and response inhibition.",
             "overrides": {
             }
@@ -22,6 +24,7 @@
         {
             "task": "PAL",
             "name": "Paired Associates Learning",
+            "type": "task",
             "description": "A task assessing visual spatial memory through paired associations.",
             "overrides": {
             }
@@ -29,6 +32,7 @@
         {
             "task": "TUNL",
             "name": "Trial-Unique Non-Matching to Location",
+            "type": "task",
             "description": "A task evaluating spatial working memory by requiring non-matching to location responses.",
             "overrides": {
             }
