@@ -520,10 +520,14 @@ class MainMenu(Screen):
 		
 		if isinstance(self.protocol_window, BatteryMenu):
 			self.manager.current = 'batterymenu'
+		if isinstance(self.protocol_window, BatteryMenu):
+			self.manager.current = 'batterymenu'
 		
 		else:
 			self.protocol_window = BatteryMenu()
+			self.protocol_window = BatteryMenu()
 			self.manager.add_widget(self.protocol_window)
+			self.manager.current = 'batterymenu'
 			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
