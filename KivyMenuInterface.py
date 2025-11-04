@@ -736,19 +736,122 @@ class BatteryMenu(Screen):
 		if not battery_data:
 			return
 		
-		# Extract protocol list from battery
-		protocols = []
-		for task in battery_data.get('tasks', []):
-			protocols.append(task.get('task'))
-		
-		# Set battery data in app
-		self.app.battery_protocols = protocols
-		self.app.battery_active = len(protocols) > 0
-		self.app.battery_configs = {task.get('task'): task.get('overrides', {}) for task in battery_data.get('tasks', [])}
-		
-		if self.app.battery_active:
-			# Start the configuration process for the first protocol
-			self.app.start_next_battery_config()
+		# Prompt for participant ID first, then build configurations and start tasks
+		content = FloatLayout()
+		input_box = TextInput(hint_text='Participant ID', size_hint=(0.8, 0.2), pos_hint={'x':0.1, 'y':0.45}, multiline=False)
+		content.add_widget(input_box)
+		msg_label = Label(text='Enter Participant ID to start battery', size_hint=(0.8, 0.2), pos_hint={'x':0.1,'y':0.7})
+		content.add_widget(msg_label)
+
+		def on_confirm(instance):
+			participant_id = input_box.text.strip()
+			if participant_id == '':
+				# keep popup open if empty
+				return
+
+			# store participant id at app level
+			self.app.participant_id = participant_id
+
+			# Build protocol list and fully-populated configuration dicts
+			protocols = [task.get('task') for task in battery_data.get('tasks', [])]
+			self.app.battery_protocols = protocols
+			self.app.battery_active = len(protocols) > 0
+			self.app.battery_index = 0
+			battery_configs = {}
+			# track types (task vs survey) so we know whether to pass configs
+			self.app.battery_task_types = {}
+
+			for task in battery_data.get('tasks', []):
+				pname = task.get('task')
+				ttype = task.get('type', 'task')
+				self.app.battery_task_types[pname] = ttype
+				# Only build a configuration dict for actual 'task' types; surveys get no config
+				if ttype == 'task':
+					overrides = task.get('overrides', {}) or {}
+					# Build a flat parameter dict (like MenuBase.start_protocol produces)
+					parameter_dict = {}
+					conf_path = pathlib.Path('Protocol', pname, 'Configuration.ini')
+					if conf_path.is_file():
+						cfg = configparser.ConfigParser()
+						cfg.read(conf_path, encoding='utf-8')
+						# choose which section to use for UI parameters
+						use_section = 'TaskParameters'
+						if 'DebugParameters' in cfg and cfg.getboolean('DebugParameters', 'debug_mode', fallback=False):
+							use_section = 'DebugParameters'
+						if use_section in cfg:
+							for opt in cfg[use_section]:
+								val = cfg.get(use_section, opt)
+								# try to coerce numeric/bool types
+								try:
+									if isinstance(val, str) and val.lower() in ('true', 'false'):
+										parsed = cfg.getboolean(use_section, opt)
+									else:
+										try:
+											parsed = cfg.getint(use_section, opt)
+										except Exception:
+											try:
+												parsed = cfg.getfloat(use_section, opt)
+											except Exception:
+												parsed = val
+								except Exception:
+									parsed = val
+								# normalize key the same way MenuBase.start_protocol does
+								key_norm = opt.lower().replace(' ', '_')
+								parameter_dict[key_norm] = parsed
+					else:
+						# no config file: start with empty dict and allow overrides + participant id
+						parameter_dict = {}
+
+					# Apply overrides: support 'section.option' or match to normalized parameter names
+					for k, v in overrides.items():
+						if isinstance(k, str) and '.' in k:
+							sec, opt = k.split('.', 1)
+							# try to map section.option to parameter name if possible
+							if conf_path.is_file():
+								cfg_try = configparser.ConfigParser()
+								cfg_try.read(conf_path, encoding='utf-8')
+								if sec in cfg_try and opt in cfg_try[sec]:
+									key_norm = opt.lower().replace(' ', '_')
+									parameter_dict[key_norm] = v
+								else:
+									# fallback: store under normalized combined key
+									parameter_dict[k.lower().replace(' ', '_')] = v
+						else:
+							# try to match plain override key to existing normalized keys
+							norm = k.lower().replace(' ', '_')
+							if norm in parameter_dict:
+								parameter_dict[norm] = v
+							else:
+								# fallback: store override as-is (normalized)
+								parameter_dict[norm] = v
+
+					# Ensure participant id is included (same key as MenuBase.start_protocol)
+					parameter_dict['participant_id'] = participant_id
+
+					battery_configs[pname] = parameter_dict
+				else:
+					# survey: do not build/present a configuration to the survey task
+					battery_configs.pop(pname, None)
+
+			self.app.battery_configs = battery_configs
+			popup.dismiss()
+
+			# Start running battery tasks
+			if self.app.battery_active:
+				self.app.start_battery_tasks()
+
+		def on_cancel(instance):
+			popup.dismiss()
+
+		confirm_button = Button(text='Confirm', size_hint=(0.4, 0.15), pos_hint={'x':0.05,'y':0.05})
+		confirm_button.bind(on_press=on_confirm)
+		content.add_widget(confirm_button)
+		cancel_button = Button(text='Cancel', size_hint=(0.4, 0.15), pos_hint={'x':0.55,'y':0.05})
+		cancel_button.bind(on_press=on_cancel)
+		content.add_widget(cancel_button)
+
+		popup = Popup(title='Participant ID', content=content, size_hint=(0.6, 0.4))
+		popup.open()
 	
 	def load_protocol_battery(self, *args):
 		"""Load the manual ProtocolBattery screen"""
@@ -1058,16 +1161,51 @@ class MenuApp(App):
 			self.start_battery_tasks()
 	
 	def start_battery_tasks(self):
-		self.battery_index = 0
+		# Start the task at the current battery_index (do not reset here)
+		if not self.battery_protocols:
+			self.s_manager.current = 'mainmenu'
+			self.battery_active = False
+			return
+
 		if self.battery_index < len(self.battery_protocols):
 			protocol_name = self.battery_protocols[self.battery_index]
-			parameter_dict = self.battery_configs[protocol_name]
-			task_module = protocol_constructor(protocol_name, 'Protocol')
-			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
-			protocol_task_screen.load_parameters(parameter_dict)
+			parameter_dict = self.battery_configs[protocol_name] if protocol_name in self.battery_configs else {}
+			if pathlib.Path('Protocol', protocol_name, 'Task', 'Menu.py').is_file():
+				task_module = protocol_constructor(protocol_name, 'Protocol')
+				protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
+			else:
+				task_module = protocol_constructor(protocol_name, 'Protocol')
+				protocol_task_screen = task_module.SurveyProtocol()
+			# Provide parameters to the task only for 'task' types (not surveys)
+			try:
+				task_type = self.battery_task_types.get(protocol_name, 'task') if hasattr(self, 'battery_task_types') else 'task'
+				if task_type == 'task' and hasattr(protocol_task_screen, 'load_parameters'):
+					protocol_task_screen.load_parameters(parameter_dict)
+			except Exception:
+				# Some protocols may expect different parameter shapes; still continue
+				pass
 			self.s_manager.add_widget(protocol_task_screen)
 			self.s_manager.current = protocol_task_screen.name
 		else:
+			# No more tasks in battery
+			self.battery_active = False
+			self.s_manager.current = 'mainmenu'
+
+	def battery_task_finished(self):
+		"""Called by a protocol when it returns to the main menu during a battery run.
+		This advances the battery index and starts the next task if available.
+		"""
+		# Only advance if a battery run is active
+		if not getattr(self, 'battery_active', False):
+			return
+
+		self.battery_index = int(self.battery_index) + 1
+		if self.battery_index < len(self.battery_protocols):
+			# Start the next battery task
+			self.start_battery_tasks()
+		else:
+			# Finished all battery tasks
+			self.battery_active = False
 			self.s_manager.current = 'mainmenu'
 	
 	def add_screen(self, screen):
