@@ -2196,13 +2196,13 @@ class ProtocolScreen(ProtocolBase):
 
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
-
+		
+		self.protocol_floatlayout.clear_widgets()
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
 
-		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
 			
 		if self.current_stage == 'Similarity_Scaling':
