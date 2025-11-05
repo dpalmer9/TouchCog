@@ -622,7 +622,6 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
 				)
-			self.tutorial_video.fit_mode = 'fill'
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
