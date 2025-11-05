@@ -959,7 +959,7 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return None
-		
+		Clock.unschedule(self.iti_end)
 		self.contingency = 3
 		self.response = 1
 		self.trial_outcome = 0
