@@ -5,6 +5,7 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
+from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.slider import Slider
@@ -137,8 +138,9 @@ class LikertScale(Widget):
     def get_value(self):
         """Get the current Likert scale value."""
         if self.options is not None and self.option_keys is not None:
-            # Return the option key corresponding to current value
-            return self.option_keys[self.current_value]
+            # Return the option label corresponding to current value
+            key = self.option_keys[self.current_value]
+            return self.options.get(key, "")
         return self.current_value
 
 
@@ -166,12 +168,38 @@ class SurveyBase(Screen):
         self.survey_button_text = "Next"
         self.survey_button = Button(text=self.survey_button_text, size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5})
 
-        self.demographic_data = pd.DataFrame(columns=['question', 'response'])
+        self.participant_id_entry = TextInput(hint_text="Participant ID", multiline=False, size_hint=(0.6, None), height=40, pos_hint={'center_x': 0.5})
+        self.participant_id = 'Default'
+
+        self.survey_data = pd.DataFrame(columns=['question', 'response'])
+        self.app.survey_data = self.survey_data  # link to app-level survey data
 
         self.survey_json = None
 
         self.question_list = []
         self.question_index = 0
+
+        documents_path = pathlib.Path.home() / 'Documents'
+        self.data_folder = documents_path / 'TouchCog' / 'Data'
+        self.data_folder.mkdir(parents=True, exist_ok=True)
+
+    def _record_response(self, question_text, response):
+        """
+        Append a response row to self.survey_data.
+        response should be a string (or will be coerced to one).
+        """
+        try:
+            # Coerce to string (empty string if None)
+            resp_str = "" if response is None else str(response)
+            self.survey_data.loc[len(self.survey_data)] = [question_text, resp_str]
+        except Exception:
+            # Best-effort: if pandas append fails, try concat
+            try:
+                new_row = pd.DataFrame([[question_text, "" if response is None else str(response)]], columns=self.survey_data.columns)
+                self.survey_data = pd.concat([self.survey_data, new_row], ignore_index=True)
+            except Exception:
+                # give up silently (avoid crashing UI)
+                pass
 
     def _load_end_survey_text(self):
         self.end_survey_text = "Thank you for completing the survey!"
@@ -179,6 +207,8 @@ class SurveyBase(Screen):
         self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5})
 
     def _return_to_main_menu(self, instance):
+        self.app.survey_data = self.survey_data
+        self.app.survey_data.to_csv(self.app.survey_data_path, index=False)
         try:
             if getattr(self.app, 'battery_active', False):
 				# delegate to MenuApp to advance and start next battery task
@@ -211,25 +241,69 @@ class SurveyBase(Screen):
         # Track if "Other" option exists
         other_text_input = None
         
+        # store selection state on the question layout
+        layout.selected_choice = None
+        # unique group per question so only one ToggleButton stays selected
+        group_name = f"choice_group_{id(layout)}"
+
         for option in options:
             if option.lower() == "other":
-                # Create horizontal layout for "Other" with text entry
+                # Create horizontal layout for "Other" with a ToggleButton and text entry
                 other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
-                other_button = Button(text=option, size_hint_x=0.3)
+                other_toggle = ToggleButton(text=option, group=group_name, size_hint_x=0.3)
                 other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
                 other_text_input.hint_text = "Specify other"
-                other_row.add_widget(other_button)
+                # mark selection as 'Other' when toggle goes down
+                def _mark_other(toggle, state, _layout=layout):
+                    if state == 'down':
+                        _layout.selected_choice = 'Other'
+                other_toggle.bind(on_state=_mark_other)
+                other_row.add_widget(other_toggle)
                 other_row.add_widget(other_text_input)
                 options_container.add_widget(other_row)
             else:
-                option_button = Button(text=option, size_hint_y=None, height=50)
-                options_container.add_widget(option_button)
+                option_toggle = ToggleButton(text=option, group=group_name, size_hint_y=None, height=50)
+                # when toggled down, record this option label
+                def _mark_choice(toggle, state, opt=option, _layout=layout):
+                    if state == 'down':
+                        _layout.selected_choice = opt
+                option_toggle.bind(on_state=_mark_choice)
+                options_container.add_widget(option_toggle)
 
         scroll_view.add_widget(options_container)
         layout.add_widget(scroll_view)
 
         survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-        survey_continue_button.bind(on_press=self.advance_survey)
+        # custom handler: find the ToggleButton in the options_container that is down
+        def _on_next(instance, qtext=question_text, _container=options_container, _other_input=other_text_input):
+            selected_text = ""
+            try:
+                # options_container children may be ToggleButtons (for normal options) or BoxLayouts (for 'Other' rows)
+                for child in _container.children:
+                    # direct ToggleButton children
+                    if isinstance(child, ToggleButton):
+                        if child.state == 'down':
+                            selected_text = child.text
+                            break
+                    # rows (e.g., BoxLayout) containing ToggleButton + TextInput
+                    elif isinstance(child, BoxLayout):
+                        for sub in child.children:
+                            if isinstance(sub, ToggleButton) and sub.state == 'down':
+                                if sub.text.lower() == 'other':
+                                    # prefer the explicit other text input if present
+                                    selected_text = _other_input.text if _other_input is not None else ""
+                                else:
+                                    selected_text = sub.text
+                                break
+                        if selected_text:
+                            break
+            except Exception:
+                selected_text = ""
+
+            response = selected_text if selected_text is not None else ""
+            self._record_response(qtext, response)
+            self.advance_survey()
+        survey_continue_button.bind(on_press=_on_next)
         layout.add_widget(survey_continue_button)
 
         return layout
@@ -250,46 +324,51 @@ class SurveyBase(Screen):
         layout.add_widget(text_input)
 
         survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-        survey_continue_button.bind(on_press=self.advance_survey)
+        # custom handler: record the text value
+        def _on_next_text(instance, qtext=question_text, _input=text_input):
+            response = _input.text if _input is not None else ""
+            self._record_response(qtext, response)
+            self.advance_survey()
+        survey_continue_button.bind(on_press=_on_next_text)
         layout.add_widget(survey_continue_button)
 
         return layout
 
-    def _create_multi_response_question(self, layout, question_text, options):
-        """
-        Create a multi-response question with given text and options.
-        Handles "Other" option with text entry.
-        """
-        question_label = Label(text=question_text, size_hint_y=None, height=60)
-        layout.add_widget(question_label)
+    # def _create_multi_response_question(self, layout, question_text, options):
+    #     """
+    #     Create a multi-response question with given text and options.
+    #     Handles "Other" option with text entry.
+    #     """
+    #     question_label = Label(text=question_text, size_hint_y=None, height=60)
+    #     layout.add_widget(question_label)
 
-        # Create scrollable container for options
-        scroll_view = ScrollView(size_hint=(1, 0.7))
-        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
-        options_container.bind(minimum_height=options_container.setter('height'))
+    #     # Create scrollable container for options
+    #     scroll_view = ScrollView(size_hint=(1, 0.7))
+    #     options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+    #     options_container.bind(minimum_height=options_container.setter('height'))
 
-        for option in options:
-            if option.lower() == "other":
-                # Create horizontal layout for "Other" with text entry
-                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
-                other_button = Button(text=option, size_hint_x=0.3)
-                other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
-                other_text_input.hint_text = "Specify other"
-                other_row.add_widget(other_button)
-                other_row.add_widget(other_text_input)
-                options_container.add_widget(other_row)
-            else:
-                option_button = Button(text=option, size_hint_y=None, height=50)
-                options_container.add_widget(option_button)
+    #     for option in options:
+    #         if option.lower() == "other":
+    #             # Create horizontal layout for "Other" with text entry
+    #             other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
+    #             other_button = Button(text=option, size_hint_x=0.3)
+    #             other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
+    #             other_text_input.hint_text = "Specify other"
+    #             other_row.add_widget(other_button)
+    #             other_row.add_widget(other_text_input)
+    #             options_container.add_widget(other_row)
+    #         else:
+    #             option_button = Button(text=option, size_hint_y=None, height=50)
+    #             options_container.add_widget(option_button)
 
-        scroll_view.add_widget(options_container)
-        layout.add_widget(scroll_view)
+    #     scroll_view.add_widget(options_container)
+    #     layout.add_widget(scroll_view)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-        survey_continue_button.bind(on_press=self.advance_survey)
-        layout.add_widget(survey_continue_button)
+    #     survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
+    #     survey_continue_button.bind(on_press=self.advance_survey)
+    #     layout.add_widget(survey_continue_button)
 
-        return layout
+    #     return layout
 
     def _create_multi_response_question(self, layout, question_text, options):
         """
@@ -326,7 +405,35 @@ class SurveyBase(Screen):
         layout.add_widget(scroll_view)
         
         survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-        survey_continue_button.bind(on_press=self.advance_survey)
+        # custom handler: iterate through rows and collect checked labels / text inputs
+        def _on_next_multi(instance, qtext=question_text, _container=options_container):
+            selected = []
+            # options_container children are added top->bottom, but Kivy lays them out; iterate through children
+            for row in _container.children:
+                try:
+                    # Expect row to be BoxLayout with first child a CheckBox and second a Label or TextInput
+                    if len(row.children) >= 2:
+                        # children order in a BoxLayout is reversed; find checkbox and input/label by type
+                        cb = None
+                        val_widget = None
+                        for child in row.children:
+                            if isinstance(child, CheckBox):
+                                cb = child
+                            elif isinstance(child, TextInput) or isinstance(child, Label):
+                                val_widget = child
+                        if cb and cb.active:
+                            if isinstance(val_widget, TextInput):
+                                txt = val_widget.text
+                                if txt:
+                                    selected.append(txt)
+                            elif isinstance(val_widget, Label):
+                                selected.append(val_widget.text)
+                except Exception:
+                    continue
+            response = ", ".join(selected)
+            self._record_response(qtext, response)
+            self.advance_survey()
+        survey_continue_button.bind(on_press=_on_next_multi)
         layout.add_widget(survey_continue_button)
 
         return layout
@@ -377,7 +484,15 @@ class SurveyBase(Screen):
         layout.add_widget(scale_container)
 
         survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-        survey_continue_button.bind(on_press=self.advance_survey)
+        # custom handler: read likert_scale value (label for dicts, numeric for ranges)
+        def _on_next_scale(instance, qtext=question_text, _scale=likert_scale):
+            try:
+                response = _scale.get_value()
+            except Exception:
+                response = ""
+            self._record_response(qtext, response)
+            self.advance_survey()
+        survey_continue_button.bind(on_press=_on_next_scale)
         layout.add_widget(survey_continue_button)
 
         return layout
@@ -459,6 +574,10 @@ class SurveyBase(Screen):
             self.end_survey()
 
     def run_survey(self, *args):
+        self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
+        folder_path = pathlib.Path(self.data_folder, self.participant_id)
+        folder_path.mkdir(parents=True, exist_ok=True)
+        self.app.survey_data_path = str(folder_path / f"{self.name}.csv")
         self.main_layout.clear_widgets()
         self._display_question(self.question_list[self.question_index])
     
@@ -482,6 +601,8 @@ class SurveyBase(Screen):
         self.main_layout.clear_widgets()
         self.main_layout.add_widget(self.survey_title_label)
         self.main_layout.add_widget(self.survey_title_description)
+        if not self.app.battery_active:
+            self.main_layout.add_widget(self.participant_id_entry)
         self.main_layout.add_widget(self.survey_button)
         self.survey_button.bind(on_press=self.run_survey)
 
