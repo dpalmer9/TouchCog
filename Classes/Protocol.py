@@ -1028,7 +1028,7 @@ class ProtocolBase(Screen):
 		
 		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 		
-		self.hold_button.bind(on_press=self.start_iti)
+		self.hold_button.bind(on_press=self.iti_start)
 
 		return
 	

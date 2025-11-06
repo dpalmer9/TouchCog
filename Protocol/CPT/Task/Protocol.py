@@ -276,7 +276,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.last_response = 0
 		
-		self.response_tracking = list()
 		self.blur_tracking = list()
 		self.noise_tracking = list()
 		self.stimdur_frame_tracking = list()
@@ -1499,7 +1498,10 @@ class ProtocolScreen(ProtocolBase):
 				# Track hits/false alarms for accuracy and staircasing
 				if self.trial_outcome == 1:
 					self.hit_tracking.append(1)
-					self.decision_point_tracking.append(self.response_latency)
+					
+					# Confirm that response latency is a real number before appending
+					if self.response_latency != np.nan:
+						self.decision_point_tracking.append(self.response_latency)
 
 				elif self.trial_outcome == 2:
 					self.hit_tracking.append(0)
@@ -1887,7 +1889,7 @@ class ProtocolScreen(ProtocolBase):
 			# Over session length/duration?
 			
 			if (self.current_stage == 'Training') \
-				and (sum(self.response_tracking) >= self.training_block_max_correct):
+				and (sum(self.hit_tracking) >= self.training_block_max_correct):
 
 				self.protocol_floatlayout.add_stage_event('Block End')
 				
@@ -1994,6 +1996,9 @@ class ProtocolScreen(ProtocolBase):
 
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
+
+		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.clear_widgets()
 		Clock.unschedule(self.stimulus_end)
@@ -2061,6 +2066,7 @@ class ProtocolScreen(ProtocolBase):
 	def stage_screen_end(self, *args):
 
 		self.protocol_floatlayout.add_widget(self.stage_continue_button)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
@@ -2326,7 +2332,6 @@ class ProtocolScreen(ProtocolBase):
 			self.current_block_trial = 0
 			self.trial_index = -1
 
-			self.response_tracking = list()
 			self.hit_tracking = list()
 			self.false_alarm_tracking = list()
 			self.similarity_tracking = list()
