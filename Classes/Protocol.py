@@ -32,7 +32,6 @@ class ImageButton(ButtonBehavior, Image):
 	def __init__(self, **kwargs):
 
 		super(ImageButton, self).__init__(**kwargs)
-		print(os.getcwd())
 		self.coord = None
 		self.fit_mode = 'fill'
 		self.touch_pos = (0, 0)

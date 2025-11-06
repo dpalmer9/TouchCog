@@ -619,7 +619,6 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
 				)
-			self.tutorial_video.fit_mode = 'fill'
 
 			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 			self.tutorial_video.size_hint = (1, 1)
@@ -983,7 +982,7 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return None
-		
+		Clock.unschedule(self.iti_end)
 		self.contingency = 3
 		self.response = 1
 		self.trial_outcome = 0
@@ -1995,13 +1994,13 @@ class ProtocolScreen(ProtocolBase):
 
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
-
+		
+		self.protocol_floatlayout.clear_widgets()
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
 
-		self.protocol_floatlayout.clear_widgets()
 		self.feedback_on_screen = False
 			
 		if self.current_stage == 'Similarity_Staircase_Difficulty':

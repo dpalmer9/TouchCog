@@ -1132,6 +1132,8 @@ class MenuApp(App):
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
 		self.summary_event_path = ''
+		self.survey_data = pd.DataFrame()
+		self.survey_data_path = ''
 		self.event_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
@@ -1231,7 +1233,10 @@ class MenuApp(App):
 				self.summary_event_data.to_csv(self.summary_event_path, index=False)
 			except FileNotFoundError:
 				pass
-
+			
+				self.survey_data.to_csv(self.survey_data_path, index=False)
+			except FileNotFoundError:
+				pass
 
 
 if __name__ == '__main__':
