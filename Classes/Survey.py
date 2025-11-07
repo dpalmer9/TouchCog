@@ -287,7 +287,7 @@ class SurveyBase(Screen):
             pass
 
         try:
-            self.app.root.current = 'mainscreen'
+            self.manager.current = 'mainmenu'
             return
         except Exception:
             pass
@@ -400,42 +400,6 @@ class SurveyBase(Screen):
         layout.add_widget(survey_continue_button)
 
         return layout
-
-    # def _create_multi_response_question(self, layout, question_text, options):
-    #     """
-    #     Create a multi-response question with given text and options.
-    #     Handles "Other" option with text entry.
-    #     """
-    #     question_label = Label(text=question_text, size_hint_y=None, height=60)
-    #     layout.add_widget(question_label)
-
-    #     # Create scrollable container for options
-    #     scroll_view = ScrollView(size_hint=(1, 0.7))
-    #     options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
-    #     options_container.bind(minimum_height=options_container.setter('height'))
-
-    #     for option in options:
-    #         if option.lower() == "other":
-    #             # Create horizontal layout for "Other" with text entry
-    #             other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
-    #             other_button = Button(text=option, size_hint_x=0.3)
-    #             other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
-    #             other_text_input.hint_text = "Specify other"
-    #             other_row.add_widget(other_button)
-    #             other_row.add_widget(other_text_input)
-    #             options_container.add_widget(other_row)
-    #         else:
-    #             option_button = Button(text=option, size_hint_y=None, height=50)
-    #             options_container.add_widget(option_button)
-
-    #     scroll_view.add_widget(options_container)
-    #     layout.add_widget(scroll_view)
-
-    #     survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-    #     survey_continue_button.bind(on_press=self.advance_survey)
-    #     layout.add_widget(survey_continue_button)
-
-    #     return layout
 
     def _create_multi_response_question(self, layout, question_text, options):
         """
