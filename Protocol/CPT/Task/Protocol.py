@@ -2004,10 +2004,13 @@ class ProtocolScreen(ProtocolBase):
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
 
+		self.hold_button.disabled = True
+		self.hold_button.state = 'normal'
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.clear_widgets()
+		self.hold_button.disabled = False
 
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
