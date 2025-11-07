@@ -177,6 +177,7 @@ class SurveyBase(Screen):
         self.survey_json = None
 
         self.question_list = []
+        self.question_metadata_list = []
         self.question_index = 0
 
         documents_path = pathlib.Path.home() / 'Documents'
@@ -201,6 +202,72 @@ class SurveyBase(Screen):
                 # give up silently (avoid crashing UI)
                 pass
 
+    def _should_question_be_visible(self, question_metadata):
+        """
+        Determine if a question should be visible based on:
+        - visible: boolean flag (default behavior)
+        - inclusions: list of conditions that make question visible if matched
+        - exclusions: list of conditions that hide question if matched
+        
+        Logic:
+        - If visible is false and inclusions match any condition, show the question
+        - If visible is true but exclusions match any condition, hide the question
+        - Otherwise, follow the visible flag
+        
+        Returns True if question should be displayed, False otherwise.
+        """
+        visible = question_metadata.get('visible', True)
+        inclusions = question_metadata.get('inclusions', [])
+        exclusions = question_metadata.get('exclusions', [])
+        
+        # Check inclusions: if any inclusion matches, question should be visible
+        for inclusion in inclusions:
+            if self._condition_matches(inclusion):
+                return True
+        
+        # Check exclusions: if any exclusion matches, question should be hidden
+        for exclusion in exclusions:
+            if self._condition_matches(exclusion):
+                return False
+        
+        # Default: follow the visible flag
+        return visible
+
+    def _condition_matches(self, condition):
+        """
+        Check if a condition (inclusion or exclusion) matches current survey responses.
+        Condition structure: {
+            'question_index': int,
+            'question': str (optional),
+            'response_value': str (the expected response)
+        }
+        
+        Returns True if the condition matches, False otherwise.
+        """
+        try:
+            question_index = condition.get('question_index')
+            expected_value = condition.get('response_value')
+            
+            if question_index is None or expected_value is None:
+                return False
+            
+            # Look for matching question in survey_data by index order
+            # The question at question_index should have been recorded
+            if question_index < len(self.question_list):
+                # Get the question text from the question metadata
+                question_metadata = self.question_metadata_list[question_index]
+                question_text = question_metadata.get('text', '')
+                
+                # Find the response for this question in survey_data
+                matching_rows = self.survey_data[self.survey_data['question'] == question_text]
+                if not matching_rows.empty:
+                    recorded_response = matching_rows.iloc[-1]['response']  # Get last recorded response
+                    return recorded_response == expected_value
+            
+            return False
+        except Exception:
+            return False
+
     def _load_end_survey_text(self):
         self.end_survey_text = "Thank you for completing the survey!"
         self.end_survey_label = Label(text=self.end_survey_text, font_size='20sp', halign='center', valign='middle')
@@ -220,7 +287,7 @@ class SurveyBase(Screen):
             pass
 
         try:
-            self.app.root.current = 'mainscreen'
+            self.manager.current = 'mainmenu'
             return
         except Exception:
             pass
@@ -333,42 +400,6 @@ class SurveyBase(Screen):
         layout.add_widget(survey_continue_button)
 
         return layout
-
-    # def _create_multi_response_question(self, layout, question_text, options):
-    #     """
-    #     Create a multi-response question with given text and options.
-    #     Handles "Other" option with text entry.
-    #     """
-    #     question_label = Label(text=question_text, size_hint_y=None, height=60)
-    #     layout.add_widget(question_label)
-
-    #     # Create scrollable container for options
-    #     scroll_view = ScrollView(size_hint=(1, 0.7))
-    #     options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
-    #     options_container.bind(minimum_height=options_container.setter('height'))
-
-    #     for option in options:
-    #         if option.lower() == "other":
-    #             # Create horizontal layout for "Other" with text entry
-    #             other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
-    #             other_button = Button(text=option, size_hint_x=0.3)
-    #             other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50)
-    #             other_text_input.hint_text = "Specify other"
-    #             other_row.add_widget(other_button)
-    #             other_row.add_widget(other_text_input)
-    #             options_container.add_widget(other_row)
-    #         else:
-    #             option_button = Button(text=option, size_hint_y=None, height=50)
-    #             options_container.add_widget(option_button)
-
-    #     scroll_view.add_widget(options_container)
-    #     layout.add_widget(scroll_view)
-
-    #     survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
-    #     survey_continue_button.bind(on_press=self.advance_survey)
-    #     layout.add_widget(survey_continue_button)
-
-    #     return layout
 
     def _create_multi_response_question(self, layout, question_text, options):
         """
@@ -552,6 +583,7 @@ class SurveyBase(Screen):
     def load_survey(self, survey_json):
         """
         Load survey questions from a JSON structure.
+        Stores metadata including visible, inclusions, and exclusions for each question.
         """
         self._load_end_survey_text()
         self.survey_json = survey_json
@@ -559,19 +591,52 @@ class SurveyBase(Screen):
             q_text = question['text']
             q_type = question['type']
             q_options = question.get('options', None)
+            q_visible = question.get('visible', True)
+            q_inclusions = question.get('inclusions', [])
+            q_exclusions = question.get('exclusions', [])
+            
+            # Create metadata dict for this question
+            metadata = {
+                'text': q_text,
+                'type': q_type,
+                'options': q_options,
+                'visible': q_visible,
+                'inclusions': q_inclusions,
+                'exclusions': q_exclusions
+            }
+            
+            # Store metadata
+            self.question_metadata_list.append(metadata)
+            
+            # Create the question UI
             self.create_question(q_text, q_options, q_type)
+
     
     def advance_survey(self, *args):
         """
         Advance to the next question in the survey.
+        Handles visibility logic: skips hidden questions and adds empty responses for them.
         """
         self.remove_question()
         self.question_index += 1
-        if self.question_index < len(self.question_list):
-            self._display_question(self.question_list[self.question_index])
-        else:
-            # Survey is complete
-            self.end_survey()
+        
+        # Loop through remaining questions to find the next visible one
+        while self.question_index < len(self.question_list):
+            question_metadata = self.question_metadata_list[self.question_index]
+            
+            # Check if this question should be visible
+            if self._should_question_be_visible(question_metadata):
+                # Display this visible question
+                self._display_question(self.question_list[self.question_index])
+                return
+            else:
+                # Question is hidden - record empty response and skip it
+                question_text = question_metadata['text']
+                self._record_response(question_text, "")
+                self.question_index += 1
+        
+        # All remaining questions have been processed - survey is complete
+        self.end_survey()
 
     def run_survey(self, *args):
         self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
@@ -579,7 +644,12 @@ class SurveyBase(Screen):
         folder_path.mkdir(parents=True, exist_ok=True)
         self.app.survey_data_path = str(folder_path / f"{self.name}.csv")
         self.main_layout.clear_widgets()
-        self._display_question(self.question_list[self.question_index])
+        
+        # Start with question_index at -1 so advance_survey will move to 0
+        self.question_index = -1
+        # Use advance_survey to handle visibility logic from the start
+        self.advance_survey()
+
     
     def _display_question(self, question_layout):
         """
