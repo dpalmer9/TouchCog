@@ -39,7 +39,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'Substage'
 			, 'TarProb'
 			, 'Block'
-			, 'CurrentBlockTrial'
+			, 'BlockTrial'
 			, 'Stimulus'
 			, 'StimFrames'
 			, 'StimSeconds'
@@ -261,7 +261,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_trial_max = self.block_trial_max_base
 		self.block_duration = self.block_duration_max
 
-		self.trial_outcome = 0 # 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Correct, no center tap,6-Incorrect, no center tap
+		self.trial_outcome = 0 # 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Correct, no center tap,6-Incorrect, no center tap,7-Trial abort (lift and press hold button during stimulus display)
 		self.contingency = 0
 		self.response = 0
 
@@ -269,7 +269,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.block_target_total = 0
 		self.block_false_alarms = 0
-		self.block_hits = 0
 		
 		
 		# Define Variables - Staircasing
@@ -947,7 +946,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_actual = time.perf_counter() - self.stimulus_start_time
 		
-		self.stimulus_on_screen = False
 		self.limhold_started = True
 
 		if self.current_stage == 'Flanker_Fixed_Probe':
@@ -976,7 +974,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 
-	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
+	def premature_response(self, *args): # Trial Outcomes: 0-Premature
 
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
@@ -1030,7 +1028,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Contingency Stages #
 	# Tracks contingencies and outcomes based on removal of hold from hold_button
-	def stimulus_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press
+	def stimulus_response(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display)
 										# Contingencies: 0: Incorrect; 1: Correct; 2: Response, no center touch; 3: Premature response
 
 		self.response_time = time.perf_counter()
@@ -1081,7 +1079,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	# Tracks contingencies based on responses direectly to the stimulus image
-	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Premature,6-Dual Image, wrong side
+	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm
 		
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
@@ -1163,7 +1161,6 @@ class ProtocolScreen(ProtocolBase):
 				self.contingency = 1
 				self.trial_outcome = 1
 				self.current_hits += 1
-				self.block_hits += 1
 				
 				self.feedback_label.text = self.feedback_dict['correct']
 				
@@ -1339,6 +1336,9 @@ class ProtocolScreen(ProtocolBase):
 		else:
 			self.feedback_label.text = self.feedback_dict['abort']
 
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
+
 		self.trial_outcome = 7
 
 		self.hold_active = True
@@ -1404,7 +1404,7 @@ class ProtocolScreen(ProtocolBase):
 
 	def trial_contingency(self, *args):
 		# Trial Contingencies: 0-Incorrect; 1-Correct; 2-Response, no center touch; 3-Premature
-		# Trial Outcomes: 0-Premature; 1-Hit; 2-Miss; 3-False Alarm; 4-Correct Rejection; 5-Hit, no center touch; 6-False Alarm, no center touch
+		# Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display)
 		try:
 			## ENCODE TRIAL OUTCOME AS last_response FOR EACH CONTINGENCY ##
 			# Check that current block trial is not the first trial of the block
@@ -1818,6 +1818,13 @@ class ProtocolScreen(ProtocolBase):
 					else:
 						self.center_image = random.choice(self.current_nontarget_image_list)
 
+						if 'Similarity_Staircase_Difficulty' in self.stage_list:
+
+							self.current_similarity = float(self.similarity_data.loc[
+									self.similarity_data['Nontarget'] == self.center_image
+									, self.target_image
+									].to_numpy())
+
 
 					self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
 
@@ -1869,7 +1876,7 @@ class ProtocolScreen(ProtocolBase):
 				else:
 					self.center_image = random.choice(self.current_nontarget_image_list)
 
-					if self.current_stage == 'Similarity_Staircase_Difficulty':
+					if 'Similarity_Staircase_Difficulty' in self.stage_list:
 
 						self.current_similarity = float(self.similarity_data.loc[
 								self.similarity_data['Nontarget'] == self.center_image
@@ -1914,7 +1921,7 @@ class ProtocolScreen(ProtocolBase):
 			
 			# Over block length/duration?
 			
-			elif (self.current_block_trial >= self.block_trial_max) \
+			elif (self.current_block_trial > self.block_trial_max) \
 				or ((time.perf_counter() - self.block_start) >= self.block_duration):
 
 				self.protocol_floatlayout.add_stage_event('Block End')
@@ -2001,6 +2008,7 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.unbind(on_release=self.premature_response)
 		
 		self.protocol_floatlayout.clear_widgets()
+
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
@@ -2021,7 +2029,7 @@ class ProtocolScreen(ProtocolBase):
 			self.outcome_string = 'Great job!\n\nYou were able to correctly respond to stimuli\nwithin ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
 			
 		elif self.current_stage == 'StimDur_Staircase_Probe':
-			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli presented\nfor ' + str(int(self.outcome_value)) + ' frames (' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds).'
+			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli presented\nfor ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
 
 		elif self.current_stage in ['TarProb_Fixed_Probe', 'Flanker_Fixed_Probe']:
 
@@ -2030,7 +2038,7 @@ class ProtocolScreen(ProtocolBase):
 				
 			else:
 				self.hit_accuracy = (sum(self.hit_tracking) / len(self.hit_tracking))
-				self.outcome_string = 'Great job!\n\nYour accuracy on that block was ' + str(round(self.hit_accuracy, 2) * 100) + '%!\n\nYou made ' + str(sum(self.false_alarm_tracking)) + ' false alarms (responses to nontarget images).'
+				self.outcome_string = 'Great job!\n\nYou responded to ' + str(round(self.hit_accuracy, 2) * 100) + '%' + ' of the target images!\n\nYou responded to ' + str(sum(self.false_alarm_tracking)) + ' of the non-target images.'
 			
 		else:
 			self.outcome_string = "Great job!\n\n"

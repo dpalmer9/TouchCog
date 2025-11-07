@@ -31,17 +31,19 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.data_cols = [
 			'TrialNo'
-			, 'Current Block'
-			, 'Probe Type'
+			, 'Stage'
+			, 'Block'
+			, 'BlockTrial'
 			, 'Separation'
 			, 'Delay'
-			, 'Video Time'
 			, 'Cue_X'
 			, 'Cue_Y'
 			, 'Target_X'
 			, 'Target_Y'
-			, 'Correct'
-			, 'Target Latency'
+			, 'VideoTime'
+			, 'Contingency'
+			, 'Outcome'
+			, 'ResponseLatency'
 			]
 		
 		self.metadata_cols = [
@@ -183,6 +185,9 @@ class ProtocolScreen(ProtocolBase):
 		self.current_block = 1
 		self.current_block_trial = 0
 		self.last_response = 0
+
+		self.contingency = np.nan # Trial Contingencies: 0-Incorrect; 1-Correct; 3-Premature/Abort
+		self.trial_outcome = np.nan # Trial Outcomes: 0-Premature (ITI),1-Hit (target response),2-Miss (no response),3-False alarm (non-target response);7-Cue abort (lift hold button during cue display),8-Delay abort (lift hold button during delay display)
 
 		# Define Variables - List
 		self.response_tracking = list()
@@ -519,9 +524,9 @@ class ProtocolScreen(ProtocolBase):
 
 		cue_coord = {'x': round(cue_xpos, 4), 'y': round(cue_ypos, 4)}
 		target_coord = {'x': round(target_xpos, 4), 'y': round(target_ypos, 4)}
-		trial_coord = {'Cue': cue_coord, 'Target': target_coord}
+		combined_coord = {'Cue': cue_coord, 'Target': target_coord}
 		
-		return trial_coord
+		return combined_coord
 
 
 	# Protocol Staging
@@ -823,7 +828,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
-	def hold_released(self, *args):
+	def hold_released(self, *args): # Trial outcomes: 7-Cue abort,8-Delay abort
 		Clock.unschedule(self.delay_present)
 		Clock.unschedule(self.delay_end)
 		
@@ -847,12 +852,18 @@ class ProtocolScreen(ProtocolBase):
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
+			self.contingency = 3 # 3-Premature/Abort
+			self.trial_outcome = 7 # 7-Cue abort (lift hold button during cue display)
+
 		elif self.delay_active:
 			self.delay_video.state = 'pause'
 
 			self.video_end_time = time.perf_counter()
 			self.video_time = self.video_end_time - self.video_start_time
 			self.video_position += self.video_time
+
+			self.contingency = 3 # 3-Premature/Abort
+			self.trial_outcome = 8 # 8-Delay abort (lift hold button during delay display)
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
 
@@ -888,7 +899,7 @@ class ProtocolScreen(ProtocolBase):
 
 	# Hold released too early
 	
-	def premature_response(self, *args):
+	def premature_response(self, *args): # Trial outcome: 0-Premature (ITI)
 		
 		if self.stimulus_on_screen is True:
 			return
@@ -898,6 +909,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_stage_event('Premature Response')
 
+		self.contingency = 3 # 3-Premature/Abort
+		self.trial_outcome = 0 # 0-Premature (ITI)
 		self.last_response = np.nan
 		self.response_latency = np.nan
 		self.iti_active = False
@@ -917,9 +930,11 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Cue Stimuli Pressed during Target
 	
-	def cue_pressed(self, *args):
+	def cue_pressed(self, *args): # Trial outcome: 3-False alarm (non-target response)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
+		self.contingency = 0 # 0-Incorrect
+		self.trial_outcome = 3 # 3-False alarm (non-target response)
 		self.last_response = 0
 		
 		self.target_touch_time = time.perf_counter()
@@ -978,9 +993,11 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Target Stimuli Pressed during Target
 	
-	def target_pressed(self, *args):
+	def target_pressed(self, *args): # Trial outcome: 1-Hit (target response)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
+		self.contingency = 1 # 1-Correct
+		self.trial_outcome = 1 # 1-Hit (target response)
 		self.last_response = 1
 		
 		self.target_touch_time = time.perf_counter()
@@ -1039,8 +1056,10 @@ class ProtocolScreen(ProtocolBase):
 	
 	# No response during test phase limited hold
 	
-	def no_response(self, *args):
+	def no_response(self, *args): # Trial outcome: 2-Miss (no response)
 		
+		self.contingency = 0 # 0-Incorrect
+		self.trial_outcome = 2 # 2-Miss (no response)
 		self.last_response = np.nan
 
 		self.target_touch_time = time.perf_counter()
@@ -1105,15 +1124,18 @@ class ProtocolScreen(ProtocolBase):
 		
 		trial_data = [
 			self.current_trial
-			, self.current_block
 			, self.current_stage
+			, self.current_block
+			, self.current_block_trial
 			, self.current_sep
 			, self.current_delay
-			, self.video_position
 			, (cue_x + 1)
 			, (cue_y + 1)
 			, (target_x + 1)
 			, (target_y + 1)
+			, self.video_position
+			, self.contingency
+			, self.trial_outcome
 			, self.last_response
 			, self.response_latency
 			]
@@ -1365,8 +1387,8 @@ class ProtocolScreen(ProtocolBase):
 
 			self.response_tracking = list()
 			self.last_response = 0
-			self.contingency = 0
-			self.trial_outcome = 0
+			self.contingency = np.nan # Reset contingency
+			self.trial_outcome = np.nan # Reset trial outcome
 			self.current_block_trial = 0
 			
 			self.block_start_time = time.perf_counter()
