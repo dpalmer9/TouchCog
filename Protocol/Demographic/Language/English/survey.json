@@ -2,15 +2,24 @@
     "questions" : [
         {
             "text" : "What is your name?",
-            "type" : "text_input"
+            "type" : "text_input",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : []
         },
         {
             "text" : "What is your age?",
-            "type" : "text_input"
+            "type" : "text_input",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : []
         },
         {
             "text" : "What was your assigned sex at birth?",
             "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "male": "Male",
                 "female": "Female",
@@ -20,6 +29,9 @@
         {
             "text" : "What was your assigned sex at birth?",
             "type" : "multi_response",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "male": "Man",
                 "woman": "Woman",
@@ -31,6 +43,9 @@
         {
             "text" : "Do you self-identify as an Indigenous Person that is First Nations, Metis, or Inuk (Inuit)?",
             "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "yes": "Yes",
                 "no": "No",
@@ -40,6 +55,9 @@
         {
             "text" : "What racial and/or ethnic groups do you self-identify with?",
             "type" : "multi_response",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "arab": "Arab",
                 "black": "Black",
@@ -58,6 +76,9 @@
         {
             "text" : "Do you identify as a person with a disability?",
             "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "yes": "Yes",
                 "no": "No",
@@ -67,6 +88,15 @@
         {
             "text" : "Your disability is related to... (Please check all boxes that apply to you)",
             "type" : "multi_response",
+            "visible": false,
+            "inclusions" : [
+                {
+                    "question_index": 7,
+                    "question": "Do you identify as a person with a disability?",
+                    "response_value": "yes"
+                }
+            ],
+            "exclusions" : [],
             "options" : {
                 "dexterity": "Dexterity",
                 "flexibility": "Flexibility",
@@ -83,6 +113,9 @@
         {
             "text" : "Please indicate your current sexual identity based on the following response options. Select all that apply.",
             "type" : "multi_response",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "asexual": "Asexual",
                 "bisexual": "Bisexual",
@@ -95,11 +128,17 @@
         },
         {
             "text" : "What are the first 3 digits of your postal Code?",
-            "type" : "text_input"
+            "type" : "text_input",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : []
         },
         {
             "text" : "What is your household income range?",
             "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "1" : "Less than $50,000",
                 "2" : "$50,000 to $59,999",
@@ -116,6 +155,9 @@
         {
             "text" : "What best describes your current employment status?",
             "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "employed" : "Employed (full-time or part-time)",
                 "self_employed" : "Self-employed (full-time or part-time)",
@@ -128,6 +170,9 @@
         {
             "text" : "How Comfortable are you using technology, like an tablet/iPad?",
             "type" : "rating_scale",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
             "options" : {
                 "1" : "not at all comfortable",
                 "2" : "slightly comfortable",
