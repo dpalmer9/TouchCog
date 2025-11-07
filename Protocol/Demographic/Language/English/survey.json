@@ -1,6 +1,7 @@
 {
     "questions" : [
         {
+            "index": 1,
             "text" : "What is your name?",
             "type" : "text_input",
             "visible": true,
@@ -8,6 +9,7 @@
             "exclusions" : []
         },
         {
+            "index": 2,
             "text" : "What is your age?",
             "type" : "text_input",
             "visible": true,
@@ -15,6 +17,7 @@
             "exclusions" : []
         },
         {
+            "index": 3,
             "text" : "What was your assigned sex at birth?",
             "type" : "multiple_choice",
             "visible": true,
@@ -27,6 +30,7 @@
             }
         },
         {
+            "index": 4,
             "text" : "What was your assigned sex at birth?",
             "type" : "multi_response",
             "visible": true,
@@ -41,6 +45,7 @@
             }
         },
         {
+            "index": 5,
             "text" : "Do you self-identify as an Indigenous Person that is First Nations, Metis, or Inuk (Inuit)?",
             "type" : "multiple_choice",
             "visible": true,
@@ -53,6 +58,7 @@
             }
         },
         {
+            "index": 6,
             "text" : "What racial and/or ethnic groups do you self-identify with?",
             "type" : "multi_response",
             "visible": true,
@@ -74,6 +80,7 @@
             }
         },
         {
+            "index": 7,
             "text" : "Do you identify as a person with a disability?",
             "type" : "multiple_choice",
             "visible": true,
@@ -86,6 +93,7 @@
             }
         },
         {
+            "index": 8,
             "text" : "Your disability is related to... (Please check all boxes that apply to you)",
             "type" : "multi_response",
             "visible": false,
@@ -110,7 +118,8 @@
                 "not_represented": "My disability is not represented in this list"
             }
         },
-        {
+        {   
+            "index": 9,
             "text" : "Please indicate your current sexual identity based on the following response options. Select all that apply.",
             "type" : "multi_response",
             "visible": true,
@@ -127,6 +136,7 @@
             }
         },
         {
+            "index": 10,
             "text" : "What are the first 3 digits of your postal Code?",
             "type" : "text_input",
             "visible": true,
@@ -134,6 +144,7 @@
             "exclusions" : []
         },
         {
+            "index": 11,
             "text" : "What is your household income range?",
             "type" : "multiple_choice",
             "visible": true,
@@ -153,6 +164,7 @@
             }
         },
         {
+            "index": 12,
             "text" : "What best describes your current employment status?",
             "type" : "multiple_choice",
             "visible": true,
@@ -168,6 +180,7 @@
             }
         },
         {
+            "index": 13,
             "text" : "How Comfortable are you using technology, like an tablet/iPad?",
             "type" : "rating_scale",
             "visible": true,
