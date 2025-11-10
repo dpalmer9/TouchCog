@@ -19,6 +19,9 @@
             "type": "task",
             "description": "A task measuring sustained attention and response inhibition.",
             "overrides": {
+            },
+            "required": {
+                "image_set": "Image Set"
             }
         },
         {
@@ -27,6 +30,10 @@
             "type": "task",
             "description": "A task assessing visual spatial memory through paired associations.",
             "overrides": {
+            },
+            "required": {
+                "dspal_image_set": "dsPAL Image Set",
+                "recall_image_set": "Recall Image Set"
             }
         },
         {
@@ -35,6 +42,8 @@
             "type": "task",
             "description": "A task evaluating spatial working memory by requiring non-matching to location responses.",
             "overrides": {
+            },
+            "required": {
             }
         }
     ]
