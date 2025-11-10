@@ -180,6 +180,8 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_seconds_max = float(parameters_dict['stimdur_max_seconds'])
 
 		self.image_set = parameters_dict['image_set']
+		if self.image_set == None:
+			self.image_set = 'rand'
 		
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']

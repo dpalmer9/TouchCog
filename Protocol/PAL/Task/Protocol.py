@@ -140,7 +140,11 @@ class ProtocolScreen(ProtocolBase):
 		self.training_image = self.parameters_dict['training_image']
 
 		self.image_set_dspal = self.parameters_dict['dspal_image_set']
+		if self.image_set_dspal == None:
+			self.image_set_dspal = 'rand'
 		self.image_set_recall = self.parameters_dict['recall_image_set']
+		if self.image_set_recall == None:
+			self.image_set_recall = 'rand'
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
