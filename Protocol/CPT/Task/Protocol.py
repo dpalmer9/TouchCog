@@ -118,6 +118,10 @@ class ProtocolScreen(ProtocolBase):
 		else:
 			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
+
+		self.image_set_list = [{'name': 'set1','target': 'FA2-1', 'nontargets': ['FA3-2', 'FB1-1', 'FB2-2', 'FC1-1', 'FC3-2']},
+					 {'name': 'set2','target': 'FB2-3', 'nontargets': ['FB3-1', 'FA2-2', 'FA4-1', 'FC1-1', 'FC2-2']},
+					 {'name': 'set3','target': 'FC1-3', 'nontargets': ['FC4-1', 'FA1-2', 'FA3-3', 'FB2-2', 'FB4-3']},]
 	
 	def _load_config_parameters(self, parameters_dict):
 		
@@ -174,6 +178,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_frame_min = float(parameters_dict['stimdur_min_frames'])
 		self.stimdur_seconds_max = float(parameters_dict['stimdur_max_seconds'])
+
+		self.image_set = parameters_dict['image_set']
 		
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -417,8 +423,10 @@ class ProtocolScreen(ProtocolBase):
 			stimulus_list = list(self.similarity_data.columns)
 			stimulus_list.remove('Nontarget')
 			# print('\n\nStimulus list: ', stimulus_list, '\n\n')
-			self.target_image = random.choice(stimulus_list)
-			# print('Target image: ', self.target_image)
+			if self.image_set == 'rand':
+				self.target_image = random.choice(stimulus_list)
+			else:
+				self.target_image = self.image_set
 
 			self.similarity_data = self.similarity_data.loc[:, ['Nontarget', self.target_image]]
 
@@ -454,31 +462,39 @@ class ProtocolScreen(ProtocolBase):
 			for filename in self.stimulus_image_path_list:
 				stimulus_image_list.append(filename.stem)
 
-			self.target_image = random.choice(stimulus_image_list)
-			self.nontarget_images = list()
+			
+			if self.image_set == 'rand':
+				self.target_image = random.choice(stimulus_image_list)
+				self.nontarget_images = list()
 
-			stimulus_image_list.remove(self.target_image)
+				stimulus_image_list.remove(self.target_image)
 
-			subfamily_string = self.target_image[:3]
+				subfamily_string = self.target_image[:3]
 
-			while len(stimulus_image_list) > 0:
-				iElem = 0
+				while len(stimulus_image_list) > 0:
+					iElem = 0
 
-				while iElem < len(stimulus_image_list):
+					while iElem < len(stimulus_image_list):
 
-					if stimulus_image_list[iElem].startswith(subfamily_string):
-						stimulus_image_list.pop(iElem)
+						if stimulus_image_list[iElem].startswith(subfamily_string):
+							stimulus_image_list.pop(iElem)
 
-					else:
-						iElem += 1
+						else:
+							iElem += 1
 
-				if len(stimulus_image_list) > 0:
-					nontarget_image = random.choice(stimulus_image_list)
-					self.nontarget_images.append(nontarget_image)
-					subfamily_string = nontarget_image[:3]
+					if len(stimulus_image_list) > 0:
+						nontarget_image = random.choice(stimulus_image_list)
+						self.nontarget_images.append(nontarget_image)
+						subfamily_string = nontarget_image[:3]
 
-			self.nontarget_images.sort()
-			self.current_nontarget_image_list = self.nontarget_images
+				self.nontarget_images.sort()
+				self.current_nontarget_image_list = self.nontarget_images
+			else:
+				self.current_image_set = next((item for item in self.image_set_list if item["name"] == self.image_set), None)
+				self.target_image = self.current_image_set['target']
+				self.nontarget_images = self.current_image_set['nontargets']
+				self.current_nontarget_image_list = self.nontarget_images
+	
 
 		total_image_list = self.stimulus_image_path_list
 
