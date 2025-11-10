@@ -790,13 +790,7 @@ class BatteryMenu(Screen):
 									if isinstance(val, str) and val.lower() in ('true', 'false'):
 										parsed = cfg.getboolean(use_section, opt)
 									else:
-										try:
-											parsed = cfg.getint(use_section, opt)
-										except Exception:
-											try:
-												parsed = cfg.getfloat(use_section, opt)
-											except Exception:
-												parsed = val
+										parsed = val
 								except Exception:
 									parsed = val
 								# normalize key the same way MenuBase.start_protocol does
