@@ -1130,11 +1130,19 @@ class ProtocolBattery(Screen):
 		self.app.battery_required_fields = {}
 
 		if self.app.battery_active:
-			# For manual batteries, all selected protocols are 'task' type with no required fields
-			# This will cause start_next_battery_config to show the configure screen for each
+			# For manual batteries we must detect whether each selected protocol is
+			# a 'task' (has a Menu.py configure screen) or a 'survey' (no Menu.py).
+			# Presence of Protocol/<name>/Task/Menu.py indicates a task.
 			for protocol in self.app.battery_protocols:
-				self.app.battery_task_types[protocol] = 'task'
-				self.app.battery_required_fields[protocol] = None  # No required fields in manual batteries
+				menu_path = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
+				if menu_path.is_file():
+					# task: will present configure screen
+					self.app.battery_task_types[protocol] = 'task'
+					self.app.battery_required_fields[protocol] = None
+				else:
+					# survey: no configure screen and no parameter dict
+					self.app.battery_task_types[protocol] = 'survey'
+					self.app.battery_required_fields[protocol] = None
 			
 			# Start the configuration process for the first protocol
 			self.app.start_next_battery_config()
