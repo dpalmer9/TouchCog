@@ -1233,7 +1233,7 @@ class MenuApp(App):
 				self.summary_event_data.to_csv(self.summary_event_path, index=False)
 			except FileNotFoundError:
 				pass
-			
+			try:
 				self.survey_data.to_csv(self.survey_data_path, index=False)
 			except FileNotFoundError:
 				pass

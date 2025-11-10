@@ -31,29 +31,30 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.data_cols = [
 			'TrialNo'
-			, 'Current Block'
-			, 'Probe Type'
+			, 'Stage'
+			, 'Block'
+			, 'BlockTrial'
 			, 'Separation'
 			, 'Delay'
-			, 'Video Time'
 			, 'Cue_X'
 			, 'Cue_Y'
 			, 'Target_X'
 			, 'Target_Y'
-			, 'Correct'
-			, 'Target Latency'
+			, 'VideoTime'
+			, 'Contingency'
+			, 'Outcome'
+			, 'ResponseLatency'
 			]
 		
 		self.metadata_cols = [
 			'participant_id'
 			, 'skip_tutorial_video'
-			, 'block_change_on_duration_only'
 			, 'iti_length'
 			, 'iti_fixed_or_range'
 			, 'feedback_length'
-			, 'block_duration'
+			, 'block_duration_max'
 			, 'block_multiplier'
-			, 'session_length_max'
+			, 'session_duration'
 			, 'screen_x_padding'
 			, 'screen_y_padding_top'
 			, 'screen_y_padding_bottom'
@@ -62,12 +63,9 @@ class ProtocolScreen(ProtocolBase):
 			, 'y_boundaries'
 			, 'stimulus_image'
 			, 'distractor_video'
-			, 'staircase_sep_initial'
-			, 'staircase_delay_initial'
-			, 'minimum_sep'
-			, 'minimum_delay'
-			, 'space_probe_sep_list'
-			, 'delay_probe_delay_list'
+			, 'combined_probe_sep_list'
+			, 'combined_probe_delay_limits'
+			, 'combined_probe_delay_resolution'
 			]
 		
 		
@@ -95,8 +93,6 @@ class ProtocolScreen(ProtocolBase):
 		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
 		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
 
-		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
-
 		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
 		
 		self.iti_import = self.parameters_dict['iti_length']
@@ -109,9 +105,9 @@ class ProtocolScreen(ProtocolBase):
 		self.limhold_import = self.limhold_import.split(',')
 		
 		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = float(self.parameters_dict['block_duration'])
+		self.block_duration = float(self.parameters_dict['block_duration_max'])
 		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_length_max'])
+		self.session_duration = float(self.parameters_dict['session_duration'])
 		
 		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
 
@@ -133,19 +129,13 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_button_image = self.parameters_dict['stimulus_button_image']
 		self.distractor_video = self.parameters_dict['distractor_video']
 
-		self.staircase_sep_initial = int(self.parameters_dict['staircase_sep_initial'])
-		self.staircase_delay_initial = float(self.parameters_dict['staircase_delay_initial'])
+		self.combo_probe_sep_list = self.parameters_dict['combined_probe_sep_list']
+		self.combo_probe_sep_list = self.combo_probe_sep_list.split(',')
 		
-		self.min_sep = int(self.parameters_dict['minimum_sep'])
-		self.max_sep = int(self.parameters_dict['maximum_sep'])
-		self.min_delay = float(self.parameters_dict['minimum_delay'])
-		self.max_delay = float(self.parameters_dict['maximum_delay'])
+		self.combo_probe_delay_limit_import = self.parameters_dict['combined_probe_delay_limits']
+		self.combo_probe_delay_limit_import = self.combo_probe_delay_limit_import.split(',')
 		
-		self.space_probe_sep_list = self.parameters_dict['space_probe_sep_list']
-		self.space_probe_sep_list = self.space_probe_sep_list.split(',')
-
-		self.delay_probe_delay_list = self.parameters_dict['delay_probe_delay_list']
-		self.delay_probe_delay_list = self.delay_probe_delay_list.split(',')
+		self.combo_probe_delay_resolution = float(self.parameters_dict['combined_probe_delay_resolution'])
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 
@@ -153,14 +143,14 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 		
-		if self.parameters_dict['space_probe']:
-			self.stage_list.append('Space')
+		# if self.parameters_dict['space_probe']:
+		# 	self.stage_list.append('Space')
 
-		if self.parameters_dict['delay_probe']:
-			self.stage_list.append('Delay')
+		# if self.parameters_dict['delay_probe']:
+		# 	self.stage_list.append('Delay')
 		
-		if len(self.stage_list) > 1:
-			self.stage_list = self.constrained_shuffle(self.stage_list)
+		# if len(self.stage_list) > 1:
+		# 	self.stage_list = self.constrained_shuffle(self.stage_list)
 
 		if self.parameters_dict['combined_probe']:
 			self.stage_list.append('Combo')
@@ -191,13 +181,13 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Variables - Numeric
 		self.stage_index = -1
-		self.trial_index = 0
-		self.combo_trial_index = 0
 		self.current_sep = 0		
 		self.current_block = 1
 		self.current_block_trial = 0
-		self.max_blocks = len(self.stage_list) * self.block_multiplier
 		self.last_response = 0
+
+		self.contingency = np.nan # Trial Contingencies: 0-Incorrect; 1-Correct; 3-Premature/Abort
+		self.trial_outcome = np.nan # Trial Outcomes: 0-Premature (ITI),1-Hit (target response),2-Miss (no response),3-False alarm (non-target response);7-Cue abort (lift hold button during cue display),8-Delay abort (lift hold button during delay display)
 
 		# Define Variables - List
 		self.response_tracking = list()
@@ -205,43 +195,25 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define String
 
-		self.staircase_change = 'non'
 		self.section_instr_string = ''
 		self.current_stage = self.stage_list[self.stage_index]
 
 	def _setup_session_stages(self):
-		self.space_probe_sep_list = [int(iNum) for iNum in self.space_probe_sep_list]
-		self.delay_probe_delay_list = [float(iNum) for iNum in self.delay_probe_delay_list]
-		self.combo_probe_sep_list = [int(iNum) for iNum in self.space_probe_sep_list]
+
+		self.combo_probe_sep_index = 0
+		self.combo_probe_sep_list = [int(iNum) for iNum in self.combo_probe_sep_list]
 		self.combo_probe_sep_list.sort(reverse=True)
-
-		self.space_probe_delay_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
-		self.space_probe_staircase_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
-		self.delay_probe_sep_list = [self.staircase_sep_initial for iElem in self.delay_probe_delay_list]
-		self.combo_probe_delay_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
-		self.combo_probe_staircase_list = [self.staircase_delay_initial for iElem in self.space_probe_sep_list]
-
-		self.space_probe_response_list = [0 for iElem in self.space_probe_sep_list]
-		self.delay_probe_response_list = [0 for iElem in self.delay_probe_delay_list]
-		self.combo_probe_response_list = [0 for iElem in self.combo_probe_sep_list]
-
+		self.combo_probe_delay_limit_import = [int(iNum) for iNum in self.combo_probe_delay_limit_import]
 		self.combo_probe_delay_tracking_dict = {}
+		self.combo_probe_delay_limit_dict = {}
+		for iElem in self.combo_probe_sep_list:
+			self.combo_probe_delay_tracking_dict[iElem] = list()
+			self.combo_probe_delay_limit_dict[iElem] = {'min': min(self.combo_probe_delay_limit_import), 'max': max(self.combo_probe_delay_limit_import)}
+		# self.combo_probe_delay_tracking_dict = {statistics.mean(self.combo_probe_delay_limit_import) for iElem in self.combo_probe_sep_list}
+		# self.combo_probe_delay_min = [min(self.combo_probe_delay_limit_import) for iElem in self.combo_probe_sep_list]
+		# self.combo_probe_delay_max = [max(self.combo_probe_delay_limit_import) for iElem in self.combo_probe_sep_list]
 		
-		for iSep in self.combo_probe_sep_list:
-			self.combo_probe_delay_tracking_dict[iSep] = [0,0]
 
-		self.space_trial_index_list = list(range(0, len(self.space_probe_sep_list)))
-		self.delay_trial_index_list = list(range(0, len(self.delay_probe_delay_list)))
-		self.space_trial_index = self.space_trial_index_list[0]
-		self.delay_trial_index = self.delay_trial_index_list[0]
-
-		self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
-		self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
-
-		self.last_staircase_time_increase = self.staircase_delay_initial
-
-		self.combo_probe_max_section_dur = self.block_duration // 3
-		
 		self.iti_range = [float(iNum) for iNum in self.iti_import]
 		self.iti_length = self.iti_range[0]
 		
@@ -251,17 +223,11 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur = self.stimdur_list[0]
 		self.limhold = self.limhold_list[0]
 
-		if self.current_stage == 'Space':
-			self.current_sep = self.space_probe_sep_list[self.space_trial_index]
-			self.current_delay = self.space_probe_delay_list[self.space_trial_index]
+		if self.current_stage == 'Combo':
+			self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
+			self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 		
-		elif self.current_stage == 'Delay':
-			self.current_sep = self.delay_probe_sep_list[self.delay_trial_index]
-			self.current_delay = self.delay_probe_delay_list[self.delay_trial_index]
 		
-		elif self.current_stage == 'Combo':
-			self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
-			self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
 		
 
 
@@ -314,6 +280,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.text_button_size = [0.4, 0.15]
 		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
+		self.text_button_pos_LC = {"center_x": 0.50, "center_y": 0.08}
 		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
 
 		self.trial_coord = self.generate_trial_pos_sep(
@@ -399,8 +366,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.instruction_dict = {}
 		self.instruction_dict['Training'] = {}
-		self.instruction_dict['Space'] = {}
-		self.instruction_dict['Delay'] = {}
 		self.instruction_dict['Combo'] = {}
 		
 		for stage in self.stage_list:
@@ -439,8 +404,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.instruction_dict = {}
 		self.instruction_dict['Training'] = {}
-		self.instruction_dict['Space'] = {}
-		self.instruction_dict['Delay'] = {}
 		self.instruction_dict['Combo'] = {}
 		
 		for stage in self.stage_list:
@@ -466,7 +429,7 @@ class ProtocolScreen(ProtocolBase):
 				self.present_tutorial_video()
 		
 			else:
-				self.present_instructions()
+				self.present_tutorial_text()
 		else:
 			pass
 	
@@ -561,9 +524,9 @@ class ProtocolScreen(ProtocolBase):
 
 		cue_coord = {'x': round(cue_xpos, 4), 'y': round(cue_ypos, 4)}
 		target_coord = {'x': round(target_xpos, 4), 'y': round(target_ypos, 4)}
-		trial_coord = {'Cue': cue_coord, 'Target': target_coord}
+		combined_coord = {'Cue': cue_coord, 'Target': target_coord}
 		
-		return trial_coord
+		return combined_coord
 
 
 	# Protocol Staging
@@ -595,6 +558,27 @@ class ProtocolScreen(ProtocolBase):
 
 		self.tutorial_video.state = 'stop'
 	
+	def present_tutorial_text(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.65}
+		self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
+		
+		self.instruction_button.pos_hint = {'center_x': 0.5, 'y': 0.05}
+		self.instruction_button.size_hint = (0.4, 0.15)
+		self.instruction_button.text = 'Start Task'
+		self.instruction_button.bind(on_press=self.start_protocol_from_tutorial)
+		
+		self.protocol_floatlayout.add_widget(self.section_instr_label)
+		self.protocol_floatlayout.add_widget(self.instruction_button)
+		
+		# Object display events: training text and continue button
+		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Training')
+
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Continue')
+	
 
 
 	def start_tutorial_video(self, *args):
@@ -618,16 +602,18 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
 	
 	
+	def stop_tutorial_video(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
+		self.start_protocol_from_tutorial()
 	
 	def start_protocol_from_tutorial(self, *args):
-		self.tutorial_video.state = 'stop'
 		
 		self.generate_output_files()
 		self.metadata_output_generation()
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
 		self.protocol_floatlayout.add_text_event('Removed', 'Task Instruction')
@@ -640,6 +626,7 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_end_time = time.perf_counter()
 		
 		self.feedback_label.text = ''
+		self.block_contingency()
 
 	def section_start(self, *args):
 
@@ -663,21 +650,55 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 		self.feedback_label.text = ''
 
-		if len(self.accuracy_tracking) == 0:
-			self.outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
-		
-		else:
+		# Provide accuracy results for non-combined stages
+		if (self.current_stage != 'Combo') \
+			and (len(self.accuracy_tracking) > 0):
 			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
 			
-			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
+			outcome_string = 'Great job!\n\nYour overall accuracy was ' \
 				+ str(round(self.hit_accuracy * 100)) \
 				+ '%!\n\nPlease inform the researcher that you have finished this task.'
 		
+		# Else, if combo block, provide maximum delays at each separation
+		elif self.current_stage == 'Combo':
+			outcome_string = 'Great job!\n\n'
+
+			for iElem in self.combo_probe_delay_limit_dict:
+
+				if len(self.combo_probe_delay_tracking_dict[iElem]) > 0:
+					
+					if iElem == max(self.combo_probe_sep_list):
+						difficulty_string = 'Easy'
+
+					elif iElem == min(self.combo_probe_sep_list):
+						difficulty_string = 'Hard'
+
+					else:
+						difficulty_string = 'Medium'
+
+					outcome_string = outcome_string \
+						+ 'The maximum time you could identify locations \non the ' \
+						+ difficulty_string \
+						+ ' difficulty was ' \
+						+ str(self.combo_probe_delay_limit_dict[iElem]['min']) \
+						+ ' seconds!\n\n'
+			
+			outcome_string = outcome_string \
+				+ 'Please inform the researcher that you have finished this task.'
+
+		# Else, provide generic feedback
+		else:
+			outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
+		
+		self.instruction_button.size_hint = (0.4, 0.15)
+		self.instruction_button.pos_hint = {'center_x': 0.5, 'y': 0.05}
 		self.instruction_button.unbind(on_press=self.section_start)
 		self.instruction_button.bind(on_press=self.protocol_end)
 		self.instruction_button.text = 'End Task'
 
-		self.section_instr_label.text = self.outcome_string
+		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.65}
+		self.section_instr_label.text = outcome_string
 
 		self.protocol_floatlayout.add_widget(self.section_instr_label)
 		self.protocol_floatlayout.add_widget(self.instruction_button)
@@ -807,7 +828,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
-	def hold_released(self, *args):
+	def hold_released(self, *args): # Trial outcomes: 7-Cue abort,8-Delay abort
 		Clock.unschedule(self.delay_present)
 		Clock.unschedule(self.delay_end)
 		
@@ -831,12 +852,18 @@ class ProtocolScreen(ProtocolBase):
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Cue Image', self.cue_image.pos_hint)
 
+			self.contingency = 3 # 3-Premature/Abort
+			self.trial_outcome = 7 # 7-Cue abort (lift hold button during cue display)
+
 		elif self.delay_active:
 			self.delay_video.state = 'pause'
 
 			self.video_end_time = time.perf_counter()
 			self.video_time = self.video_end_time - self.video_start_time
 			self.video_position += self.video_time
+
+			self.contingency = 3 # 3-Premature/Abort
+			self.trial_outcome = 8 # 8-Delay abort (lift hold button during delay display)
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
 
@@ -872,7 +899,7 @@ class ProtocolScreen(ProtocolBase):
 
 	# Hold released too early
 	
-	def premature_response(self, *args):
+	def premature_response(self, *args): # Trial outcome: 0-Premature (ITI)
 		
 		if self.stimulus_on_screen is True:
 			return
@@ -882,6 +909,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.protocol_floatlayout.add_stage_event('Premature Response')
 
+		self.contingency = 3 # 3-Premature/Abort
+		self.trial_outcome = 0 # 0-Premature (ITI)
 		self.last_response = np.nan
 		self.response_latency = np.nan
 		self.iti_active = False
@@ -901,9 +930,11 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Cue Stimuli Pressed during Target
 	
-	def cue_pressed(self, *args):
+	def cue_pressed(self, *args): # Trial outcome: 3-False alarm (non-target response)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
+		self.contingency = 0 # 0-Incorrect
+		self.trial_outcome = 3 # 3-False alarm (non-target response)
 		self.last_response = 0
 		
 		self.target_touch_time = time.perf_counter()
@@ -962,9 +993,11 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Target Stimuli Pressed during Target
 	
-	def target_pressed(self, *args):
+	def target_pressed(self, *args): # Trial outcome: 1-Hit (target response)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
+		self.contingency = 1 # 1-Correct
+		self.trial_outcome = 1 # 1-Hit (target response)
 		self.last_response = 1
 		
 		self.target_touch_time = time.perf_counter()
@@ -1023,8 +1056,10 @@ class ProtocolScreen(ProtocolBase):
 	
 	# No response during test phase limited hold
 	
-	def no_response(self, *args):
+	def no_response(self, *args): # Trial outcome: 2-Miss (no response)
 		
+		self.contingency = 0 # 0-Incorrect
+		self.trial_outcome = 2 # 2-Miss (no response)
 		self.last_response = np.nan
 
 		self.target_touch_time = time.perf_counter()
@@ -1089,15 +1124,18 @@ class ProtocolScreen(ProtocolBase):
 		
 		trial_data = [
 			self.current_trial
-			, self.current_block
 			, self.current_stage
+			, self.current_block
+			, self.current_block_trial
 			, self.current_sep
 			, self.current_delay
-			, self.video_position
 			, (cue_x + 1)
 			, (cue_y + 1)
 			, (target_x + 1)
 			, (target_y + 1)
+			, self.video_position
+			, self.contingency
+			, self.trial_outcome
 			, self.last_response
 			, self.response_latency
 			]
@@ -1119,131 +1157,89 @@ class ProtocolScreen(ProtocolBase):
 
 			if self.current_block_trial != 0:
 
-				if self.last_response in [0, 1]:
-					self.response_tracking.append(self.last_response)
-					self.accuracy_tracking.append(self.last_response)
+				# Staircasing for combo probe
+				# Ignore first four trials to allow for initial learning before staircasing
+				if (self.current_stage == 'Combo') \
+					and (self.current_block_trial >= 4):
 
+					# Staircasing based only on correct/incorrect responses (not premature/missed trials)
+					if self.last_response in [0, 1]:
+						self.response_tracking.append(self.last_response)
 
-				if self.current_delay >= self.max_delay \
-					and len(self.response_tracking) > 3:
+					# Staircasing only relies on hits, so only need to check one variable
+					# Staircasing up requires 7/8 hits; otherwise, staircase down
+					# Hits reset at every staircase, so don't need to check for list length
+					# Staircase up as soon as sum of hits >= 7
+					# Staircase down as soon as two or more 0's in list
 
-					del self.response_tracking[1]
+					## Note: Staircase flag variable not required but makes for easier criteria/stage changes down the line
 
+					# First, default staircase flag to 0
+					self.staircase_flag = 0
 
-				if (len(self.response_tracking) >= 2) \
-					and (sum(self.response_tracking) == 0):
+					# If minimum 7 trials correct, staircase up
+					if sum(self.response_tracking) >= 7:
+						self.staircase_flag = 1
 
-					self.staircase_change = 'dec'
-					self.response_tracking = list()
-					# Variable change: Staircasing -> Decrease
-					self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Staircasing', 'Decrease')
+					# Else, if two or more 0's present in list, staircase down
+					# Else, do nothing
+					elif self.response_tracking.count(0) >= 2:
+						self.staircase_flag = -1
 
-				elif (len(self.response_tracking) >= 2) \
-					and (sum(self.response_tracking) > 0):
+					# If non-zero staircase flag, change staircase level
+					# Organized by stage
+					if self.staircase_flag != 0:
 
-					self.staircase_change = 'inc'
-					self.response_tracking = list()
-					# Variable change: Staircasing -> Increase
-					self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Staircasing', 'Increase')
-				
-				else:
-					self.staircase_change = 'non'
-
-
-				# Adjust staircasing
-				
-				if self.staircase_change == 'inc':
-				
-					if self.current_stage == 'Space':
-						self.space_probe_delay_list[self.space_trial_index] += self.space_probe_staircase_list[self.space_trial_index]
-						self.space_probe_response_list[self.space_trial_index] = self.last_response
-
-					elif self.current_stage == 'Delay':
-						self.delay_probe_sep_list[self.delay_trial_index] -= 1
-						self.delay_probe_response_list[self.delay_trial_index] = self.last_response
-
-						if self.delay_probe_sep_list[self.delay_trial_index] < self.min_sep:
-							self.delay_probe_sep_list[self.delay_trial_index] = self.min_sep
-
-					elif self.current_stage == 'Combo':
+						# Add current delay to delay tracking list for that separation
 						self.combo_probe_delay_tracking_dict[self.current_sep].append(self.current_delay)
-						self.combo_probe_delay_list[self.combo_trial_index] += self.combo_probe_staircase_list[self.combo_trial_index]
 
-						self.last_staircase_time_increase = self.combo_probe_staircase_list[self.combo_trial_index]
+						# If staircasing up, set current delay to minimum
+						# Min delay represents longest delay interval where criteria met
+						if self.staircase_flag > 0:
+							self.combo_probe_delay_limit_dict[self.current_sep]['min'] = self.current_delay
 
-						if self.combo_probe_delay_list[self.combo_trial_index] > self.max_delay:
-							self.combo_probe_delay_list[self.combo_trial_index] = self.max_delay
+						# Else, if staircasing down, set current delay to maximum
+						# Max delay represents shortest delay interval where criteria failed
+						elif self.staircase_flag < 0:
+							self.combo_probe_delay_limit_dict[self.current_sep]['max'] = self.current_delay
 						
-						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
-						# State change: Combo Staircasing
-						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
 
-						# Variable change: Delay
-						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
+						# If difference between min and max delays is greater than delay resolution, take next midpoint
+						if self.combo_probe_delay_limit_dict[self.current_sep]['max'] > self.combo_probe_delay_limit_dict[self.current_sep]['min'] + self.combo_probe_delay_resolution:
 						
-						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
+							self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 				
+						# Else, if difference between min and max delays is less than or equal to delay resolution, check whether min and max values have been tested
+						elif self.combo_probe_delay_limit_dict[self.current_sep]['max'] <= self.combo_probe_delay_limit_dict[self.current_sep]['min'] + self.combo_probe_delay_resolution:
 				
-				if self.staircase_change == 'dec':
+							# If minimum delay does not exist in delay tracking, set current delay to minimum
+							if self.combo_probe_delay_limit_dict[self.current_sep]['min'] not in self.combo_probe_delay_tracking_dict[self.current_sep]:
+								self.current_delay = self.combo_probe_delay_limit_dict[self.current_sep]['min']
 				
-					if self.current_stage == 'Space':
+							# Else, if maximum delay does not exist in delay tracking, set current delay to maximum
+							elif self.combo_probe_delay_limit_dict[self.current_sep]['max'] not in self.combo_probe_delay_tracking_dict[self.current_sep]:
+								self.current_delay = self.combo_probe_delay_limit_dict[self.current_sep]['max']
 
-						if self.space_probe_response_list[self.space_trial_index] == 1:
-							self.space_probe_staircase_list[self.space_trial_index] /= 2
+							# Else, if minimum and maximum delay exist, proceed
+							elif (self.combo_probe_delay_limit_dict[self.current_sep]['min'] in self.combo_probe_delay_tracking_dict[self.current_sep]) \
+									and (self.combo_probe_delay_limit_dict[self.current_sep]['max'] in self.combo_probe_delay_tracking_dict[self.current_sep]):
 
-						self.space_probe_delay_list[self.space_trial_index] -= self.space_probe_staircase_list[self.space_trial_index]
-						self.space_probe_response_list[self.space_trial_index] = self.last_response
+								max_delay = self.combo_probe_delay_limit_dict[self.current_sep]['min']
 
-						if self.space_probe_delay_list[self.space_trial_index] < self.min_delay:
-							self.space_probe_delay_list[self.space_trial_index] = self.min_delay
+								self.combo_probe_sep_index += 1
 
-					elif self.current_stage == 'Delay':
+								# If not all separations tested, move to next separation
+								if self.combo_probe_sep_index < len(self.combo_probe_sep_list):
+									self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
+									self.combo_probe_delay_limit_dict[self.current_sep]['max'] = max_delay
 
-						self.delay_probe_sep_list[self.delay_trial_index] += 1
-						self.delay_probe_response_list[self.delay_trial_index] = self.last_response
+									self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 
-						if self.delay_probe_sep_list[self.delay_trial_index] > self.max_sep:
-							self.delay_probe_sep_list[self.delay_trial_index] = self.max_sep
+								# Else, move to results screen
+								else:
+									self.results_screen()
 
-					elif self.current_stage == 'Combo':
-
-						if self.combo_probe_staircase_list[self.combo_trial_index] == self.last_staircase_time_increase:
-							self.combo_probe_staircase_list[self.combo_trial_index] /= 2
-
-						self.combo_probe_delay_list[self.combo_trial_index] -= self.combo_probe_staircase_list[self.combo_trial_index]
-
-						if self.combo_probe_delay_list[self.combo_trial_index] < self.min_delay:
-							self.combo_probe_delay_list[self.combo_trial_index] = self.min_delay
-						
-						self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
-
-							# State change: Combo Staircasing
-						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
-
-							# Variable change: Delay
-						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
-
-						self.combo_probe_response_list[self.combo_trial_index] = self.last_response
-				
-
-				if self.current_stage == 'Combo' \
-					and ((time.perf_counter() - self.block_start_time) >= (self.combo_probe_max_section_dur * (self.combo_trial_index + 1))):
-
-					self.combo_trial_index += 1
-
-					if self.combo_trial_index < len(self.combo_probe_sep_list):
-						self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
-						self.combo_probe_delay_list[self.combo_trial_index] = self.current_delay
-
-						# State change: Combo Staircasing
-						self.protocol_floatlayout.add_stage_event('Combo Staircasing')
-
-						# Variable changes: Separation and Delay
-						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Separation', self.current_sep)
-						self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
-
-					else:
-						self.block_contingency()
+						self.response_tracking = list()
 
 
 				if (time.perf_counter() - self.block_start_time >= self.block_duration):
@@ -1275,29 +1271,6 @@ class ProtocolScreen(ProtocolBase):
 				# Variable change: Current ITI
 				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current ITI', self.iti_length)
 
-
-			if self.current_stage == 'Space':
-				
-				if self.trial_index >= len(self.space_trial_index_list):
-					self.trial_index = 0
-					self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
-				
-				self.space_trial_index = self.space_trial_index_list[self.trial_index]
-				
-				self.current_sep = self.space_probe_sep_list[self.space_trial_index]
-				self.current_delay = self.space_probe_delay_list[self.space_trial_index]
-			
-			elif self.current_stage == 'Delay':
-				
-				if self.trial_index >= len(self.delay_trial_index_list):
-					self.trial_index = 0
-					self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
-				
-				self.delay_trial_index = self.delay_trial_index_list[self.trial_index]
-				
-				self.current_sep = self.delay_probe_sep_list[self.delay_trial_index]
-				self.current_delay = self.delay_probe_delay_list[self.delay_trial_index]
-			
 			# Set cue and target coordinates
 			
 			self.trial_coord = self.generate_trial_pos_sep(
@@ -1402,46 +1375,28 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Current Block', self.current_block)
 			
 			
-			if self.current_stage == 'Space':
-				self.space_trial_index_list = self.constrained_shuffle(self.space_trial_index_list)
+			if self.current_stage == 'Combo':	
+				self.combo_probe_sep_index = 0
+				self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
+				self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 			
-			elif self.current_stage == 'Delay':
-				self.delay_trial_index_list = self.constrained_shuffle(self.delay_trial_index_list)
-						
-			elif self.current_stage == 'Combo':	
-				self.combo_trial_index = 0
-				self.current_sep = self.combo_probe_sep_list[self.combo_trial_index]
-				self.current_delay = self.combo_probe_delay_list[self.combo_trial_index]
-
 				# Variable changes: Separation and Delay
 				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Separation', self.current_sep)
 				self.protocol_floatlayout.add_variable_event('Change', 'Parameter', 'Delay', self.current_delay)
 
 
-			if (self.current_block == 1) and (self.stage_index == 0):
-				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
-
-				self.instruction_button.text = 'Begin Section'
-				
-				self.protocol_floatlayout.add_widget(self.section_instr_label)
-				self.protocol_floatlayout.add_widget(self.instruction_button)
-				
-				# Object display events: training text and continue button
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Training')
-
-				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Continue')
-			
-			else:
-				self.block_started = False
-				self.block_contingency()
-			
-
 			self.response_tracking = list()
 			self.last_response = 0
-			self.contingency = 0
-			self.trial_outcome = 0
+			self.contingency = np.nan # Reset contingency
+			self.trial_outcome = np.nan # Reset trial outcome
 			self.current_block_trial = 0
-			self.trial_index = 0
+			
+			self.block_start_time = time.perf_counter()
+			self.trial_end_time = time.perf_counter()
+			
+			self.feedback_label.text = ''
+
+			self.protocol_floatlayout.add_widget(self.hold_button)
 			
 			self.trial_contingency()
 		
