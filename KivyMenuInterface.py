@@ -769,6 +769,22 @@ class BatteryMenu(Screen):
 				pname = task.get('task')
 				ttype = task.get('type', 'task')
 				self.app.battery_task_types[pname] = ttype
+				
+				# Extract required fields if they exist (for filtering in battery mode)
+				required_fields = task.get('required')
+				if required_fields and isinstance(required_fields, dict):
+					# required is a dict like {'image_set': 'Image Set', 'dspal_image_set': 'dsPAL Image Set', ...}
+					# Extract just the keys (parameter names to show)
+					self.app.battery_required_fields[pname] = list(required_fields.keys())
+				elif required_fields is not None and isinstance(required_fields, dict):
+					# Empty dict '{}' means preloaded battery with no filtering (use all fields)
+					# Set to empty list to signal "skip configure screen"
+					self.app.battery_required_fields[pname] = []
+				else:
+					# 'required' key not present at all - shouldn't happen in valid JSON
+					# Treat as None (will be set by manual battery code if needed)
+					self.app.battery_required_fields[pname] = None
+				
 				# Only build a configuration dict for actual 'task' types; surveys get no config
 				if ttype == 'task':
 					overrides = task.get('overrides', {}) or {}
@@ -823,8 +839,10 @@ class BatteryMenu(Screen):
 								# fallback: store override as-is (normalized)
 								parameter_dict[norm] = v
 
-					# Ensure participant id is included (same key as MenuBase.start_protocol)
-					parameter_dict['participant_id'] = participant_id
+					# Only add participant_id if this task doesn't have required_fields filtering
+					# (when required_fields are present, participant_id should be collected separately)
+					if not self.app.battery_required_fields.get(pname):
+						parameter_dict['participant_id'] = participant_id
 
 					battery_configs[pname] = parameter_dict
 				else:
@@ -834,9 +852,9 @@ class BatteryMenu(Screen):
 			self.app.battery_configs = battery_configs
 			popup.dismiss()
 
-			# Start running battery tasks
+			# Start configuration for first protocol (handles required fields)
 			if self.app.battery_active:
-				self.app.start_battery_tasks()
+				self.app.start_next_battery_config()
 
 		def on_cancel(instance):
 			popup.dismiss()
@@ -853,6 +871,8 @@ class BatteryMenu(Screen):
 	
 	def load_protocol_battery(self, *args):
 		"""Load the manual ProtocolBattery screen"""
+		self.protocol_battery_screen = ProtocolBattery()
+		self.manager.add_widget(self.protocol_battery_screen)
 		self.manager.current = 'protocolbattery'
 	
 	def cancel_battery(self, *args):
@@ -1104,8 +1124,18 @@ class ProtocolBattery(Screen):
 		# Use the selected_protocols list which maintains order
 		self.app.battery_protocols = self.selected_protocols.copy()
 		self.app.battery_active = len(self.selected_protocols) > 0
+		self.app.battery_index = 0
+		self.app.battery_configs = {}
+		self.app.battery_task_types = {}
+		self.app.battery_required_fields = {}
 
 		if self.app.battery_active:
+			# For manual batteries, all selected protocols are 'task' type with no required fields
+			# This will cause start_next_battery_config to show the configure screen for each
+			for protocol in self.app.battery_protocols:
+				self.app.battery_task_types[protocol] = 'task'
+				self.app.battery_required_fields[protocol] = None  # No required fields in manual batteries
+			
 			# Start the configuration process for the first protocol
 			self.app.start_next_battery_config()
 		else:
@@ -1136,6 +1166,7 @@ class MenuApp(App):
 		self.battery_protocols = list()
 		self.battery_index = 0
 		self.battery_configs = {}
+		self.battery_required_fields = {}  # Maps protocol name to list of required fields
 
 		self.s_manager = ScreenManager()
 		self.active_screen = ''
@@ -1151,13 +1182,36 @@ class MenuApp(App):
 	def start_next_battery_config(self):
 		if self.battery_index < len(self.battery_protocols):
 			protocol_name = self.battery_protocols[self.battery_index]
+			# Skip surveys - they don't have configuration screens in battery mode
+			task_type = self.battery_task_types.get(protocol_name, 'task')
+			if task_type == 'survey':
+				# For surveys, skip configuration and move to next
+				self.battery_index += 1
+				self.start_next_battery_config()
+				return
+			
+			# Check if this protocol has required fields
+			required_fields = self.battery_required_fields.get(protocol_name)
+			
+			# Show configure screen if:
+			# 1. required_fields is None (manual battery - always show menu)
+			# 2. required_fields is a non-empty list (preloaded battery with filtering)
+			# Skip configure screen if required_fields is an empty list (preloaded battery with all fields pre-configured)
+			if required_fields is not None and len(required_fields) == 0:
+				# No required fields in preloaded battery: use pre-loaded config and skip configure screen
+				self.battery_index += 1
+				self.start_next_battery_config()
+				return
+			
+			# Show configure screen (either manual battery or preloaded with required fields)
 			protocol_module = protocol_constructor(protocol_name, 'Menu')
 			config_screen = protocol_module.ConfigureScreen()
-			config_screen.update_battery_mode(True)
+			config_screen.update_battery_mode(True, required_fields)
 			config_screen.size = Window.size
 			self.s_manager.add_widget(config_screen)
 			self.s_manager.current = config_screen.name
 		else:
+			self.battery_index = 0
 			self.start_battery_tasks()
 	
 	def start_battery_tasks(self):

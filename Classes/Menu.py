@@ -191,6 +191,7 @@ class MenuBase(Screen):
 		self.menu_config.read(pathlib.Path('Language', self.language, 'menubase.ini'))
 
 		self.is_battery_mode = False
+		self.battery_required_fields = None  # None means no filtering; list means only show these fields
 		
 		self.protocol_name = ''
 		self.protocol_path = ''
@@ -238,13 +239,87 @@ class MenuBase(Screen):
 		self.add_widget(self.main_layout)
 	
 	
-	def update_battery_mode(self, is_battery):
+	def update_battery_mode(self, is_battery, required_fields=None):
+		"""
+		Update battery mode and optionally set required fields for filtering.
+		
+		Args:
+			is_battery: Boolean indicating battery mode
+			required_fields: None (show all fields) or list of field names to display
+		"""
 		if is_battery:
 			self.is_battery_mode = True
+			self.battery_required_fields = required_fields  # None or list of field names
 			self.start_button.text = self.menu_config['Text']['start_button_battery']
+			# Hide participant ID if required fields exist
+			if required_fields is not None and len(required_fields) > 0:
+				self.id_grid.height = 0
+				self.id_grid.size_hint_y = 0
+				self.apply_required_fields_filter()
+			else:
+				self.id_grid.height = None
+				self.id_grid.size_hint_y = 0.05
 		else:
 			self.is_battery_mode = False
+			self.battery_required_fields = None
 			self.start_button.text = self.menu_config['Text']['start_button_regular']
+			# Show participant ID
+			self.id_grid.height = None
+			self.id_grid.size_hint_y = 0.05
+
+	def _normalize_field_name(self, field_name):
+		"""
+		Normalize a field name for comparison with configuration keys.
+		Converts to lowercase and replaces spaces with underscores.
+		"""
+		return field_name.lower().replace(' ', '_')
+
+	def _should_display_field(self, field_name):
+		"""
+		Determine if a field should be displayed given required_fields filtering.
+		Returns True if field should be shown, False otherwise.
+		"""
+		# If no filtering, show all fields
+		if self.battery_required_fields is None:
+			return True
+		
+		# If filtering, only show if field is in required_fields
+		normalized_field = self._normalize_field_name(field_name)
+		normalized_required = [self._normalize_field_name(f) for f in self.battery_required_fields]
+		
+		return normalized_field in normalized_required
+
+	def apply_required_fields_filter(self):
+		"""
+		Hide/remove widgets from the grid layout based on required_fields filtering.
+		This is called AFTER menu_constructor to filter already-created widgets.
+		Walks from the end to the start to safely remove widgets without index shifting.
+		"""
+		# If no filtering needed, leave all widgets visible
+		if self.battery_required_fields is None or len(self.battery_required_fields) == 0:
+			return
+		
+		# Walk through grid layout from end to start (newest child is first in list)
+		# This avoids index shifting issues when removing widgets
+		i = len(self.setting_gridlayout.children) - 1
+		while i >= 0:
+			widget = self.setting_gridlayout.children[i]
+			
+			# Labels are those that aren't Buttons (pairs: label, value)
+			if isinstance(widget, Label) and not isinstance(widget, Button):
+				field_name = widget.text
+				# Check if this field should be displayed
+				if not self._should_display_field(field_name):
+					# Remove the value widget first (next in pair, since we're walking backwards)
+					if i - 1 < len(self.setting_gridlayout.children):
+						self.setting_gridlayout.remove_widget(self.setting_gridlayout.children[i - 1])
+					# Then remove the label
+					self.setting_gridlayout.remove_widget(widget)
+			
+			i -= 2
+		
+		# Update grid row count
+		self.setting_gridlayout.rows = len(self.setting_gridlayout.children) // 2
 
 	def start_protocol(self, *args):
 		
@@ -302,7 +377,14 @@ class MenuBase(Screen):
 				parameter_dict[key] = value
 		
 		
-		parameter_dict['participant_id'] = self.id_entry.text
+		# Only add participant_id if not using required_fields filtering in battery mode
+		# (when using required fields, participant_id should have been collected upfront and stored elsewhere)
+		if not (self.is_battery_mode and self.battery_required_fields is not None and len(self.battery_required_fields) > 0):
+			parameter_dict['participant_id'] = self.id_entry.text
+		else:
+			# In required-fields battery mode, use the app-level participant_id
+			if hasattr(self.app, 'participant_id') and self.app.participant_id:
+				parameter_dict['participant_id'] = self.app.participant_id
 
 		
 		# Start or protocol or continue battery
@@ -329,7 +411,19 @@ class MenuBase(Screen):
 		
 		else:
 			protocol_name = self.app.battery_protocols[self.app.battery_index]
-			self.app.battery_configs[protocol_name] = parameter_dict
+			
+			# If in battery mode with required fields filtering, update only the required field values
+			# in the pre-loaded config (merge the filled-in values into the existing config)
+			if self.battery_required_fields is not None and len(self.battery_required_fields) > 0:
+				# Merge new values into existing config for this protocol
+				if protocol_name in self.app.battery_configs:
+					self.app.battery_configs[protocol_name].update(parameter_dict)
+				else:
+					self.app.battery_configs[protocol_name] = parameter_dict
+			else:
+				# No required fields: replace entire config (normal battery mode)
+				self.app.battery_configs[protocol_name] = parameter_dict
+			
 			self.app.battery_index += 1
 			self.app.start_next_battery_config()
 
@@ -369,6 +463,7 @@ class MenuBase(Screen):
 		self.setting_gridlayout.rows = (num_parameters)
 		self.setting_gridlayout.cols = 2
 
+		# Build ALL widgets (we'll filter after in apply_required_fields_filter)
 		for parameter in self.parameters_config:
 			label = Label(text=parameter, size_hint_y=None, height=50)
 			if self.parameters_config[parameter].lower() in ['true', 'false']:
@@ -384,4 +479,7 @@ class MenuBase(Screen):
 
 		# Restore scroll position
 		self.setting_scrollview.scroll_y = prev_scroll_y
+		
+		# Apply required fields filtering AFTER widgets are created
+		self.apply_required_fields_filter()
 
