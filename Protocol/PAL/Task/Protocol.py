@@ -91,6 +91,14 @@ class ProtocolScreen(ProtocolBase):
 			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
 
+		self.image_set_dspal_list = [{'name': 'set1','images': ['blocks', 'cookie', 'nineties']},
+								{'name': 'set2','images': ['camera', 'ghost', 'ovals']},
+								{'name': 'set3','images': ['lines', 'shapes', 'zigzags']},]
+
+		self.image_set_recall_list = [{'name': 'set1','images': ['1', '2', '4', '5', '6']},
+								{'name': 'set2','images': ['3', '7', '9', '10', '12']},
+								{'name': 'set3','images': ['8', '14', '15', '19', '20']},]
+
 
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
@@ -130,6 +138,13 @@ class ProtocolScreen(ProtocolBase):
 		self.num_rows = int(self.parameters_dict['num_rows'])
 
 		self.training_image = self.parameters_dict['training_image']
+
+		self.image_set_dspal = self.parameters_dict['dspal_image_set']
+		if self.image_set_dspal == None:
+			self.image_set_dspal = 'rand'
+		self.image_set_recall = self.parameters_dict['recall_image_set']
+		if self.image_set_recall == None:
+			self.image_set_recall = 'rand'
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -232,7 +247,7 @@ class ProtocolScreen(ProtocolBase):
 		if any(True for stage in ['dPAL', 'sPAL', 'Training'] if stage in self.stage_list):
 			stimulus_path_list = list(pathlib.Path(self.image_folder).glob(str(pathlib.Path('PAL-Targets', '*.png'))))
 			stimulus_image_list = list()
-
+			
 			for filename in stimulus_path_list:
 				self.stimulus_image_path_list.append(filename)
 				stimulus_image_list.append(filename.stem)
@@ -242,10 +257,19 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.target_image_list_pal = list()
 
-			while len(self.target_image_list_pal) < self.num_stimuli_pal:
-				new_target = random.choice(stimulus_image_list)
-				self.target_image_list_pal.append(new_target)
-				stimulus_image_list.remove(new_target)
+			if self.image_set_dspal == 'rand':
+
+				while len(self.target_image_list_pal) < self.num_stimuli_pal:
+					new_target = random.choice(stimulus_image_list)
+					self.target_image_list_pal.append(new_target)
+					stimulus_image_list.remove(new_target)
+			else:
+				for image_set in self.image_set_dspal_list:
+					if image_set['name'] == self.image_set_dspal:
+						while len(self.target_image_list_pal) < self.num_stimuli_pal:
+							for img in image_set['images']:
+								if img in stimulus_image_list and len(self.target_image_list_pal) < self.num_stimuli_pal:
+									self.target_image_list_pal.append(img)
 
 
 		if 'Recall' in self.stage_list:
@@ -261,10 +285,19 @@ class ProtocolScreen(ProtocolBase):
 			
 			self.target_image_list_pa = list()
 
-			while len(self.target_image_list_pa) < self.num_stimuli_pa:
-				new_target = random.choice(stimulus_image_list)
-				self.target_image_list_pa.append(new_target)
-				stimulus_image_list.remove(new_target)
+			if self.image_set_recall == 'rand':
+
+				while len(self.target_image_list_pa) < self.num_stimuli_pa:
+					new_target = random.choice(stimulus_image_list)
+					self.target_image_list_pa.append(new_target)
+					stimulus_image_list.remove(new_target)
+			else:
+				for image_set in self.image_set_recall_list:
+					if image_set['name'] == self.image_set_recall:
+						while len(self.target_image_list_pa) < self.num_stimuli_pa:
+							for img in image_set['images']:
+								if img in stimulus_image_list and len(self.target_image_list_pa) < self.num_stimuli_pa:
+									self.target_image_list_pa.append(img)
 
 		self.total_image_list = self.stimulus_image_path_list
 

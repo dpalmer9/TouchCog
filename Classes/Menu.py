@@ -22,6 +22,8 @@ from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp
+from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle, Line
 
 
 class ImageSetItem(ButtonBehavior, BoxLayout):
@@ -36,7 +38,7 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 		self.value = value if value is not None else label_text
 
 		# Left: label
-		self.label = Label(text=label_text, valign='middle', halign='left', size_hint_x=0.6)
+		self.label = Label(text=label_text, valign='middle', halign='left', size_hint_x=0.6, color=(1,1,1,1))
 		self.label.bind(size=lambda instance, val: setattr(instance, 'text_size', (instance.width, instance.height)))
 		self.add_widget(self.label)
 
@@ -48,8 +50,8 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 				img = Image(source=src, size_hint=(None, None), size=(thumb_size, thumb_size), allow_stretch=True, keep_ratio=True)
 				thumb_container.add_widget(img)
 			except Exception:
-				# If image fails to load, add an empty label placeholder
-				thumb_container.add_widget(Label(text='?', size_hint=(None, None), size=(thumb_size, thumb_size)))
+				# If image fails to load, add an empty label placeholder (white text on black bg)
+				thumb_container.add_widget(Label(text='?', size_hint=(None, None), size=(thumb_size, thumb_size), color=(1,1,1,1)))
 
 		self.add_widget(thumb_container)
 
@@ -58,6 +60,51 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 		try:
 			self.dropdown.select(self.value)
 		except Exception:
+			pass
+
+
+class StyledDropDown(DropDown):
+	"""A DropDown with a visible border/background and which ensures it is
+	on top of other widgets when opened.
+
+	This draws a background rectangle and border in canvas.before and when
+	opened re-adds itself to the parent window to move to the front.
+	"""
+	def __init__(self, bg_color=(0,0,0,1), border_color=(1,1,1,1), border_width=1, **kwargs):
+		super(StyledDropDown, self).__init__(**kwargs)
+		self.bg_color = bg_color
+		self.border_color = border_color
+		self.border_width = border_width
+
+		with self.canvas.before:
+			self._bg_color_instr = Color(rgba=self.bg_color)
+			self._bg_rect = Rectangle(pos=self.pos, size=self.size)
+			self._border_color_instr = Color(rgba=self.border_color)
+			self._border_line = Line(rectangle=(self.x, self.y, self.width, self.height), width=self.border_width)
+
+		# Update shapes when size/pos change
+		self.bind(pos=self._update_graphics, size=self._update_graphics)
+
+	def _update_graphics(self, *args):
+		try:
+			self._bg_rect.pos = self.pos
+			self._bg_rect.size = self.size
+			self._border_line.rectangle = (self.x, self.y, self.width, self.height)
+		except Exception:
+			pass
+
+	def open(self, widget):
+		# Use parent open behavior
+		super(StyledDropDown, self).open(widget)
+		# Ensure we're on top by re-adding to the window if possible
+		try:
+			win = self.get_parent_window() or Window
+			# remove/add to move to top if it's already been added
+			if self in win.children:
+				win.remove_widget(self)
+			win.add_widget(self)
+		except Exception:
+			# Fallback: do nothing if window manipulation fails
 			pass
 
 
@@ -86,8 +133,9 @@ class ImageSetDropdown(BoxLayout):
 		self.button = Button(text=default_text)
 		self.add_widget(self.button)
 
-		# The dropdown that will hold ImageSetItem rows
-		self.dropdown = DropDown()
+		# The dropdown that will hold ImageSetItem rows (styled with border/background)
+		# Use black background + white border for dropdown
+		self.dropdown = StyledDropDown(bg_color=(0,0,0,1), border_color=(1,1,1,1), border_width=1)
 
 		# Populate dropdown
 		for opt in self.options:
@@ -234,7 +282,19 @@ class MenuBase(Screen):
 			
 			
 			elif isinstance(widget, Button):
+				# Ignore buttons that belong to an ImageSetDropdown; the
+				# ImageSetDropdown itself is handled separately (it provides
+				# the selected value via get_selected()). This prevents the
+				# internal dropdown button from overwriting the parameter.
+				parent = getattr(widget, 'parent', None)
+				if isinstance(parent, ImageSetDropdown):
+					# skip the internal button
+					continue
 				value = widget.text
+				parameter_dict[key] = value
+			
+			elif isinstance(widget, ImageSetDropdown):
+				value = widget.get_selected()
 				parameter_dict[key] = value
 
 			elif isinstance(widget, CheckBox):
