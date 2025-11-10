@@ -291,10 +291,13 @@ class ProtocolScreen(ProtocolBase):
 		self.decision_point_tracking = list()
 
 		self.hit_tracking = list()
+		self.total_hit_tracking = list()
 		self.false_alarm_tracking = list()
+		self.total_false_alarm_tracking = list()
+		self.staircase_index_tracking = list()
 
 		self.staircase_flag = 0
-		self.last_staircase = 0
+		self.last_staircase = None
 
 		self.current_similarity = 0.0
 		
@@ -1516,6 +1519,7 @@ class ProtocolScreen(ProtocolBase):
 				# Track hits/false alarms for accuracy and staircasing
 				if self.trial_outcome == 1:
 					self.hit_tracking.append(1)
+					self.total_hit_tracking.append(1)
 					
 					# Confirm that response latency is a real number before appending
 					if self.response_latency != np.nan:
@@ -1523,13 +1527,17 @@ class ProtocolScreen(ProtocolBase):
 
 				elif self.trial_outcome == 2:
 					self.hit_tracking.append(0)
+					self.total_hit_tracking.append(0)
 								
 				elif self.trial_outcome == 3:
+					self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
 					self.false_alarm_tracking.append(1)
+					self.total_false_alarm_tracking.append(1)
 						
 				elif self.trial_outcome == 4:
+					self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
 					self.false_alarm_tracking.append(0)
-								
+					self.total_false_alarm_tracking.append(0)
 
 				# If staircased stage, check criteria
 				if 'Staircase' in self.current_stage:
@@ -1569,7 +1577,8 @@ class ProtocolScreen(ProtocolBase):
 
 					# If staircase flag not 0, adjust staircasing
 					if self.staircase_flag != 0:
-
+						self.hit_tracking = []
+						self.false_alarm_tracking = []
 						# Check and set staircasing parameters for each stage individually
 						# Check if similarity stage
 						if 'Similarity' in self.current_stage:
@@ -1577,12 +1586,11 @@ class ProtocolScreen(ProtocolBase):
 							# If staircase flag greater than 0, increase staircase
 							# If last trial outcome was correct rejection, increase similarity
 							# Else, do nothing
-							if (self.staircase_flag > 0) \
-								and (self.trial_outcome == 4):
+							if (self.staircase_flag > 0):
 
 								# If similarity of last correct rejection was max possible similarity, or last staircase decreasing, end block
-								if (self.last_staircase < 0) \
-									or (self.current_similarity == max(self.similarity_data[self.target_image])):
+								if (self.last_staircase is not None and self.last_staircase < 0) \
+									or ((self.similarity_index_max / 100) >= max(self.similarity_data[self.target_image])):
 
 									# If similarity tracking list contains values, use maximum correct similarity as outcome
 									if len(self.similarity_tracking) > 0:
@@ -1590,7 +1598,6 @@ class ProtocolScreen(ProtocolBase):
 
 									# Else, take similarity value of current similarity index max as outcome
 									else:
-										# self.outcome_value = float(self.similarity_data.iat[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1]), self.target_image])
 										self.outcome_value = float(self.similarity_data.loc[
 											self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1]
 											, self.target_image
@@ -1620,21 +1627,18 @@ class ProtocolScreen(ProtocolBase):
 						
 								# Else, set new similarity index values and select new nontarget image list
 								else:
-									self.similarity_index_min = int(self.nontarget_images.index(self.center_image))
+									self.similarity_index_min = max(self.staircase_index_tracking[-self.staircase_min_nontarget_trials:]) + 1
 									self.similarity_index_max = self.similarity_index_min + self.similarity_index_range
 									self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 
 								self.last_staircase = self.staircase_flag
 
 							# If staircase flag less than 1 (criteria failed), check if incorrect response
-							# Staircasing decrease only triggered if last response incorrect
-							# Else, do nothing
-							elif (self.staircase_flag < 0) \
-								and (self.trial_outcome in [2, 3]):
+							elif (self.staircase_flag < 0):
 
 								# If last staircase increasing or current minimum similarity index is 0 (can't decrease further), set parameters and end block
-								if (self.last_staircase > 0) \
-									or (self.similarity_index_min == 0):
+								if (self.last_staircase is not None and self.last_staircase > 0) \
+									or ((self.similarity_index_min / 100) <= min(self.similarity_data[self.target_image])):
 
 									# If similarity tracking list contains values, use maximum correct similarity as outcome
 									if len(self.similarity_tracking) > 0:
@@ -1642,7 +1646,6 @@ class ProtocolScreen(ProtocolBase):
 
 									# Else, take similarity value of current similarity index max as outcome
 									else:
-										# self.outcome_value = float(self.similarity_data.iat[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1]), self.target_image])
 										self.outcome_value = float(self.similarity_data.loc[
 											self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1]
 											, self.target_image
@@ -1671,8 +1674,8 @@ class ProtocolScreen(ProtocolBase):
 									self.start_stage_screen()
 
 								# Else, decrease similarity and create new nontarget image list
-								elif self.trial_outcome == 3:
-									self.similarity_index_max = int(self.nontarget_images.index(self.center_image))
+								else:
+									self.similarity_index_max = min(self.staircase_index_tracking[-self.staircase_min_nontarget_trials:])
 									self.similarity_index_min = self.similarity_index_max - self.similarity_index_range
 						
 									# If min similarity index is negative, set similarity index min to 0
@@ -2022,18 +2025,18 @@ class ProtocolScreen(ProtocolBase):
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
 
-		self.hold_button.disabled = True
-		self.hold_button.state = 'normal'
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
-		
-		self.protocol_floatlayout.clear_widgets()
-		self.hold_button.disabled = False
-
+		self.hold_button.unbind(on_release=self.stimulus_response)
+		self.hold_button.disabled = True
+		self.hold_button.state = 'normal'
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
+		
+		self.protocol_floatlayout.clear_widgets()
+		self.hold_button.disabled = False
 
 		self.feedback_on_screen = False
 			
@@ -2054,12 +2057,12 @@ class ProtocolScreen(ProtocolBase):
 
 		elif self.current_stage in ['TarProb_Fixed_Probe', 'Flanker_Fixed_Probe']:
 
-			if len(self.hit_tracking) == 0:
+			if len(self.total_hit_tracking) == 0:
 				self.outcome_string = 'Great job!\n\n'
 				
 			else:
-				self.hit_accuracy = (sum(self.hit_tracking) / len(self.hit_tracking))
-				self.outcome_string = 'Great job!\n\nYou responded to ' + str(round(self.hit_accuracy, 2) * 100) + '%' + ' of the target images!\n\nYou responded to ' + str(sum(self.false_alarm_tracking)) + ' of the non-target images.'
+				self.hit_accuracy = (sum(self.total_hit_tracking) / len(self.total_hit_tracking))
+				self.outcome_string = 'Great job!\n\nYou responded to ' + str(round(self.hit_accuracy, 2) * 100) + '%' + ' of the target images!\n\nYou responded to ' + str(sum(self.total_false_alarm_tracking)) + ' of the non-target images.'
 			
 		else:
 			self.outcome_string = "Great job!\n\n"
@@ -2128,6 +2131,10 @@ class ProtocolScreen(ProtocolBase):
 				if self.current_block == -1:
 					self.protocol_floatlayout.add_widget(self.hold_button)
 				
+				self.total_hit_tracking = []
+				self.total_false_alarm_tracking = []
+				self.hit_tracking = []
+				self.false_alarm_tracking = []
 				self.stage_index += 1
 				self.current_block = 1
 	
