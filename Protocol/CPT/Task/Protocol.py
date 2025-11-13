@@ -251,7 +251,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
-		self.hold_button_pressed = False
 		self.stimulus_mask_on_screen = True
 		self.training_complete = False
 		
