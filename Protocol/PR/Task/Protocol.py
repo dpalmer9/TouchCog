@@ -263,21 +263,23 @@ class ProtocolScreen(ProtocolBase):
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
-			self.tutorial_video = Video(source = self.tutorial_video_path)
-			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
-			self.tutorial_video.size_hint = (1, 1)
+			self.tutorial_video = Video(
+				source = self.tutorial_video_path
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
+				)
 
-		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
-		self.tutorial_restart.size_hint = self.text_button_size
-		self.tutorial_restart.pos_hint = self.text_button_pos_LL
-		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
+		self.tutorial_restart_button_button = Button(text='Restart Video', font_size='48sp')
+		self.tutorial_restart_button_button.size_hint = self.text_button_size
+		self.tutorial_restart_button_button.pos_hint = self.text_button_pos_LL
+		self.tutorial_restart_button_button.bind(on_press=self.tutorial_restart)
 
-		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
+		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
 		self.tutorial_start_button.size_hint = self.text_button_size
 		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
-		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
+		self.tutorial_start_button.bind(on_press=self.stop_tutorial_video)
 		
-		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
@@ -362,34 +364,48 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
 
 		self.tutorial_video.state = 'stop'
+
+		self.tutorial_video_first_play = True
+
+		return
 	
 
 
 	def start_tutorial_video(self, *args):
 
 		self.tutorial_video.state = 'play'
-		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
-		
-		Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
 
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+		if self.tutorial_video_first_play:
+			self.tutorial_video_first_play = False
+			self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
+			Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+			self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+
+		return
 
 
 	def present_tutorial_video_start_button(self, *args):
 		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
-		self.protocol_floatlayout.add_widget(self.tutorial_restart)
+		self.protocol_floatlayout.add_widget(self.tutorial_restart_button_button)
 				
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions', image_name='Section Start')
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions', image_name='Video Restart')
+		return
+	
+	
+	def stop_tutorial_video(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
+		self.start_protocol_from_tutorial()
+
+	def tutorial_restart(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.start_tutorial_video()
 	
 	
 	
 	def start_protocol_from_tutorial(self, *args):
-		self.tutorial_video.state = 'stop'
-
 		self.protocol_floatlayout.clear_widgets()
-
-		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		self.generate_output_files()
