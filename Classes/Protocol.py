@@ -600,6 +600,7 @@ class ProtocolBase(Screen):
 		self.hold_button.bind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.hold_lift_trial)
 		self.hold_button.bind(on_press=self.hold_lift_returned)
+		self.hold_button.always_release = True
 		
 		
 		# Define Widgets - Text
