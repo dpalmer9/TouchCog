@@ -140,6 +140,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.feedback_on_screen = False
 		self.stimulus_on_screen = False
+		self.participant_stopped = False
 
 	def _setup_session_stages(self):
 		self.task_clock = Clock
@@ -418,6 +419,7 @@ class ProtocolScreen(ProtocolBase):
 
 	def results_screen(self, *args):
 			self.protocol_floatlayout.clear_widgets()
+			self.participant_stopped = True
 			self.feedback_on_screen = False
 
 			self.outcome_string = 'Great job!\n\nYou completed ' \
@@ -624,7 +626,10 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def block_screen_display_hold_button(self, *args):
-		self.protocol_floatlayout.add_widget(self.hold_button)
+		if not self.participant_stopped:
+			self.protocol_floatlayout.add_widget(self.hold_button)
+		else:
+			return
 
 
 	# Block start function (add widgets and set block start time)
