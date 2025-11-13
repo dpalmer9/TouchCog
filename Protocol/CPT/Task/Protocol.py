@@ -251,7 +251,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
-		self.hold_active = False
+		self.hold_button_pressed = False
 		self.stimulus_mask_on_screen = True
 		self.training_complete = False
 		
@@ -529,10 +529,10 @@ class ProtocolScreen(ProtocolBase):
 
 		self.instruction_image_pos_C = {"center_x": 0.50, "center_y": 0.75}
 
-		self.text_button_pos_UC = {"center_x": 0.50, "center_y": 0.92}
-		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
-		self.text_button_pos_LC = {"center_x": 0.50, "center_y": 0.08}
-		self.text_button_pos_LR = {"center_x": 0.75, "center_y": 0.08}
+		self.text_button_pos_UC = {"center_x": 0.50, "top": 0.99}
+		self.text_button_pos_LL = {"center_x": 0.25, "y": 0.01}
+		self.text_button_pos_LC = {"center_x": 0.50, "y": 0.01}
+		self.text_button_pos_LR = {"center_x": 0.75, "y": 0.01}
 
 		# Load images
 
@@ -619,6 +619,7 @@ class ProtocolScreen(ProtocolBase):
 		if any(True for stage in ['Blur_Staircase_Difficulty', 'Blur_Staircase_Probe'] if stage in self.stage_list):
 			self.blur_widget = EffectWidget()
 			self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
+	
 
 	def _setup_language_localization(self):		
 		self.set_language(self.language)
@@ -636,10 +637,9 @@ class ProtocolScreen(ProtocolBase):
 
 			self.tutorial_video = Video(
 				source = self.tutorial_video_path
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
 				)
-
-			self.tutorial_video.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
-			self.tutorial_video.size_hint = (1, 1)
 
 		# Define Instruction Components
 		
@@ -692,13 +692,13 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		self.tutorial_outline = ImageButton(source=self.outline_mask_path)
 		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
-		self.tutorial_continue = Button(text='CONTINUE', font_size='48sp')
+		self.tutorial_continue = Button(text='Continue', font_size='48sp')
 		self.tutorial_continue.bind(on_press=self.tutorial_target_present_screen)
-		self.tutorial_restart = Button(text='RESTART VIDEO', font_size='48sp')
-		self.tutorial_restart.bind(on_press=self.start_tutorial_video)
-		self.tutorial_start_button = Button(text='START TASK', font_size='48sp')
+		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
+		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
+		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
-		self.tutorial_video_button = Button(text='TAP THE SCREEN\nTO START VIDEO', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 		
@@ -744,13 +744,13 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button = Button(font_size='60sp')
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint = self.text_button_pos_UC
-		self.stage_continue_button.text = 'CONTINUE'
+		self.stage_continue_button.text = 'Continue'
 		self.stage_continue_button.bind(on_press=self.block_contingency)
 		
 		self.session_end_button = Button(font_size='60sp')
 		self.session_end_button.size_hint = self.text_button_size
 		self.session_end_button.pos_hint = self.text_button_pos_LL
-		self.session_end_button.text = 'END SESSION'
+		self.session_end_button.text = 'End Session'
 		self.session_end_button.bind(on_press=self.protocol_end)
 		
 		
@@ -788,8 +788,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.tutorial_continue.pos_hint = self.text_button_pos_LR
 		self.tutorial_continue.bind(on_press=self.tutorial_video_stop)
-		self.tutorial_restart.size_hint = self.text_button_size
-		self.tutorial_restart.pos_hint = self.text_button_pos_LL
+		self.tutorial_restart_button.size_hint = self.text_button_size
+		self.tutorial_restart_button.pos_hint = self.text_button_pos_LL
 		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 			
@@ -799,23 +799,31 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
 
 		self.tutorial_video.state = 'stop'
+
+		self.tutorial_video_first_play = True
+
 		return
 	
 
 	def start_tutorial_video(self, *args):
 
 		self.tutorial_video.state = 'play'
-		self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
 
-		self.tutorial_video_end_event = Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+		if self.tutorial_video_first_play:
+			self.tutorial_video_first_play = False
+			self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
+			Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+			self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+
 		return
 
 
 	def present_tutorial_video_start_button(self, *args):
 
 		self.protocol_floatlayout.add_widget(self.tutorial_continue)
-		self.protocol_floatlayout.add_widget(self.tutorial_restart)
+		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
 		return
 
 
@@ -841,7 +849,12 @@ class ProtocolScreen(ProtocolBase):
 	def tutorial_video_stop(self, *args):
 
 		self.tutorial_video.state = 'stop'
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.tutorial_target_present_screen()
+
+	def tutorial_restart(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.start_tutorial_video()
 
 
 
@@ -984,7 +997,7 @@ class ProtocolScreen(ProtocolBase):
 		if not self.stimulus_on_screen \
 			and not self.limhold_started:
 
-			self.hold_active = True
+			self.hold_button_pressed = True
 		
 			self.hold_button.unbind(on_press=self.iti_start)
 			self.hold_button.unbind(on_release=self.premature_response)
@@ -1055,7 +1068,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_latency = self.response_time - self.stimulus_start_time
 		
 		self.response_made = True
-		self.hold_active = False
+		self.hold_button_pressed = False
 
 		self.protocol_floatlayout.add_stage_event('Stimulus Response')
 		
@@ -1104,7 +1117,7 @@ class ProtocolScreen(ProtocolBase):
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 
-		self.hold_active = False
+		self.hold_button_pressed = False
 
 		self.hold_button.unbind(on_press=self.response_cancelled)
 		
@@ -1361,7 +1374,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.trial_outcome = 7
 
-		self.hold_active = True
+		self.hold_button_pressed = True
 		
 		self.center_notpressed()
 
@@ -1580,7 +1593,7 @@ class ProtocolScreen(ProtocolBase):
 
 								# If similarity of last correct rejection was max possible similarity, or last staircase decreasing, end block
 								if (self.last_staircase is not None and self.last_staircase < 0) \
-									or ((self.similarity_index_max / 100) >= max(self.similarity_data[self.target_image])):
+									or (self.similarity_index_max >= len(self.similarity_data[self.target_image])):
 
 									# If similarity tracking list contains values, use maximum correct similarity as outcome
 									if len(self.similarity_tracking) > 0:
@@ -1619,6 +1632,11 @@ class ProtocolScreen(ProtocolBase):
 								else:
 									self.similarity_index_min = max(self.staircase_index_tracking[-self.staircase_min_nontarget_trials:]) + 1
 									self.similarity_index_max = self.similarity_index_min + self.similarity_index_range
+
+									if self.similarity_index_max > len(self.similarity_data[self.target_image]):
+										self.similarity_index_max = len(self.similarity_data[self.target_image])
+										self.similarity_index_min = self.similarity_index_max - self.similarity_index_range
+
 									self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 
 								self.last_staircase = self.staircase_flag
@@ -1628,7 +1646,7 @@ class ProtocolScreen(ProtocolBase):
 
 								# If last staircase increasing or current minimum similarity index is 0 (can't decrease further), set parameters and end block
 								if (self.last_staircase is not None and self.last_staircase > 0) \
-									or ((self.similarity_index_min / 100) <= min(self.similarity_data[self.target_image])):
+									or (self.similarity_index_min <= 0):
 
 									# If similarity tracking list contains values, use maximum correct similarity as outcome
 									if len(self.similarity_tracking) > 0:
@@ -1936,8 +1954,14 @@ class ProtocolScreen(ProtocolBase):
 				or ((time.perf_counter() - self.block_start) >= self.block_duration):
 
 				self.protocol_floatlayout.add_stage_event('Block End')
+
+				self.hold_button.unbind(on_press=self.iti_start)
+				self.hold_button.unbind(on_release=self.premature_response)
+
+				self.hold_button_pressed = False
+				self.hold_button.disabled = True
+				self.hold_button.state = 'normal'
 				
-				self.hold_button.unbind(on_release=self.stimulus_response)
 				self.contingency = 0
 				self.trial_outcome = 0
 				self.last_response = 0
@@ -2016,20 +2040,8 @@ class ProtocolScreen(ProtocolBase):
 
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
-
-		self.hold_button.unbind(on_press=self.iti_start)
-		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.unbind(on_release=self.stimulus_response)
-		self.hold_button.disabled = True
-		self.hold_button.state = 'normal'
-		Clock.unschedule(self.stimulus_end)
-		Clock.unschedule(self.center_notpressed)
-		Clock.unschedule(self.iti_end)
-		Clock.unschedule(self.remove_feedback)
-		Clock.unschedule(self.hold_remind)
 		
 		self.protocol_floatlayout.clear_widgets()
-		self.hold_button.disabled = False
 
 		self.feedback_on_screen = False
 			
@@ -2064,10 +2076,10 @@ class ProtocolScreen(ProtocolBase):
 		if self.stage_index < (len(self.stage_list) - 1) \
 			or (self.current_block <= self.block_max_count):
 
-			self.stage_string = 'Please press "CONTINUE" to start the next block.'
+			self.stage_string = 'Please press "Continue" to start the next block.'
 
 		else:
-			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.' # 'Please press "END SESSION" to end the session.'
+			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.' # 'Please press "End Session" to end the session.'
 			self.session_end_button.pos_hint = self.text_button_pos_UC
 			self.protocol_floatlayout.add_widget(self.session_end_button)
 			
@@ -2101,9 +2113,6 @@ class ProtocolScreen(ProtocolBase):
 	def block_contingency(self, *args):
 		
 		try:
-			Clock.unschedule(self.stimulus_end)
-			Clock.unschedule(self.center_notpressed)
-			Clock.unschedule(self.iti_end)
 		
 			self.protocol_floatlayout.add_stage_event('Block Contingency')
 
@@ -2115,7 +2124,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.feedback_label.text = ''
 
-			self.hold_active = False
+			self.hold_button_pressed = False
 			self.block_started = True
 			
 			# Advance to next stage if current block exceeds max blocks or is -1 (initial value)
@@ -2376,6 +2385,9 @@ class ProtocolScreen(ProtocolBase):
 			# self.protocol_floatlayout.add_widget(self.hold_button)
 
 			# self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
+
+			if self.hold_button.disabled:
+				self.hold_button.disabled = False
 
 			if 'Blur_Staircase_Difficulty' in self.stage_list \
 				or self.current_stage == 'Blur_Staircase_Probe':
