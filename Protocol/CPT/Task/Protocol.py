@@ -619,7 +619,6 @@ class ProtocolScreen(ProtocolBase):
 		if any(True for stage in ['Blur_Staircase_Difficulty', 'Blur_Staircase_Probe'] if stage in self.stage_list):
 			self.blur_widget = EffectWidget()
 			self.blur_widget.effects = [HorizontalBlurEffect(size=self.blur_level), VerticalBlurEffect(size=self.blur_level)]
-	
 
 	def _setup_language_localization(self):		
 		self.set_language(self.language)
@@ -1367,15 +1366,6 @@ class ProtocolScreen(ProtocolBase):
 		self.center_notpressed()
 
 
-
-	def hold_removed_stim(self, *args):
-		
-		self.hold_active = False
-		
-		self.protocol_floatlayout.add_stage_event('Hold Removed')
-
-
-
 	def section_start(self, *args):
 
 		self.protocol_floatlayout.clear_widgets()
@@ -2010,6 +2000,8 @@ class ProtocolScreen(ProtocolBase):
 			
 			if self.hold_button_pressed == True:
 				self.iti_start()
+			else:
+				Clock.schedule_once(self.hold_remind, 2.0)
 		
 		
 		except KeyboardInterrupt:
@@ -2034,6 +2026,7 @@ class ProtocolScreen(ProtocolBase):
 		Clock.unschedule(self.center_notpressed)
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
+		Clock.unschedule(self.hold_remind)
 		
 		self.protocol_floatlayout.clear_widgets()
 		self.hold_button.disabled = False

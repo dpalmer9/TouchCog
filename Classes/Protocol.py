@@ -595,6 +595,8 @@ class ProtocolBase(Screen):
 		self.hold_button.name = 'Hold Button'
 		self.hold_button.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
 		self.hold_button.bind(on_release=self.hold_remind)
+		self.hold_button.bind(on_release=self.hold_lift_trial)
+		self.hold_button.bind(on_press=self.hold_lift_returned)
 		
 		
 		# Define Widgets - Text
@@ -1061,9 +1063,11 @@ class ProtocolBase(Screen):
 	
 	def iti_start(self, *args):	
 		if not self.iti_active:
+			Clock.unschedule(self.hold_remind)
 			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
+			self.hold_button.bind(on_release=self.hold_remind)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
 			self.start_iti = time.perf_counter()
@@ -1088,7 +1092,6 @@ class ProtocolBase(Screen):
 			self.protocol_floatlayout.add_stage_event('ITI End')
 
 			self.hold_button.unbind(on_release=self.hold_remind)
-			self.hold_button.bind(on_release=self.hold_lift_trial)
 			self.hold_active = True
 			self.stimulus_presentation()
 				
@@ -1097,8 +1100,10 @@ class ProtocolBase(Screen):
 			return
 	
 	def hold_lift_trial(self, *args):
-		self.hold_button.unbind(on_release=self.hold_lift_trial)
+		#self.hold_button.unbind(on_release=self.hold_lift_trial)
 		self.hold_button_pressed = False
+	def hold_lift_returned(self, *args):
+		self.hold_button_pressed = True
 
 	def remove_feedback(self, *args):
 		if self.feedback_on_screen:
