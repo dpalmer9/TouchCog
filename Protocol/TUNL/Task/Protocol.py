@@ -43,6 +43,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'VideoTime'
 			, 'Contingency'
 			, 'Outcome'
+			, 'LastResponse'
 			, 'ResponseLatency'
 			]
 		
