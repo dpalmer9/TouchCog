@@ -1047,6 +1047,8 @@ class ProtocolBase(Screen):
 			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
 				return
+			elif self.block_started:
+				return
 			else:
 					# remove any other feedback text
 				Clock.unschedule(self.remove_feedback)
