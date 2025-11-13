@@ -493,6 +493,9 @@ class ProtocolBase(Screen):
 			
 		# Create the directory structure if it doesn't exist
 		self.data_folder.mkdir(parents=True, exist_ok=True)
+
+		# Trial Store
+		self.app.trial_summary_list = list()
 		
 		
 		# Define Folders
@@ -861,12 +864,13 @@ class ProtocolBase(Screen):
 			temp_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
 			self.file_path = pathlib.Path(folder_path, temp_filename + '_Summary_Data.csv')
 		
-		self.session_data = pd.DataFrame(columns=self.data_cols)
-		self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
+		# self.session_data = pd.DataFrame(columns=self.data_cols)
+		# self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
 		
 		event_path = pathlib.Path(folder_path, temp_filename + '_Event_Data.csv')
 		
 		self.protocol_floatlayout.update_path(event_path)
+		self.app.trial_summary_cols = self.data_cols
 		self.app.summary_event_path = self.file_path
 		self.app.summary_event_data = self.session_data
 		return
@@ -985,6 +989,7 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
 
+		self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
 		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
 		self.protocol_floatlayout.write_data()
 
@@ -1118,17 +1123,7 @@ class ProtocolBase(Screen):
 			return
 	
 	def write_summary_file(self, data_row):
-		
-		data_row = pd.Series(data_row, index=self.data_cols)
-		self.app.summary_event_data = pd.concat([
-			self.app.summary_event_data
-			, data_row.to_frame().T
-			]
-			, axis=0
-			, ignore_index=True
-			)
-		self.app.summary_event_data
-		
+		self.app.trial_summary_data.append(data_row)
 		return
 	
 	

@@ -1164,8 +1164,11 @@ class MenuApp(App):
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
 		self.summary_event_path = ''
+		self.trial_summary_data = list()
+		self.trial_summary_cols = list()
 		self.survey_data = pd.DataFrame()
 		self.survey_data_path = ''
+		self.survey_data_list = list()
 		self.event_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
@@ -1279,17 +1282,19 @@ class MenuApp(App):
 	def on_stop(self):
 		self.event_queue.put(None)
 		if len(self.event_list) > 0:
-			self.session_event_data = pd.DataFrame(self.event_list)
+			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
 			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
 			try:
 				self.session_event_data.to_csv(self.session_event_path, index=False)
 			except FileNotFoundError:
 				pass
 			try:
+				self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
 				self.summary_event_data.to_csv(self.summary_event_path, index=False)
 			except FileNotFoundError:
 				pass
 			try:
+				self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
 				self.survey_data.to_csv(self.survey_data_path, index=False)
 			except FileNotFoundError:
 				pass

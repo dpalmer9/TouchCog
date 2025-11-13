@@ -196,8 +196,8 @@ class SurveyBase(Screen):
         except Exception:
             # Best-effort: if pandas append fails, try concat
             try:
-                new_row = pd.DataFrame([[question_text, "" if response is None else str(response)]], columns=self.survey_data.columns)
-                self.survey_data = pd.concat([self.survey_data, new_row], ignore_index=True)
+                new_row = [[question_text, "" if response is None else str(response)]]
+                self.app.survey_data_list.append(new_row)
             except Exception:
                 # give up silently (avoid crashing UI)
                 pass
@@ -274,7 +274,7 @@ class SurveyBase(Screen):
         self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5})
 
     def _return_to_main_menu(self, instance):
-        self.app.survey_data = self.survey_data
+        self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
         self.app.survey_data.to_csv(self.app.survey_data_path, index=False)
         try:
             if getattr(self.app, 'battery_active', False):
