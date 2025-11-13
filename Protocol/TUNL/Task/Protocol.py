@@ -451,11 +451,11 @@ class ProtocolScreen(ProtocolBase):
 		
 
 		# Begin Task
-		self.start_clock()
+		#self.start_clock()
 		self.feedback_label.text = 'LOADING VIDEO... PLEASE WAIT'
 		self.protocol_floatlayout.add_widget(self.feedback_label)
 		self.delay_video.state = 'play'
-		Clock.schedule_interval(self._check_delay_video_loaded, 0.5)
+		self.delay_video.bind(loaded=self._check_delay_video_loaded)
 
 
 
