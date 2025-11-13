@@ -124,7 +124,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 
-		if self.parameters_dict['training_task'] == 1:
+		if self.parameters_dict['training_task']:
 			self.stage_list.append('Training')
 
 		self.stage_list.append('Test')
