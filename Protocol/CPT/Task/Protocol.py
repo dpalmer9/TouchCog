@@ -2026,6 +2026,22 @@ class ProtocolScreen(ProtocolBase):
 
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
+
+		# Cancel any scheduled timers that could present stimuli or noise on screen
+		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
+		Clock.unschedule(self.hold_remind)
+		Clock.unschedule(self.remove_feedback)
+		Clock.unschedule(self.stage_screen_end)
+
+    	# Reset 'in-progress' flags to avoid triggering any trial actions
+		self.iti_active = False
+		self.stimulus_on_screen = False
+		self.limhold_started = False
+		self.feedback_on_screen = False
+		self.hold_button_pressed = False
+		self.response_made = False
 		
 		self.protocol_floatlayout.clear_widgets()
 
