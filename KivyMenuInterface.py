@@ -323,7 +323,7 @@ class LanguageMenu(Screen):
 		self.Language_Layout = FloatLayout()
 		self.add_widget(self.Language_Layout)
 
-		self.manifest_path = 'http://nyx.canspace.ca/uploads/Touchscreen%20Tasks/manifest.json'
+		self.manifest_path = 'https://touchscreencognition.org/uploads/manifest.json'
 
 		self.language_list = list()
 		with os.scandir(app_root / 'Language') as entries:
@@ -426,15 +426,57 @@ class LanguageMenu(Screen):
 		try:
 			with urllib.request.urlopen(self.manifest_path, timeout=10) as resp:
 				data = resp.read().decode('utf-8')
-				return json.loads(data)
+				# First try strict JSON parsing, then try to sanitize common errors
+				try:
+					return json.loads(data)
+				except json.JSONDecodeError:
+					print('WARNING: Remote manifest JSON failed strict parsing; attempting sanitize')
+					sanitized = self._sanitize_json_text(data)
+					try:
+						return json.loads(sanitized)
+					except Exception as e:
+						print('WARNING: Sanitized remote manifest JSON still failed parsing:', e)
+						raise
 		except Exception:
 			# Fallback to local file in project root
 			local_path = app_root / 'manifest.json'
 			try:
 				with open(local_path, 'r', encoding='utf-8') as f:
-					return json.load(f)
+					local_text = f.read()
+					try:
+						return json.loads(local_text)
+					except json.JSONDecodeError:
+						print('WARNING: Local manifest JSON failed strict parsing; attempting sanitize')
+						sanitized = self._sanitize_json_text(local_text)
+						try:
+							return json.loads(sanitized)
+						except Exception as e:
+							print('WARNING: Sanitized local manifest JSON still failed parsing:', e)
+							return None
 			except Exception:
 				return None
+
+
+	def _sanitize_json_text(self, text):
+		"""Return a least-effort sanitized JSON string.
+
+		This attempts to fix common formatting mistakes in manually-edited
+		JSON files such as trailing commas before closing array/object tokens
+		(e.g. [1,2,] or {"a": 1,}). This is carefully scoped: it does not try
+		to implement a full tolerant parser, but it helps with the manifest's
+		most-common issue (trailing commas).
+		"""
+		if not isinstance(text, str):
+			return text
+
+		# Remove byte order mark if present
+		if text.startswith('\ufeff'):
+			text = text.lstrip('\ufeff')
+
+		# Remove trailing commas before a closing bracket or curly brace
+		# e.g. { "a": 1, } -> { "a": 1 }
+		sanitized = re.sub(r',\s*(?=[}\]])', '', text)
+		return sanitized
 
 
 	def _ensure_destination(self, destination_path):
