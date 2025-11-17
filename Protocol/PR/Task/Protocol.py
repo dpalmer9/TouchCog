@@ -63,7 +63,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config Import
 		
-		self.config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
+		self.config_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Configuration.ini')
 		self.config_file = configparser.ConfigParser()
 		self.config_file.read(self.config_path)
 
@@ -172,7 +172,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Widgets - Images
 
-		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 
 		self.stimulus_image_path = str(self.image_folder / str(self.stimulus_image + '.png'))
 		self.stimulus_pressed_image_path = str(self.image_folder / str(self.stimulus_pressed_image + '.png'))
@@ -228,16 +228,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimulus_pos = {'center_x': self.hold_button.pos_hint['center_x'], 'center_y': self.stimulus_distance}
 
-		self.stimulus_button = ImageButton(source=self.stimulus_image_path)
+		self.stimulus_button = ImageButton(source=str(self.stimulus_image_path))
 		self.stimulus_button.pos_hint = self.stimulus_pos
 		self.stimulus_button.size_hint = (self.stimulus_size * self.width_adjust, self.stimulus_size * self.height_adjust)
 		self.stimulus_button.bind(on_press=self.target_pressed)
 
-		self.stimulus_button_pressed = ImageButton(source=self.stimulus_pressed_image_path)
+		self.stimulus_button_pressed = ImageButton(source=str(self.stimulus_pressed_image_path))
 		self.stimulus_button_pressed.pos_hint = self.stimulus_button.pos_hint
 		self.stimulus_button_pressed.size_hint = self.stimulus_button.size_hint
 
-		self.reward_image = Image(source=self.checkmark_image_path)
+		self.reward_image = Image(source=str(self.checkmark_image_path))
 		self.reward_image.pos_hint = {"center_x": 0.5, "center_y": 0.8}
 		self.reward_image.size_hint = (1 * self.width_adjust, 1 * self.height_adjust)
 
@@ -249,7 +249,7 @@ class ProtocolScreen(ProtocolBase):
 			, self.checkmark_image_path
 			]
 		
-		self.hold_button.source = self.hold_image_path
+		self.hold_button.source = str(self.hold_image_path)
 
 	def _setup_language_localization(self):
 		self.set_language(self.language)
@@ -260,7 +260,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _load_video_and_instruction_components(self):
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])

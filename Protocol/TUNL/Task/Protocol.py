@@ -72,7 +72,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config
 		
-		self.config_path = pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini')
+		self.config_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Configuration.ini'
 		self.config_file = configparser.ConfigParser()
 		self.config_file.read(self.config_path)
 
@@ -233,7 +233,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _setup_image_widgets(self):
-		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 		self.stimulus_image_path = str(self.image_folder / (self.stimulus_image + '.png'))
 		self.stimulus_button_image_path = str(self.image_folder / (self.stimulus_button_image + '.png'))
 		hold_button_top_loc = self.hold_button.pos_hint['center_y'] + (self.hold_button.size_hint[1]/2)
@@ -246,8 +246,8 @@ class ProtocolScreen(ProtocolBase):
 		elif self.y_boundaries[1] < hold_button_top_loc:
 			self.y_boundaries[1] = hold_button_top_loc
 
-		self.cue_image = ImageButton(source=self.stimulus_image_path)
-		self.target_image = ImageButton(source=self.stimulus_image_path)
+		self.cue_image = ImageButton(source=str(self.stimulus_image_path))
+		self.target_image = ImageButton(source=str(self.stimulus_image_path))
 		
 		self.stimulus_image_spacing = [
 			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale)
@@ -263,9 +263,9 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.bind(on_press=self.iti_start)
 				
 
-		self.cue_image_button = ImageButton(source=self.stimulus_button_image_path)
+		self.cue_image_button = ImageButton(source=str(self.stimulus_button_image_path))
 		self.cue_image_button.bind(on_press=self.cue_pressed)
-		self.target_image_button = ImageButton(source=self.stimulus_button_image_path)
+		self.target_image_button = ImageButton(source=str(self.stimulus_button_image_path))
 		self.target_image_button.bind(on_press=self.target_pressed)
 
 		self.cue_image.size_hint = self.stimulus_image_size
@@ -320,7 +320,7 @@ class ProtocolScreen(ProtocolBase):
 	def _load_video_and_instruction_components(self):
 		# self.video_size = (1, 1)
 		# self.video_pos = {"center_x": 0.5, "y": 0.125}
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 		self.delay_video_folder = pathlib.Path('Delay_Videos')
 
@@ -402,7 +402,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Instruction - Dictionary
 		
-		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
+		self.instruction_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Instructions.ini')
 		
 		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
 		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')

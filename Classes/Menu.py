@@ -188,7 +188,8 @@ class MenuBase(Screen):
 		self.language = self.app.language
 
 		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(pathlib.Path('Language', self.language, 'menubase.ini'))
+		self.menu_path = self.app.app_root / 'Language' / self.language / 'menubase.ini'
+		self.menu_config.read(self.menu_path)
 
 		self.is_battery_mode = False
 		self.battery_required_fields = None  # None means no filtering; list means only show these fields
@@ -325,7 +326,7 @@ class MenuBase(Screen):
 		
 		
 		def lazy_import(protocol):
-			working = pathlib.Path('Protocol', protocol, 'Task', 'Protocol.py')
+			working = self.app.app_root / 'Protocol' / protocol / 'Task' / 'Protocol.py'
 			mod_name = 'Protocol'
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
@@ -443,7 +444,7 @@ class MenuBase(Screen):
 		prev_scroll_y = self.setting_scrollview.scroll_y if self.setting_scrollview.children else 1.0
 
 		self.protocol_name = protocol_name
-		self.protocol_path = pathlib.Path('Protocol', self.protocol_name)
+		self.protocol_path = self.app.app_root / 'Protocol' / self.protocol_name
 		config_path = self.protocol_path / 'Configuration.ini'
 
 		config_file = configparser.ConfigParser()

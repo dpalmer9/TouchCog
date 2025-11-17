@@ -23,7 +23,7 @@ class SurveyProtocol(SurveyBase):
 
         self.survey_json = None
         self.language = self.app.language
-        self.survey_path = pathlib.Path('Protocol', self.name, 'Language', self.language, 'survey.json')
+        self.survey_path = self.app.app_root / 'Protocol' / self.name / 'Language' / self.language / 'survey.json'
 
         with open(self.survey_path) as f:
             self.survey_json = json.load(f)

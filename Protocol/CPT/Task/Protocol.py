@@ -103,7 +103,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config Import
 		
-		self.config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
+		self.config_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Configuration.ini'
 		self.config_file = configparser.ConfigParser()
 		self.config_file.read(self.config_path)
 
@@ -413,9 +413,9 @@ class ProtocolScreen(ProtocolBase):
 	
 	def _setup_image_widgets(self):
 		# Set images
-		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 
-		self.mask_image_path = str(self.image_folder / str(self.mask_image + '.png'))
+		self.mask_image_path = self.image_folder / str(self.mask_image + '.png')
 
 		self.fribble_folder = pathlib.Path('Fribbles', self.stimulus_family)
 
@@ -535,9 +535,9 @@ class ProtocolScreen(ProtocolBase):
 
 		# Load images
 
-		self.hold_image_path = str(self.image_folder / (self.hold_image + '.png'))
-		self.mask_image_path = str(self.image_folder / (self.mask_image + '.png'))
-		self.outline_mask_path = str(self.image_folder / 'whitecircle.png')
+		self.hold_image_path = self.image_folder / (self.hold_image + '.png')
+		self.mask_image_path = self.image_folder / (self.mask_image + '.png')
+		self.outline_mask_path = self.image_folder / 'whitecircle.png'
 
 		total_image_list += [self.hold_image_path, self.mask_image_path]
 		self.load_images(total_image_list)
@@ -547,7 +547,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		
-		self.hold_button.source = self.hold_image_path
+		self.hold_button.source = str(self.hold_image_path)
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
@@ -558,15 +558,15 @@ class ProtocolScreen(ProtocolBase):
 		self.img_stimulus_C.bind(on_press=self.center_pressed)
 		self.img_stimulus_C.name = 'Center Stimulus'
 
-		self.img_stimulus_L = ImageButton(source=self.mask_image_path)
+		self.img_stimulus_L = ImageButton(source=str(self.mask_image_path))
 		self.img_stimulus_L.size_hint = self.stimulus_image_size
 		self.img_stimulus_L.pos_hint = self.stimulus_pos_L
-		
-		self.img_stimulus_R = ImageButton(source=self.mask_image_path)
+
+		self.img_stimulus_R = ImageButton(source=str(self.mask_image_path))
 		self.img_stimulus_R.size_hint = self.stimulus_image_size
 		self.img_stimulus_R.pos_hint = self.stimulus_pos_R
 
-		self.center_instr_image = ImageButton(source=self.mask_image_path)
+		self.center_instr_image = ImageButton(source=str(self.mask_image_path))
 		self.center_instr_image.size_hint = self.instruction_image_size
 		self.center_instr_image.pos_hint = self.instruction_image_pos_C
 
@@ -586,18 +586,18 @@ class ProtocolScreen(ProtocolBase):
 		self.img_noise_R.pos_hint = self.stimulus_pos_R
 		self.img_noise_R.name = 'Right Noise Mask'
 
-		self.img_outline_C = ImageButton(source=self.outline_mask_path)
+		self.img_outline_C = ImageButton(source=str(self.outline_mask_path))
 		self.img_outline_C.size_hint = self.stimulus_mask_size
 		self.img_outline_C.pos_hint = self.stimulus_pos_C
 		self.img_outline_C.bind(on_press=self.center_pressed)
 		self.img_outline_C.name = 'Center Outline Mask'
 
-		self.img_outline_L = ImageButton(source=self.outline_mask_path)
+		self.img_outline_L = ImageButton(source=str(self.outline_mask_path))
 		self.img_outline_L.size_hint = self.stimulus_mask_size
 		self.img_outline_L.pos_hint = self.stimulus_pos_L
 		self.img_outline_L.name = 'Left Outline Mask'
 
-		self.img_outline_R = ImageButton(source=self.outline_mask_path)
+		self.img_outline_R = ImageButton(source=str(self.outline_mask_path))
 		self.img_outline_R.size_hint = self.stimulus_mask_size
 		self.img_outline_R.pos_hint = self.stimulus_pos_R
 		self.img_outline_R.name = 'Right Outline Mask'
@@ -628,7 +628,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Instruction Import
 
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
@@ -689,7 +689,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Instruction - ImageButton
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
-		self.tutorial_outline = ImageButton(source=self.outline_mask_path)
+		self.tutorial_outline = ImageButton(source=str(self.outline_mask_path))
 		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
 		self.tutorial_continue = Button(text='Continue', font_size='48sp')
 		self.tutorial_continue.bind(on_press=self.tutorial_target_present_screen)

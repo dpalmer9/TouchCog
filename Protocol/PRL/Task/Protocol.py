@@ -67,7 +67,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Define Variables - Config Import
 		
-		self.config_path = str(pathlib.Path('Protocol', self.protocol_name, 'Configuration.ini'))
+		self.config_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Configuration.ini')
 		self.config_file = configparser.ConfigParser()
 		self.config_file.read(self.config_path)
 
@@ -132,8 +132,8 @@ class ProtocolScreen(ProtocolBase):
 	def _load_task_variables(self):
 		# Define Paths
 
-		self.language_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
-		self.image_dir_path = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.language_dir_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
+		self.image_dir_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 
 		# Define Variables - Time
 
@@ -234,9 +234,9 @@ class ProtocolScreen(ProtocolBase):
 			self.stimulus_image_source = str(self.stimulus_path_list[0])
 		
 		else:
-			self.stimulus_image_source = self.mask_image_path		
+			self.stimulus_image_source = str(self.mask_image_path)
 
-		self.hold_button.source = self.hold_image_path
+		self.hold_button.source = str(self.hold_image_path)
 
 		self.text_button_size = [0.4, 0.15]
 		self.text_button_pos_LL = {"center_x": 0.25, "center_y": 0.08}
@@ -246,12 +246,12 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_pos_l = {'center_x': 0.25, 'center_y': 0.55}
 		self.stimulus_pos_r = {'center_x': 0.75, 'center_y': 0.55}
 
-		self.left_stimulus = ImageButton(source=self.stimulus_image_source)
+		self.left_stimulus = ImageButton(source=str(self.stimulus_image_source))
 		self.left_stimulus.size_hint = self.stimulus_size
 		self.left_stimulus.pos_hint = self.stimulus_pos_l
 		self.left_stimulus.bind(on_press=self.left_pressed)
 
-		self.right_stimulus = ImageButton(source=self.stimulus_image_source)
+		self.right_stimulus = ImageButton(source=str(self.stimulus_image_source))
 		self.right_stimulus.size_hint = self.stimulus_size
 		self.right_stimulus.pos_hint = self.stimulus_pos_r
 		self.right_stimulus.bind(on_press=self.right_pressed)
@@ -267,7 +267,7 @@ class ProtocolScreen(ProtocolBase):
 	def _load_video_and_instruction_components(self):
 		# Tutorial Import
 
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)

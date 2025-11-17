@@ -643,7 +643,7 @@ class ProtocolBase(Screen):
 	
 	def update_task(self):
 		
-		self.image_folder = pathlib.Path('Protocol', self.protocol_name, 'Image')
+		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 		return	
 
 	def constrained_shuffle(self,seq, max_run=3, attempts=100, rng=None):
@@ -719,7 +719,10 @@ class ProtocolBase(Screen):
 		self.image_dict = {}
 		
 		for image_file in image_list:
-			
+			try:
+				image_file = pathlib.Path(image_file)
+			except Exception:
+				pass
 			if pathlib.Path(self.image_folder / image_file).exists():
 				load_image = Loader.image(str(self.image_folder / image_file))
 				image_name = str(image_file.stem)
@@ -743,7 +746,7 @@ class ProtocolBase(Screen):
 		
 		self.language = language
 		
-		lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 		
 		start_path = lang_folder_path / 'Start.txt'
 		with open(start_path, 'r', encoding='utf-8') as file:

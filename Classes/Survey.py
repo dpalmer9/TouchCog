@@ -562,8 +562,8 @@ class SurveyBase(Screen):
         """
         Load survey text from language files.
         """
-        language_path = pathlib.Path('Protocol') / self.name / 'Language' / self.language / 'startscreen.ini'
-        language_description_path = pathlib.Path('Protocol') / self.name / 'Language' / self.language / 'description.txt'
+        language_path = self.app.app_root / 'Protocol' / self.name / 'Language' / self.language / 'startscreen.ini'
+        language_description_path = self.app.app_root / 'Protocol' / self.name / 'Language' / self.language / 'description.txt'
         # Load texts from files
         config = configparser.ConfigParser()
         config.read(language_path)

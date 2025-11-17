@@ -12,6 +12,7 @@ import cProfile
 import importlib
 import importlib.util
 import os
+import shutil
 import pathlib
 import subprocess
 import re
@@ -27,7 +28,14 @@ def get_base_path():
 	in a PyInstaller bundle or in development mode.
 	"""
 	if getattr(sys, 'frozen', False):
-		# Running as a PyInstaller executable: use the path of the exe itself
+		# When running as a PyInstaller executable, PyInstaller extracts
+		# bundled data to a temporary folder accessible via sys._MEIPASS.
+		# Prefer that location for resource access (onefile builds). If
+		# sys._MEIPASS is not present (e.g. onedir builds), fall back to
+		# the parent dir of the executable.
+		meipass = getattr(sys, '_MEIPASS', None)
+		if meipass:
+			return pathlib.Path(meipass).resolve()
 		return pathlib.Path(sys.executable).resolve().parent
 	else:
 		# Running in development: use the script's current directory
@@ -115,11 +123,40 @@ def get_refresh_rate():
 # Change current working directory to location of this file
 
 app_root = get_base_path()
+print("frozen:", getattr(sys, "frozen", False))
+print("_MEIPASS:", getattr(sys, "_MEIPASS", None))
+print("sys.executable:", sys.executable)
+print("app_root:", app_root)
 
-config_path = app_root / 'Config.ini'
+# Ensure a per-user Config.ini exists in the user's home directory. If not, copy
+# the default packaged Config.ini from app_root into the user's home.
+user_config_path = pathlib.Path.home() / 'Documents' / 'TouchCog' / 'Config.ini'
+if not user_config_path.exists():
+	try:
+		# If running as a PyInstaller onefile executable, resources are extracted
+		# to sys._MEIPASS; prefer that path for the packaged config file.
+		packaged_root = pathlib.Path(getattr(sys, '_MEIPASS', app_root))
+		packaged_config = packaged_root / 'Config.ini'
+		# Ensure the parent folder exists for user_config_path
+		try:
+			user_config_path.parent.mkdir(parents=True, exist_ok=True)
+		except Exception:
+			pass
+		if packaged_config.exists():
+			shutil.copy2(str(packaged_config), str(user_config_path))
+			print("Copied Config.ini from packaged root to user home:", user_config_path)
+		else:
+			print("WARNING: default Config.ini not found in packaged root:", packaged_config)
+	except Exception as e:
+		print("WARNING: Could not copy Config.ini to user home:", e)
+
+# Use the user-local config path for all subsequent reads/writes
+config_path = user_config_path
 
 config_file = configparser.ConfigParser()
-config_file.read(config_path)
+read_files = config_file.read(str(config_path), encoding='utf-8')
+print("Read Config files:", read_files)
+print(config_file.sections())
 
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']
@@ -213,8 +250,8 @@ Window.size = (int(x_dim), int(y_dim))
 Window.borderless = '0'
 
 def search_protocols():
-		
-		task_list = list(pathlib.Path().glob('Protocol/*'))
+		task_path = app_root / 'Protocol'
+		task_list = list(task_path.glob('*'))
 		output_list = list()
 		
 		for task in task_list:
@@ -229,7 +266,7 @@ def search_protocols():
 def protocol_constructor(protocol, mod_name):
 		
 		def lazy_import(protocol, mod_name):
-			working = pathlib.Path('Protocol', protocol, 'Task', f'{mod_name}.py')
+			working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
 			mod_spec.loader = mod_loader
@@ -277,14 +314,19 @@ class LanguageMenu(Screen):
 		self.app = App.get_running_app()
 		self.app.active_screen = self.name
 		self.config = configparser.ConfigParser()
-		self.config.read('Config.ini')
+		# Load user-local Config.ini located in the user's home directory
+		try:
+			self.config.read(str(user_config_path), encoding='utf-8')
+		except Exception:
+			# Fallback: try to read from app_root
+			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
 		self.Language_Layout = FloatLayout()
 		self.add_widget(self.Language_Layout)
 
 		self.manifest_path = 'http://nyx.canspace.ca/uploads/Touchscreen%20Tasks/manifest.json'
 
 		self.language_list = list()
-		with os.scandir(pathlib.Path('Language')) as entries:
+		with os.scandir(app_root / 'Language') as entries:
 			for entry in entries:
 				if entry.is_dir():
 					self.language_list.append(entry.name)
@@ -332,7 +374,12 @@ class LanguageMenu(Screen):
 
 		# Extract language entries
 		self.config['language']['language'] = self.app.language
-		self.config.write(open('Config.ini', 'w'))
+		# Write the user-local Config.ini in the user's home directory
+		try:
+			with open(str(user_config_path), 'w', encoding='utf-8') as f:
+				self.config.write(f)
+		except Exception as e:
+			print('WARNING: Could not write Config.ini to user home:', e)
 		language_entries = None
 		try:
 			for lang_block in manifest.get('languages', []):
@@ -487,7 +534,7 @@ class MainMenu(Screen):
 		self.language = self.app.language
 		self.add_widget(self.Menu_Layout)
 		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(pathlib.Path('Language', self.language, 'mainmenu.ini'))
+		self.menu_config.read(app_root / 'Language' / self.language / 'mainmenu.ini')
 		launch_button = Button(text=self.menu_config['Text']['launch_button'])
 		launch_button.size_hint = (0.3, 0.2)
 		launch_button.pos_hint = {'x': 0.35, 'y': 0.6}
@@ -554,7 +601,7 @@ class ProtocolMenu(Screen):
 		self.language = self.app.language
 
 		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(pathlib.Path('Language', self.language, 'protocolmenu.ini'))
+		self.menu_config.read(app_root / 'Language' / self.language / 'protocolmenu.ini')
 		self.Protocol_Configure_Screen = None
 		protocol_list = search_protocols()
 		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
@@ -587,7 +634,7 @@ class ProtocolMenu(Screen):
 		elif isinstance(self.Protocol_Configure_Screen, SurveyBase):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
 
-		if pathlib.Path('Protocol', label, 'Task', 'Menu.py').is_file():
+		if (app_root / 'Protocol' / label / 'Task' / 'Menu.py').is_file():
 			task_module = protocol_constructor(label, 'Menu')
 			self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		else:
@@ -615,7 +662,7 @@ class BatteryMenu(Screen):
 		
 		# Load language config
 		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(pathlib.Path('Language', self.language, 'batterymenu.ini'))
+		self.menu_config.read(app_root / 'Language' / self.language / 'batterymenu.ini')
 		
 		self.Battery_Layout = FloatLayout()
 		
@@ -670,7 +717,7 @@ class BatteryMenu(Screen):
 	def _load_batteries(self):
 		"""Load all battery JSON files from Battery/ directory"""
 		batteries = []
-		battery_path = pathlib.Path('Battery')
+		battery_path = app_root / 'Battery'
 		
 		if not battery_path.exists():
 			return batteries
@@ -790,7 +837,7 @@ class BatteryMenu(Screen):
 					overrides = task.get('overrides', {}) or {}
 					# Build a flat parameter dict (like MenuBase.start_protocol produces)
 					parameter_dict = {}
-					conf_path = pathlib.Path('Protocol', pname, 'Configuration.ini')
+					conf_path = app_root / 'Protocol' / pname / 'Configuration.ini'
 					if conf_path.is_file():
 						cfg = configparser.ConfigParser()
 						cfg.read(conf_path, encoding='utf-8')
@@ -894,7 +941,8 @@ class ProtocolBattery(Screen):
 		self.language = self.app.language
 
 		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(pathlib.Path('Language', self.language, 'batterymenu.ini'))
+		self.menu_path = app_root / 'Language' / self.language / 'batterymenu.ini'
+		self.menu_config.read(self.menu_path)
 
 		self.protocol_list = search_protocols()
 		self.available_protocols = self.protocol_list.copy()
@@ -1134,7 +1182,7 @@ class ProtocolBattery(Screen):
 			# a 'task' (has a Menu.py configure screen) or a 'survey' (no Menu.py).
 			# Presence of Protocol/<name>/Task/Menu.py indicates a task.
 			for protocol in self.app.battery_protocols:
-				menu_path = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
+				menu_path = app_root / 'Protocol' / protocol / 'Task' / 'Menu.py'
 				if menu_path.is_file():
 					# task: will present configure screen
 					self.app.battery_task_types[protocol] = 'task'
@@ -1160,6 +1208,8 @@ class ProtocolBattery(Screen):
 class MenuApp(App):
 	
 	def build(self):
+		self.app_root = app_root
+
 		self.session_event_data = pd.DataFrame()
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
@@ -1182,7 +1232,11 @@ class MenuApp(App):
 		self.s_manager = ScreenManager()
 		self.active_screen = ''
 		self.config = configparser.ConfigParser()
-		self.config.read('Config.ini')
+		# Load Config.ini from user's home; fallback to app_root if needed
+		try:
+			self.config.read(str(user_config_path), encoding='utf-8')
+		except Exception:
+			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
 		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
 		self.s_manager.add_widget(self.language_menu)
@@ -1235,7 +1289,7 @@ class MenuApp(App):
 		if self.battery_index < len(self.battery_protocols):
 			protocol_name = self.battery_protocols[self.battery_index]
 			parameter_dict = self.battery_configs[protocol_name] if protocol_name in self.battery_configs else {}
-			if pathlib.Path('Protocol', protocol_name, 'Task', 'Menu.py').is_file():
+			if (app_root / 'Protocol' / protocol_name / 'Task' / 'Menu.py').is_file():
 				task_module = protocol_constructor(protocol_name, 'Protocol')
 				protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
 			else:

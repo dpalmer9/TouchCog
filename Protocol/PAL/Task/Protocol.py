@@ -73,7 +73,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Define Variables - Config
 
-		self.protocol_path = pathlib.Path('Protocol', self.protocol_name)
+		self.protocol_path = self.app.app_root / 'Protocol' / self.protocol_name
 
 		self.config_path = str(self.protocol_path / 'Configuration.ini')
 		self.config_file = configparser.ConfigParser()
@@ -308,12 +308,12 @@ class ProtocolScreen(ProtocolBase):
 		# Define Widgets - Images
 
 		self.recall_stimulus = ImageButton(
-			source = self.mask_image_path
+			source = str(self.mask_image_path)
 			, size_hint = [0.3 * self.width_adjust, 0.3 * self.height_adjust]
 			, pos_hint = {"center_x": 0.5, "center_y": 0.85}
 			)
 		
-		self.hold_button.source = self.hold_image_path
+		self.hold_button.source = str(self.hold_image_path)
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.hold_remind)
 		self.hold_button.bind(on_release=self.premature_response)
@@ -357,7 +357,7 @@ class ProtocolScreen(ProtocolBase):
 	def _load_video_and_instruction_components(self):
 		# Define Widgets - Instructions
 		
-		self.instruction_path = str(pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Instructions.ini'))
+		self.instruction_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Instructions.ini')
 		
 		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
 		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
@@ -375,7 +375,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		# Instruction Import
 
-		self.lang_folder_path = pathlib.Path('Protocol', self.protocol_name, 'Language', self.language)
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_PAL_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 1*'))[0])
@@ -480,7 +480,7 @@ class ProtocolScreen(ProtocolBase):
 			grid_square_x_pos = grid_x_pos_list[x_pos]
 			grid_square_y_pos = 0.3 + ((y_pos + 0.5) * (grid_square_dim * self.height_adjust))
 
-			cell.source = self.mask_image_path
+			cell.source = str(self.mask_image_path)
 			cell.bind(on_press=self.nontarget_pressed)
 			
 			cell.size_hint = grid_square_fill
@@ -1076,7 +1076,7 @@ class ProtocolScreen(ProtocolBase):
 				self.session_event.cancel()
 				self.protocol_end()
 				return
-			elif pathlib.Path('Protocol', self.protocol_name, 'Language', self.language, 'Tutorial_Video').is_dir() \
+			elif (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
 					and not self.skip_tutorial_video \
 					and (self.stage_list[self.stage_index] == 'Recall') \
 					and (not self.recall_video_presented):
