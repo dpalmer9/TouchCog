@@ -47,7 +47,7 @@
 				"type" : "Instruction",
 				"server_path" : "",
 				"destination_path" : "/Protocol/TUNL/Language/English/Tutorial_Video/"
-			},
+			}
 			],
 			"Text" : [
 			{
@@ -259,10 +259,10 @@
 				"filetype" : "ini",
 				"server_path" : "",
 				"destination_path" : "/Protocol/TUNL/Language/English/"
-			},
+			}
 			]
 		}
-		],
+		]
 	}
 	],
 	"Videos" : [
@@ -272,6 +272,6 @@
 		"type" : "Instruction",
 		"server_path" : "",
 		"destination_path" : "/Protocol/TUNL/Image/Delay_Videos/"
-			},
-	],
+			}
+	]
 }
