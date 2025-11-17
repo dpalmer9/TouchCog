@@ -89,54 +89,54 @@ class ProtocolScreen(ProtocolBase):
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
 	
-		self.participant_id = self.parameters_dict['participant_id']
+		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
-		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
+		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.tutorial_video_duration = float(self.parameters_dict.get('tutorial_video_duration', '68.5'))
 
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
-		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_import = self.iti_import.split(',')
 		
-		self.stimdur_import = self.parameters_dict['stimulus_duration']
+		self.stimdur_import = self.parameters_dict.get('stimulus_duration', '2.0')
 		self.stimdur_import = self.stimdur_import.split(',')
 		
-		self.limhold_import = self.parameters_dict['limited_hold']
+		self.limhold_import = self.parameters_dict.get('limited_hold', '2.0')
 		self.limhold_import = self.limhold_import.split(',')
 		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = float(self.parameters_dict['block_duration_max'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
+		self.feedback_length = float(self.parameters_dict.get('feedback_length', '0.75'))
+		self.block_duration = float(self.parameters_dict.get('block_duration_max', '1800'))
+		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '2'))
+		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
 		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
+		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
 
-		self.stimulus_scale = float(self.parameters_dict['stimulus_scale'])
+		self.stimulus_scale = float(self.parameters_dict.get('stimulus_scale', '0.35'))
 		
-		self.screen_x_padding = int(self.parameters_dict['screen_x_padding'])
-		self.screen_y_padding_t = int(self.parameters_dict['screen_y_padding_top'])
-		self.screen_y_padding_b = int(self.parameters_dict['screen_y_padding_bottom'])
+		self.screen_x_padding = int(self.parameters_dict.get('screen_x_padding', '4'))
+		self.screen_y_padding_t = int(self.parameters_dict.get('screen_y_padding_top', '2'))
+		self.screen_y_padding_b = int(self.parameters_dict.get('screen_y_padding_bottom', '2'))
 
-		self.stimulus_gap = float(self.parameters_dict['stimulus_gap'])
+		self.stimulus_gap = float(self.parameters_dict.get('stimulus_gap', '0.1'))
 		
-		self.x_boundaries = self.parameters_dict['x_boundaries']
+		self.x_boundaries = self.parameters_dict.get('x_boundaries', '0,1')
 		self.x_boundaries = self.x_boundaries.split(',')
 
-		self.y_boundaries = self.parameters_dict['y_boundaries']
+		self.y_boundaries = self.parameters_dict.get('y_boundaries', '0.1,1')
 		self.y_boundaries = self.y_boundaries.split(',')
 
-		self.stimulus_image = self.parameters_dict['stimulus_image']
-		self.stimulus_button_image = self.parameters_dict['stimulus_button_image']
-		self.distractor_video = self.parameters_dict['distractor_video']
+		self.stimulus_image = self.parameters_dict.get('stimulus_image', 'circle')
+		self.stimulus_button_image = self.parameters_dict.get('stimulus_button_image', 'blank')
+		self.distractor_video = self.parameters_dict.get('distractor_video', 'Carnival_of_Ivrea.mp4')
 
-		self.combo_probe_sep_list = self.parameters_dict['combined_probe_sep_list']
+		self.combo_probe_sep_list = self.parameters_dict.get('combined_probe_sep_list', '2,1,0')
 		self.combo_probe_sep_list = self.combo_probe_sep_list.split(',')
 		
-		self.combo_probe_delay_limit_import = self.parameters_dict['combined_probe_delay_limits']
+		self.combo_probe_delay_limit_import = self.parameters_dict.get('combined_probe_delay_limits', '2,16')
 		self.combo_probe_delay_limit_import = self.combo_probe_delay_limit_import.split(',')
 		
-		self.combo_probe_delay_resolution = float(self.parameters_dict['combined_probe_delay_resolution'])
+		self.combo_probe_delay_resolution = float(self.parameters_dict.get('combined_probe_delay_resolution', '1'))
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 
@@ -153,7 +153,7 @@ class ProtocolScreen(ProtocolBase):
 		# if len(self.stage_list) > 1:
 		# 	self.stage_list = self.constrained_shuffle(self.stage_list)
 
-		if self.parameters_dict['combined_probe']:
+		if self.parameters_dict.get('combined_probe', 'True'):
 			self.stage_list.append('Combo')
 
 	def _load_task_variables(self):

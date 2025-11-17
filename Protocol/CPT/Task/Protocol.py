@@ -125,61 +125,61 @@ class ProtocolScreen(ProtocolBase):
 	
 	def _load_config_parameters(self, parameters_dict):
 		
-		self.participant_id = parameters_dict['participant_id']
+		self.participant_id = parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = parameters_dict['skip_tutorial_video']
-		self.tutorial_video_duration = float(parameters_dict['tutorial_video_duration'])
+		self.skip_tutorial_video = parameters_dict.get('skip_tutorial_video', 'False')
+		self.tutorial_video_duration = float(parameters_dict.get('tutorial_video_duration', '69.00'))
 
-		self.block_change_on_duration = parameters_dict['block_change_on_duration_only']
+		self.block_change_on_duration = parameters_dict.get('block_change_on_duration_only', 'True')
 		
-		self.iti_fixed_or_range = parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = parameters_dict.get('iti_fixed_or_range', 'range')
 		
 		
-		self.iti_temp = parameters_dict['iti_length']
+		self.iti_temp = parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_temp = self.iti_temp.split(',')
 		
-		self.stimdur_import = parameters_dict['stimulus_duration']
+		self.stimdur_import = parameters_dict.get('stimulus_duration', '1.5')
 		self.stimdur_import = self.stimdur_import.split(',')
 		
-		self.limhold_import = parameters_dict['limited_hold']
+		self.limhold_import = parameters_dict.get('limited_hold', '1.5')
 		self.limhold_import = self.limhold_import.split(',')
 
-		self.feedback_length = float(parameters_dict['feedback_length'])
-		self.block_duration_max = int(parameters_dict['block_duration_max'])
-		self.block_min_rest_duration = float(parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(parameters_dict['session_duration'])
+		self.feedback_length = float(parameters_dict.get('feedback_length', '0.75'))
+		self.block_duration_max = int(parameters_dict.get('block_duration_max', '420'))
+		self.block_min_rest_duration = float(parameters_dict.get('block_min_rest_duration', '2'))
+		self.session_duration = float(parameters_dict.get('session_duration', '3600'))
 		
-		self.block_multiplier = int(parameters_dict['block_multiplier'])
-		self.block_trial_max_base = int(parameters_dict['block_trials_base'])
-		self.block_trial_max_flanker = int(parameters_dict['block_trials_per_flanker_type']) * 3
-		self.training_block_max_correct = int(parameters_dict['training_block_max_correct'])
+		self.block_multiplier = int(parameters_dict.get('block_multiplier', '1'))
+		self.block_trial_max_base = int(parameters_dict.get('block_trials_base', '120'))
+		self.block_trial_max_flanker = int(parameters_dict.get('block_trials_per_flanker_type', '60')) * 3
+		self.training_block_max_correct = int(parameters_dict.get('training_block_max_correct', '10'))
 
-		self.target_prob_base = float(parameters_dict['target_prob_base'])
-		self.target_prob_hilo_import = parameters_dict['target_prob_hilo']
+		self.target_prob_base = float(parameters_dict.get('target_prob_base', '0.33'))
+		self.target_prob_hilo_import = parameters_dict.get('target_prob_hilo', '0.15, 0.85')
 		self.target_prob_hilo_import = self.target_prob_hilo_import.split(',')
 		
-		self.trial_list_length_base = int(parameters_dict['trial_list_length_base'])
-		self.trial_list_length_hilo = int(parameters_dict['trial_list_length_hilo'])
+		self.trial_list_length_base = int(parameters_dict.get('trial_list_length_base', '15'))
+		self.trial_list_length_hilo = int(parameters_dict.get('trial_list_length_hilo', '20'))
 		
-		self.trial_list_max_run_base = int(parameters_dict['trial_list_max_run_base'])
-		self.trial_list_max_run_hilo = int(parameters_dict['trial_list_max_run_hilo'])
+		self.trial_list_max_run_base = int(parameters_dict.get('trial_list_max_run_base', '3'))
+		self.trial_list_max_run_hilo = int(parameters_dict.get('trial_list_max_run_hilo', '10'))
 		
-		self.stimulus_family = parameters_dict['stimulus_family']
+		self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
-		self.display_stimulus_outline = int(parameters_dict['display_stimulus_outline'])
-		self.mask_during_limhold = int(parameters_dict['mask_during_limhold'])
-		self.limhold_mask_type = parameters_dict['limhold_mask_type']
+		self.display_stimulus_outline = int(parameters_dict.get('display_stimulus_outline', 'True'))
+		self.mask_during_limhold = int(parameters_dict.get('mask_during_limhold', 'True'))
+		self.limhold_mask_type = parameters_dict.get('limhold_mask_type', 'noise')
 
-		self.staircase_hr_criterion = float(parameters_dict['staircase_hit_rate_criterion'])
-		self.staircase_far_criterion = float(parameters_dict['staircase_false_alarm_rate_criterion'])
+		self.staircase_hr_criterion = float(parameters_dict.get('staircase_hit_rate_criterion', '0.80'))
+		self.staircase_far_criterion = float(parameters_dict.get('staircase_false_alarm_rate_criterion', '0.40'))
 
-		self.similarity_percentile_initial = float(parameters_dict['similarity_percentile_initial'])
-		self.similarity_percentile_range = float(parameters_dict['similarity_percentile_range'])
+		self.similarity_percentile_initial = float(parameters_dict.get('similarity_percentile_initial', '50'))
+		self.similarity_percentile_range = float(parameters_dict.get('similarity_percentile_range', '5'))
 
-		self.stimdur_frame_min = float(parameters_dict['stimdur_min_frames'])
-		self.stimdur_seconds_max = float(parameters_dict['stimdur_max_seconds'])
+		self.stimdur_frame_min = float(parameters_dict.get('stimdur_min_frames', '2'))
+		self.stimdur_seconds_max = float(parameters_dict.get('stimdur_max_seconds', '2.00'))
 
-		self.image_set = parameters_dict['image_set']
+		self.image_set = parameters_dict.get('image_set', 'rand')
 		if self.image_set == None:
 			self.image_set = 'rand'
 		
@@ -191,18 +191,18 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 		
-		if parameters_dict['training_task']:
+		if parameters_dict.get('training_task', 'True'):
 			self.stage_list.append('Training')
 
 		# if parameters_dict['limhold_difficulty']:
 		# 	self.stage_list.append('LimHold_Staircase_Difficulty')
 
-		if parameters_dict['similarity_difficulty']:
+		if parameters_dict.get('similarity_difficulty', 'True'):
 			self.stage_list.append('Similarity_Staircase_Difficulty')
 			self.stimulus_family = 'Fb'
 		
 		else:
-			self.stimulus_family = parameters_dict['stimulus_family']
+			self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
 		# if parameters_dict['noise_difficulty'] \
 		# 	and 'Similarity_Staircase_Difficulty' not in self.stage_list:
@@ -218,16 +218,16 @@ class ProtocolScreen(ProtocolBase):
 		# if parameters_dict['blur_probe']:
 		# 	self.stage_list.append('Blur_Staircase_Probe')
 
-		if parameters_dict['stimdur_probe']:
+		if parameters_dict.get('stimdur_probe', 'True'):
 			self.stage_list.append('StimDur_Staircase_Probe')
 
-		if parameters_dict['flanker_probe']:
+		if parameters_dict.get('flanker_probe', 'True'):
 			self.stage_list.append('Flanker_Fixed_Probe')
 
-		if parameters_dict['tarprob_probe']:
+		if parameters_dict.get('tarprob_probe', 'True'):
 			self.stage_list.append('TarProb_Fixed_Probe')
 
-		if parameters_dict['sart_probe']:
+		if parameters_dict.get('sart_probe', 'False'):
 			self.stage_list.append('SART_Fixed_Probe')
 	
 	def _load_task_variables(self):

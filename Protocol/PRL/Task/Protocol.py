@@ -86,36 +86,36 @@ class ProtocolScreen(ProtocolBase):
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
 
-		self.participant_id = self.parameters_dict['participant_id']
+		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
-		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
+		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.tutorial_video_duration = float(self.parameters_dict.get('tutorial_video_duration', '47.00'))
 
-		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
 
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
-		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_import = self.iti_import.split(',')
 		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = int(self.parameters_dict['block_duration'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
+		self.feedback_length = float(self.parameters_dict.get('feedback_length', '0.75'))
+		self.block_duration = int(self.parameters_dict.get('block_duration', '360'))
+		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '2'))
+		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
 		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
-		self.block_trial_max = int(self.parameters_dict['block_trial_max'])
+		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
+		self.block_trial_max = int(self.parameters_dict.get('block_trial_max', '90'))
 		
-		self.target_reward_probability = float(self.parameters_dict['target_reward_probability'])
-		self.reversal_threshold = int(self.parameters_dict['reversal_threshold'])
-		self.max_reversals = int(self.parameters_dict['max_reversals'])
+		self.target_reward_probability = float(self.parameters_dict.get('target_reward_probability', '0.8'))
+		self.reversal_threshold = int(self.parameters_dict.get('reversal_threshold', '5'))
+		self.max_reversals = int(self.parameters_dict.get('max_reversals', '18'))
 
-		self.image_set = self.parameters_dict['image_set']
+		self.image_set = self.parameters_dict.get('image_set', 'circle')
 
-		self.training_target_image = self.parameters_dict['training_target_image']
-		self.training_nontarget_image = self.parameters_dict['training_nontarget_image']
+		self.training_target_image = self.parameters_dict.get('training_target_image', 'snowflake')
+		self.training_nontarget_image = self.parameters_dict.get('training_nontarget_image', 'grey')
 		
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
+		self.training_block_max_correct = int(self.parameters_dict.get('training_block_max_correct', '3'))
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -124,7 +124,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 
-		if self.parameters_dict['training_task']:
+		if self.parameters_dict.get('training_task', 'False'):
 			self.stage_list.append('Training')
 
 		self.stage_list.append('Test')

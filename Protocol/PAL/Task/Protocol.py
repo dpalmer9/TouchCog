@@ -103,46 +103,46 @@ class ProtocolScreen(ProtocolBase):
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
 
-		self.participant_id = self.parameters_dict['participant_id']
+		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
-		self.tutorial_video_duration_PAL = float(self.parameters_dict['tutorial_video_duration_pal'])
-		self.tutorial_video_duration_PA = float(self.parameters_dict['tutorial_video_duration_pa'])
+		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.tutorial_video_duration_PAL = float(self.parameters_dict.get('tutorial_video_duration_pal', '45.20'))
+		self.tutorial_video_duration_PA = float(self.parameters_dict.get('tutorial_video_duration_pa', '59.00'))
 
-		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
 		
-		self.use_correction_trials = self.parameters_dict['correction_trials']
+		self.use_correction_trials = self.parameters_dict.get('correction_trials', 'True')
 		
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
-		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_import = self.iti_import.split(',')
 		
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.block_duration = int(self.parameters_dict['block_duration'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
+		self.feedback_length = float(self.parameters_dict.get('feedback_length', '0.75'))
+		self.block_duration = int(self.parameters_dict.get('block_duration', '360'))
+		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '1'))
+		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
 		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
+		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
 
-		self.dpal_trial_max = int(self.parameters_dict['dpal_trial_max'])
-		self.spal_trial_max = int(self.parameters_dict['spal_trial_max'])
-		self.recall_trial_max = int(self.parameters_dict['recall_trial_max'])
+		self.dpal_trial_max = int(self.parameters_dict.get('dpal_trial_max', '90'))
+		self.spal_trial_max = int(self.parameters_dict.get('spal_trial_max', '30'))
+		self.recall_trial_max = int(self.parameters_dict.get('recall_trial_max', '90'))
 
-		self.training_block_max_correct = int(self.parameters_dict['training_block_max_correct'])
+		self.training_block_max_correct = int(self.parameters_dict.get('training_block_max_correct', '3'))
 
-		self.recall_target_present_duration = float(self.parameters_dict['recall_target_present_duration'])
+		self.recall_target_present_duration = float(self.parameters_dict.get('recall_target_present_duration', '3'))
 		
-		self.num_stimuli_pal = int(self.parameters_dict['num_stimuli_pal'])
-		self.num_stimuli_pa = int(self.parameters_dict['num_stimuli_pa'])
-		self.num_rows = int(self.parameters_dict['num_rows'])
+		self.num_stimuli_pal = int(self.parameters_dict.get('num_stimuli_pal', '3'))
+		self.num_stimuli_pa = int(self.parameters_dict.get('num_stimuli_pa', '5'))
+		self.num_rows = int(self.parameters_dict.get('num_rows', '1'))
 
-		self.training_image = self.parameters_dict['training_image']
+		self.training_image = self.parameters_dict.get('training_image', 'snowflake')
 
-		self.image_set_dspal = self.parameters_dict['dspal_image_set']
+		self.image_set_dspal = self.parameters_dict.get('dspal_image_set', 'rand')
 		if self.image_set_dspal == None:
 			self.image_set_dspal = 'rand'
-		self.image_set_recall = self.parameters_dict['recall_image_set']
+		self.image_set_recall = self.parameters_dict.get('recall_image_set', 'rand')
 		if self.image_set_recall == None:
 			self.image_set_recall = 'rand'
 
@@ -151,16 +151,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 		
-		if self.parameters_dict['training_task']:
+		if self.parameters_dict.get('training_task', 'False'):
 			self.stage_list.append('Training')
 		
-		if self.parameters_dict['dpal_probe']:
+		if self.parameters_dict.get('dpal_probe', 'True'):
 			self.stage_list.append('dPAL')
 		
-		if self.parameters_dict['spal_probe']:
+		if self.parameters_dict.get('spal_probe', 'True'):
 			self.stage_list.append('sPAL')
 		
-		if self.parameters_dict['recall_probe']:
+		if self.parameters_dict.get('recall_probe', 'True'):
 			self.stage_list.append('Recall')
 
 	def _load_task_variables(self):

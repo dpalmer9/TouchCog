@@ -83,35 +83,35 @@ class ProtocolScreen(ProtocolBase):
 
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
-		self.participant_id = self.parameters_dict['participant_id']
-		self.skip_tutorial_video = self.parameters_dict['skip_tutorial_video']
-		self.tutorial_video_duration = float(self.parameters_dict['tutorial_video_duration'])
+		self.participant_id = self.parameters_dict.get('participant_id', '')
+		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.tutorial_video_duration = float(self.parameters_dict.get('tutorial_video_duration', '51.5'))
 
-		self.block_change_on_duration = self.parameters_dict['block_change_on_duration_only']
+		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
 
-		self.iti_fixed_or_range = self.parameters_dict['iti_fixed_or_range']
+		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
-		self.iti_import = self.parameters_dict['iti_length']
+		self.iti_import = self.parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_import = self.iti_import.split(',')
 
-		self.feedback_length = float(self.parameters_dict['feedback_length'])
-		self.timeout_duration = int(self.parameters_dict['timeout_duration'])
-		self.hold_button_delay = float(self.parameters_dict['hold_button_delay'])
-		self.block_duration = int(self.parameters_dict['block_duration'])
-		self.block_min_rest_duration = float(self.parameters_dict['block_min_rest_duration'])
-		self.session_duration = float(self.parameters_dict['session_duration'])
+		self.feedback_length = float(self.parameters_dict.get('feedback_length', '0.75'))
+		self.timeout_duration = int(self.parameters_dict.get('timeout_duration', '15'))
+		self.hold_button_delay = float(self.parameters_dict.get('hold_button_delay', '1'))
+		self.block_duration = int(self.parameters_dict.get('block_duration', '1200'))
+		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '1'))
+		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
 		
-		self.block_multiplier = int(self.parameters_dict['block_multiplier'])
+		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
 
-		self.stimulus_image = self.parameters_dict['stimulus_image']
-		self.stimulus_pressed_image = self.parameters_dict['stimulus_pressed_image']
-		self.stimulus_size = float(self.parameters_dict['stimulus_size'])
-		self.stimulus_distance = float(self.parameters_dict['stimulus_distance'])
+		self.stimulus_image = self.parameters_dict.get('stimulus_image', 'whitecircle')
+		self.stimulus_pressed_image = self.parameters_dict.get('stimulus_pressed_image', 'greycircle')
+		self.stimulus_size = float(self.parameters_dict.get('stimulus_size', '0.08'))
+		self.stimulus_distance = float(self.parameters_dict.get('stimulus_distance', '0.6'))
 		
-		self.response_level = int(self.parameters_dict['response_level_start'])
-		self.response_level_end = int(self.parameters_dict['response_level_end'])
+		self.response_level = int(self.parameters_dict.get('response_level_start', '1'))
+		self.response_level_end = int(self.parameters_dict.get('response_level_end', '10'))
 
-		self.use_confirmation = self.parameters_dict['use_confirmation']
+		self.use_confirmation = self.parameters_dict.get('use_confirmation', 'True')
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
