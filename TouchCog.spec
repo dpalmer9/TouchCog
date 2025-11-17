@@ -5,12 +5,14 @@ from kivy_deps import sdl2, glew
 block_cipher = None
 
 datas = [
-    ('Screen.ini', '.'),
+    ('Config.ini', '.'),
     ('Protocol', 'Protocol'),
-    ('Classes', 'Classes')
+    ('Classes', 'Classes'),
+    ('Language', 'Language'),
+    ('Battery', 'Battery')
 ]
 
-a = Analysis(['C:\\Users\\MOUSETRAP-DAN\\desktop\\tccomp\\KivyMenuInterface.py'],
+a = Analysis(['C:\\Users\\MOUSETRAP-DAN\\Documents\\TouchCog\\TouchCog\\KivyMenuInterface.py'],
              pathex=['.'],
              binaries=[],
              datas=datas,
