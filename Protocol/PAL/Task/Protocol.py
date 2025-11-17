@@ -842,8 +842,6 @@ class ProtocolScreen(ProtocolBase):
 	# Data Saving Function
 	
 	def write_trial(self, *args):
-		
-		# print('Write trial')
 
 		if self.current_stage in ['dPAL', 'sPAL']:
 			self.nontarget_image_string = self.nontarget_image

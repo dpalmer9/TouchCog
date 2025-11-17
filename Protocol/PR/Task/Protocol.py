@@ -502,9 +502,7 @@ class ProtocolScreen(ProtocolBase):
 	# Target Pressed
 	
 	def target_pressed(self, *args):
-		
-		# print('Target pressed')
-
+	
 		Clock.unschedule(self.no_response_event)
 
 		self.stimulus_press_time = time.time()
@@ -545,9 +543,6 @@ class ProtocolScreen(ProtocolBase):
 	# Data Saving Function
 	
 	def write_trial(self):
-		
-		# print('Write trial')
-
 		trial_data = [
 			self.current_trial
 			, self.current_block

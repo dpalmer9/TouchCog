@@ -123,10 +123,6 @@ def get_refresh_rate():
 # Change current working directory to location of this file
 
 app_root = get_base_path()
-print("frozen:", getattr(sys, "frozen", False))
-print("_MEIPASS:", getattr(sys, "_MEIPASS", None))
-print("sys.executable:", sys.executable)
-print("app_root:", app_root)
 
 # Ensure a per-user Config.ini exists in the user's home directory. If not, copy
 # the default packaged Config.ini from app_root into the user's home.
@@ -156,7 +152,6 @@ config_path = user_config_path
 config_file = configparser.ConfigParser()
 read_files = config_file.read(str(config_path), encoding='utf-8')
 print("Read Config files:", read_files)
-print(config_file.sections())
 
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']

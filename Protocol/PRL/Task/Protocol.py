@@ -226,8 +226,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.total_image_list += [self.hold_image_path, self.mask_image_path, self.training_target_image_path, self.training_nontarget_image_path]
 
-		# print('\n\nTotal image list: ', self.total_image_list, '\n\n')
-
 		self.load_images(self.total_image_list)
 
 		if len(self.target_image_list) == 1:

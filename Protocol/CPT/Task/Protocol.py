@@ -426,7 +426,6 @@ class ProtocolScreen(ProtocolBase):
 
 			stimulus_list = list(self.similarity_data.columns)
 			stimulus_list.remove('Nontarget')
-			# print('\n\nStimulus list: ', stimulus_list, '\n\n')
 			if self.image_set == 'rand':
 				self.target_image = random.choice(stimulus_list)
 			else:
@@ -456,7 +455,6 @@ class ProtocolScreen(ProtocolBase):
 			self.similarity_index_min = self.similarity_index_max - self.similarity_index_range
 			
 			self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
-			# print(self.current_nontarget_image_list)
 
 			self.current_similarity = 1.00
 
@@ -1558,7 +1556,6 @@ class ProtocolScreen(ProtocolBase):
 
 							self.staircase_flag = 1
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Increase')
-							print('Staircase increase')
 
 						# If HR and FAR criteria failed, decrease staircase
 						elif (statistics.mean(self.hit_tracking[-(self.staircase_min_target_trials):]) < self.staircase_hr_criterion) \
@@ -1566,7 +1563,6 @@ class ProtocolScreen(ProtocolBase):
 							
 							self.staircase_flag = -1
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
-							print('Staircase decrease (fail)')
 						
 						# If only one of HR or FAR criteria met/failed after 2 full runs through the trial list, consider failed but flag separately
 						# This is to prevent participants from getting stuck at a staircase level
@@ -1575,7 +1571,6 @@ class ProtocolScreen(ProtocolBase):
 
 							self.staircase_flag = -2
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
-							print('Staircase decrease (trials)')
 
 					# If staircase flag not 0, adjust staircasing
 					if self.staircase_flag != 0:
@@ -1698,9 +1693,6 @@ class ProtocolScreen(ProtocolBase):
 	
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Similarity', str(self.similarity_data.loc[(self.similarity_data['Nontarget'] == self.current_nontarget_image_list[-1])]),'Staircasing', 'Max')
 
-							print('Similarity index min: ', self.similarity_index_min)
-							print('Similarity index max: ', self.similarity_index_max)
-
 						# Check if stimulus duration staircasing stage
 						elif 'StimDur' in self.current_stage:
 
@@ -1769,9 +1761,6 @@ class ProtocolScreen(ProtocolBase):
 
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_frames, 'Staircasing', 'Frames')
 							self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', self.stimdur_seconds, 'Staircasing', 'Seconds')
-
-							print('StimDur frames: ', self.stimdur_frames)
-							print('StimDur seconds: ', self.stimdur_seconds)
 							
 			## SET NEXT TRIAL PARAMETERS ##
 
@@ -2016,8 +2005,6 @@ class ProtocolScreen(ProtocolBase):
 					self.current_block += 1
 					self.start_stage_screen()
 					return
-
-			# print('Trial contingency end')
 
 			self.trial_end_time = time.perf_counter()
 			

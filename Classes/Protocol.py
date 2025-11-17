@@ -472,7 +472,6 @@ class ProtocolBase(Screen):
 		
 		if width > height:
 			self.width_adjust = height / width
-			# print('Width > Height')
 		
 		elif width < height:
 			self.height_adjust = width / height
