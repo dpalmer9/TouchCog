@@ -8,7 +8,6 @@
 # Setup #
 
 import configparser
-import cProfile
 import importlib
 import importlib.util
 import os
@@ -204,7 +203,6 @@ import kivy
 import os
 import pandas as pd
 import sys
-import zipimport
 import json
 import threading
 import urllib.request
