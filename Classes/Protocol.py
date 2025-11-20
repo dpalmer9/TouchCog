@@ -10,6 +10,7 @@ import time
 import threading
 import queue
 import random
+import gc
 from collections import Counter
 
 from kivy.app import App
@@ -973,13 +974,59 @@ class ProtocolBase(Screen):
 	
 	
 	# End Staging #
+
+	def _clear_video_cache(self):
+		video_file_names = ['delay_video','tutorial_video']
+
+		for video_name in video_file_names:
+			if not hasattr(self, video_name):
+				continue
+			video_attr = getattr(self, video_name, None)
+			if not video_attr:
+				continue
+
+			try:
+				video_attr.state = 'stop'
+			except Exception:
+				pass
+
+			try:
+				if video_attr._video:
+					video_attr._video.stop()
+					video_attr._video.unload()
+			except Exception:	
+				pass
+
+			try:
+				if hasattr(self,'_check_delay_video_loaded'):
+					video_attr.unbind(loaded=self._check_delay_video_loaded)
+			except Exception:
+				pass
+
+			try:
+				video_attr.source = ''
+			except Exception:
+				pass
+
+			try:
+				delattr(self, video_name)
+			except Exception:
+				try:
+					setattr(self, video_name, None)
+				except Exception:
+					pass
+			
+		gc.collect()
 	
 	def protocol_end(self, *args):
-
+		# Check Video Removal
+		self._clear_video_cache()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
 		
 		self.protocol_floatlayout.clear_widgets()
+		Clock.unschedule(self.hold_remind)
+		Clock.unschedule(self.iti_end)
 		self.protocol_floatlayout.add_widget(self.end_label)
 		
 		self.protocol_floatlayout.add_event([

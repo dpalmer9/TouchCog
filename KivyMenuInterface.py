@@ -260,11 +260,12 @@ def protocol_constructor(protocol, mod_name):
 		
 		def lazy_import(protocol, mod_name):
 			working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
-			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
+			unique_mod_name = f"{protocol}.{mod_name}"
+			mod_spec = importlib.util.spec_from_file_location(unique_mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
 			mod_spec.loader = mod_loader
 			module = importlib.util.module_from_spec(mod_spec)
-			sys.modules[mod_name] = module
+			sys.modules[unique_mod_name] = module
 			mod_loader.exec_module(module)
 			
 			return module
@@ -1330,6 +1331,7 @@ class MenuApp(App):
 			else:
 				task_module = protocol_constructor(protocol_name, 'Protocol')
 				protocol_task_screen = task_module.SurveyProtocol()
+			self.s_manager.add_widget(protocol_task_screen)
 			# Provide parameters to the task only for 'task' types (not surveys)
 			try:
 				task_type = self.battery_task_types.get(protocol_name, 'task') if hasattr(self, 'battery_task_types') else 'task'
@@ -1338,7 +1340,13 @@ class MenuApp(App):
 			except Exception:
 				# Some protocols may expect different parameter shapes; still continue
 				pass
-			self.s_manager.add_widget(protocol_task_screen)
+			if self.battery_index > 0:
+				# Remove previous task screen to free memory
+				prev_protocol_name = self.battery_protocols[self.battery_index - 1]
+				prev_screen_name = f"{prev_protocol_name}_protocolscreen"
+				if self.s_manager.has_screen(prev_screen_name):
+					prev_screen = self.s_manager.get_screen(prev_screen_name)
+					self.s_manager.remove_widget(prev_screen)
 			self.s_manager.current = protocol_task_screen.name
 		else:
 			# No more tasks in battery
