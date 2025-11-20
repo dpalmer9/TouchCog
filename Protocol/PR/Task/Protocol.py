@@ -613,7 +613,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 			
 			print('Error; program terminated.')
 			self.protocol_end()
