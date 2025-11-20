@@ -258,7 +258,7 @@ class MenuBase(Screen):
 				self.id_grid.size_hint_y = 0
 				self.apply_required_fields_filter()
 			else:
-				self.id_grid.height = None
+				#self.id_grid.height = None
 				self.id_grid.size_hint_y = 0.05
 		else:
 			self.is_battery_mode = False
