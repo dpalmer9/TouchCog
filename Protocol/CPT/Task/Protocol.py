@@ -2144,6 +2144,7 @@ class ProtocolScreen(ProtocolBase):
 	
 				if self.stage_index >= len(self.stage_list): # Check if all stages complete
 					self.protocol_end()
+					return
 
 				else:
 					self.current_stage = self.stage_list[self.stage_index]
