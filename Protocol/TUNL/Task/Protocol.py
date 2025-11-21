@@ -1390,6 +1390,9 @@ class ProtocolScreen(ProtocolBase):
 				"center_y": self.trial_coord['Target']['y']
 				}
 			
+			if (self.tutorial_video.duration - self.tutorial_video.position) < self.current_delay:
+				self.tutorial_video.state = 'stop'
+			
 
 			# Variable change: Current Delay
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Delay', str(self.current_delay))
