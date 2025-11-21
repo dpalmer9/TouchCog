@@ -8,13 +8,17 @@ import random
 import statistics
 import time
 
-from Classes.Protocol import ImageButton, ProtocolBase
+from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
 from kivy.clock import Clock
 from kivy.config import Config
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.video import Video
+from kivy.uix.image import Image
+from kivy.graphics.texture import Texture
+
+from ffpyplayer.player import MediaPlayer
 
 
 class ProtocolScreen(ProtocolBase):
@@ -341,16 +345,16 @@ class ProtocolScreen(ProtocolBase):
 		else:
 			self.delay_video_path = self.delay_video_path_list[0]
 
-		self.delay_video = Video(
-			source = str(self.delay_video_path)
-			, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + (self.hold_button.pos_hint['center_y'] + self.hold_button.size_hint[1]/2)}
-			, fit_mode = 'contain'
-			, options = {'eos': 'loop'}
-			)
-		self.delay_video.state = 'stop'
-		self.protocol_floatlayout.add_widget(self.delay_video)
-		self.delay_video.state = 'pause'
-		self.protocol_floatlayout.remove_widget(self.delay_video)
+		#self.delay_video = Video(
+			#source = str(self.delay_video_path)
+			#, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + (self.hold_button.pos_hint['center_y'] + self.hold_button.size_hint[1]/2)}
+			#, fit_mode = 'contain'
+			#, options = {'eos': 'loop'}
+			#)
+		#self.delay_video.state = 'stop'
+		#self.protocol_floatlayout.add_widget(self.delay_video)
+		#self.delay_video.state = 'pause'
+		#self.protocol_floatlayout.remove_widget(self.delay_video)
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
@@ -437,6 +441,20 @@ class ProtocolScreen(ProtocolBase):
 				self.present_tutorial_text()
 		else:
 			pass
+
+	def _preload_delay_video(self, video_path):
+		self.delay_vid_preload = MediaPlayer(str(video_path), ff_opts={'out_fmt': 'rgb24'})
+		try:
+			for _ in range(3):
+				frame, t = self.delay_vid_preload.get_frame()
+				if frame:
+					break
+		except Exception:
+			pass
+		try:
+			self.delay_vid_preload.set_pause(True)
+		except Exception:
+			pass
 	
 	# Initialization Functions
 	
@@ -447,15 +465,25 @@ class ProtocolScreen(ProtocolBase):
 		self._setup_image_widgets()
 		self._setup_language_localization()
 		self._load_video_and_instruction_components()
+		self._preload_delay_video(self.delay_video_path)
 
 		
 
 		# Begin Task
 		#self.start_clock()
-		self.feedback_label.text = 'LOADING VIDEO... PLEASE WAIT'
-		self.protocol_floatlayout.add_widget(self.feedback_label)
-		self.delay_video.state = 'play'
-		self.delay_video.bind(loaded=self._check_delay_video_loaded)
+		# self.feedback_label.text = 'LOADING VIDEO... PLEASE WAIT'
+		# self.protocol_floatlayout.add_widget(self.feedback_label)
+		# self.delay_video.state = 'play'
+		# self.delay_video.bind(loaded=self._check_delay_video_loaded)
+
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
+			and not self.skip_tutorial_video:
+
+			self.protocol_floatlayout.clear_widgets()
+			self.present_tutorial_video()
+		
+		else:
+			self.present_tutorial_text()
 
 
 
@@ -627,6 +655,17 @@ class ProtocolScreen(ProtocolBase):
 		self.generate_output_files()
 		self.metadata_output_generation()
 
+		self.tutorial_video.state = 'stop'
+		self.tutorial_video.unload()
+		
+		self.tutorial_video = PreloadedVideo(
+			player=self.delay_vid_preload,
+			source_path=str(self.delay_video_path),
+			pos_hint={'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]},
+			fit_mode='contain',
+			loop=True
+		)
+
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
@@ -763,8 +802,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.delay_end_event = Clock.schedule_once(self.delay_end, self.current_delay)
 
-		self.protocol_floatlayout.add_widget(self.delay_video)
-		self.delay_video.state = 'play'
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.tutorial_video.state = 'play'
 
 		self.video_start_time = time.perf_counter()
 
@@ -772,14 +811,14 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_stage_event('Object Display')
 
-		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.delay_video.source), self.video_position)
+		self.protocol_floatlayout.add_object_event('Display', 'Video', str(self.tutorial_video.source), self.video_position)
 
 
 
 	# Display Distractor During Delay
 	
 	def delay_end(self, *args):
-		self.delay_video.state = 'pause'
+		self.tutorial_video.state = 'pause'
 
 		self.protocol_floatlayout.clear_widgets()
 
@@ -794,7 +833,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_stage_event('Object Remove')
 
-		self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
+		self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.tutorial_video.source), self.video_position)
 
 		self.target_present()
 	
@@ -871,7 +910,7 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_outcome = 7 # 7-Cue abort (lift hold button during cue display)
 
 		elif self.delay_active:
-			self.delay_video.state = 'pause'
+			self.tutorial_video.state = 'pause'
 
 			self.video_end_time = time.perf_counter()
 			self.video_time = self.video_end_time - self.video_start_time
@@ -880,7 +919,7 @@ class ProtocolScreen(ProtocolBase):
 			self.contingency = 3 # 3-Premature/Abort
 			self.trial_outcome = 8 # 8-Delay abort (lift hold button during delay display)
 
-			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.delay_video.source), self.video_position)
+			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.tutorial_video.source), self.video_position)
 
 		self.feedback_label.text = self.feedback_dict['abort']
 
