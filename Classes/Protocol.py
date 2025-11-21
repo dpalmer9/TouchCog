@@ -19,6 +19,7 @@ from kivy.loader import Loader
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image, AsyncImage
+from kivy.graphics.texture import Texture
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.config import Config
@@ -444,7 +445,80 @@ class FloatLayoutLog(FloatLayout):
 		self.app.session_event_path = self.save_path
 
 
+class PreloadedVideo(Image):
+	def __init__(self, player, source_path='', loop=False, **kwargs):
+		super().__init__(**kwargs)
+		self.player = player
+		self._source_path = source_path
+		self.loop = loop
+		self._state = 'stop'
+		self.player.set_pause(True)
+		
+		# Get FPS
+		metadata = self.player.get_metadata()
+		self.video_fps = float(metadata.get('frame_rate', 30.0)[0])
+		if self.video_fps is None or self.video_fps == 0:
+			self.video_fps = 30.0
+		
+		# Get Kivy Max FPS
+		self.kivy_max_fps = float(Config.get('graphics', 'maxfps'))
+		if self.kivy_max_fps <= 0:
+			self.kivy_max_fps = 60.0
+			
+		self.display_fps = min(self.video_fps, self.kivy_max_fps)
+		
+		# Try to get a frame to initialize texture
+		frame, val = self.player.get_frame()
+		if frame:
+			self._update_texture(frame[0])
 
+	def _update_texture(self, img):
+		if not self.texture or self.texture.size != img.get_size():
+			self.texture = Texture.create(size=img.get_size(), colorfmt='rgb')
+			self.texture.flip_vertical()
+		self.texture.blit_buffer(img.to_bytearray()[0], colorfmt='rgb', bufferfmt='ubyte')
+		self.canvas.ask_update()
+
+	@property
+	def source(self):
+		return self._source_path
+		
+	@source.setter
+	def source(self, value):
+		self._source_path = value
+
+	@property
+	def state(self):
+		return self._state
+
+	@state.setter
+	def state(self, value):
+		self._state = value
+		if value == 'play':
+			self.player.set_pause(False)
+			Clock.schedule_interval(self._next_frame, 1 / self.display_fps)
+		else:
+			self.player.set_pause(True)
+			Clock.unschedule(self._next_frame)
+			if value == 'stop':
+				self.player.seek(0)
+
+	def _next_frame(self, dt):
+		frame, val = self.player.get_frame()
+		if val == 'eof':
+			if self.loop:
+				self.player.seek(0)
+			else:
+				self.state = 'stop'
+			return
+		if frame:
+			self._update_texture(frame[0])
+			
+	def unload(self):
+		pass
+		
+	def reload(self):
+		pass
 
 class ProtocolBase(Screen):
 	
