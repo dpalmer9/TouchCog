@@ -12,6 +12,7 @@ import queue
 import random
 import gc
 from collections import Counter
+from ffpyplayer.player import MediaPlayer
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -714,7 +715,20 @@ class ProtocolBase(Screen):
 		self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
 		self.return_button.bind(on_press=self.return_to_main)
 	
-	
+	def _preload_video(self, video_path):
+		vid_preload = MediaPlayer(str(video_path), ff_opts={'out_fmt': 'rgb24'})
+		try:
+			for _ in range(3):
+				frame, t = vid_preload.get_frame()
+				if frame:
+					break
+		except Exception:
+			pass
+		try:
+			vid_preload.set_pause(True)
+			return vid_preload
+		except Exception:
+			pass
 	
 	def update_task(self):
 		
