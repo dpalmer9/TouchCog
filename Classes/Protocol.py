@@ -456,6 +456,7 @@ class PreloadedVideo(Image):
 		
 		# Get FPS
 		metadata = self.player.get_metadata()
+		self.duration = metadata.get('duration', 15.0)
 		self.video_fps = float(metadata.get('frame_rate', 30.0)[0])
 		if self.video_fps is None or self.video_fps == 0:
 			self.video_fps = 30.0
