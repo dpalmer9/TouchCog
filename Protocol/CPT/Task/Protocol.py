@@ -253,6 +253,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_made = False
 		self.stimulus_mask_on_screen = True
 		self.training_complete = False
+		self.premature_override = True
 		
 		# Define Variables - Count
 		
@@ -1010,6 +1011,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.stimulus_on_screen:
 			return None
 		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.remove_feedback)
 		self.contingency = 3
 		self.response = 1
 		self.trial_outcome = 0
@@ -1040,8 +1042,6 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_on_screen = True
 
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
-		else:
-			Clock.unschedule(self.remove_feedback)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.premature_resolved)
@@ -1377,6 +1377,8 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def section_start(self, *args):
+
+		self.block_started = False
 
 		self.protocol_floatlayout.clear_widgets()
 
@@ -2008,10 +2010,11 @@ class ProtocolScreen(ProtocolBase):
 
 			self.trial_end_time = time.perf_counter()
 			
-			if self.hold_button_pressed == True:
-				self.iti_start()
-			else:
-				Clock.schedule_once(self.hold_remind, 2.0)
+			if not self.block_started:
+				if self.hold_button_pressed == True:
+					self.iti_start()
+				else:
+					Clock.schedule_once(self.hold_remind, 2.0)
 		
 		
 		except KeyboardInterrupt:
