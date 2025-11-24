@@ -460,8 +460,7 @@ class PreloadedVideo(Image):
         # --- FRESH PLAYER INSTANTIATION ---
         # ff_opts={'out_fmt': 'rgb24'} ensures we get raw RGB bytes for Kivy texture
         self.player = MediaPlayer(
-            self._source_path, 
-            ff_opts={'out_fmt': 'rgb24'}
+            self._source_path
         )
         
         # Force pause immediately upon creation so it doesn't auto-start
@@ -576,8 +575,7 @@ class PreloadedVideo(Image):
     def reload(self):
         try:
             self.player = MediaPlayer(
-				self._source_path,
-				ff_opts={'out_fmt': 'rgb24'}
+				self._source_path
 			)
 			# Ensure newly created player is paused by default
             self.player.set_pause(True)
