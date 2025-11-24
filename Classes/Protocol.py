@@ -1203,6 +1203,7 @@ class ProtocolBase(Screen):
 		self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
 		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
 		self.protocol_floatlayout.write_data()
+		self.app.trial_summary_data = list()
 
 		return
 	
