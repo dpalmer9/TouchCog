@@ -16,9 +16,6 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.video import Video
 from kivy.uix.image import Image
-from kivy.graphics.texture import Texture
-
-from ffpyplayer.player import MediaPlayer
 
 
 class ProtocolScreen(ProtocolBase):
@@ -345,25 +342,16 @@ class ProtocolScreen(ProtocolBase):
 		else:
 			self.delay_video_path = self.delay_video_path_list[0]
 
-		#self.delay_video = Video(
-			#source = str(self.delay_video_path)
-			#, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + (self.hold_button.pos_hint['center_y'] + self.hold_button.size_hint[1]/2)}
-			#, fit_mode = 'contain'
-			#, options = {'eos': 'loop'}
-			#)
-		#self.delay_video.state = 'stop'
-		#self.protocol_floatlayout.add_widget(self.delay_video)
-		#self.delay_video.state = 'pause'
-		#self.protocol_floatlayout.remove_widget(self.delay_video)
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_path
-				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
-				, fit_mode = 'contain'
-				)
+			self.tutorial_video = PreloadedVideo(
+			source_path=str(self.tutorial_video_path),
+			pos_hint={'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]},
+			fit_mode='contain',
+			loop=True
+		)
 
 
 		# Instruction - Dictionary
@@ -424,38 +412,6 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button = Button()
 		self.instruction_button.bind(on_press=self.section_start)
 	
-	def _check_delay_video_loaded(self, *args):
-		if self.delay_video.loaded:
-			Clock.unschedule(self._check_delay_video_loaded)
-			self.delay_video.state = 'pause'
-			self.protocol_floatlayout.remove_widget(self.feedback_label)
-			self.feedback_label.text = ''
-
-			if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
-			and not self.skip_tutorial_video:
-
-				self.protocol_floatlayout.clear_widgets()
-				self.present_tutorial_video()
-		
-			else:
-				self.present_tutorial_text()
-		else:
-			pass
-
-	def _preload_delay_video(self, video_path):
-		self.delay_vid_preload = MediaPlayer(str(video_path), ff_opts={'out_fmt': 'rgb24'})
-		try:
-			for _ in range(3):
-				frame, t = self.delay_vid_preload.get_frame()
-				if frame:
-					break
-		except Exception:
-			pass
-		try:
-			self.delay_vid_preload.set_pause(True)
-		except Exception:
-			pass
-	
 	# Initialization Functions
 	
 	def load_parameters(self, parameter_dict):
@@ -465,16 +421,7 @@ class ProtocolScreen(ProtocolBase):
 		self._setup_image_widgets()
 		self._setup_language_localization()
 		self._load_video_and_instruction_components()
-		self._preload_delay_video(self.delay_video_path)
 
-		
-
-		# Begin Task
-		#self.start_clock()
-		# self.feedback_label.text = 'LOADING VIDEO... PLEASE WAIT'
-		# self.protocol_floatlayout.add_widget(self.feedback_label)
-		# self.delay_video.state = 'play'
-		# self.delay_video.bind(loaded=self._check_delay_video_loaded)
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
 			and not self.skip_tutorial_video:
@@ -659,7 +606,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.unload()
 		
 		self.tutorial_video = PreloadedVideo(
-			player=self.delay_vid_preload,
 			source_path=str(self.delay_video_path),
 			pos_hint={'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]},
 			fit_mode='contain',
@@ -818,7 +764,10 @@ class ProtocolScreen(ProtocolBase):
 	# Display Distractor During Delay
 	
 	def delay_end(self, *args):
-		self.tutorial_video.state = 'pause'
+		self.tutorial_video.state = 'stop'
+		self.tutorial_video.reset()
+		self.tutorial_video.unload()
+		self.tutorial_video.reload()
 
 		self.protocol_floatlayout.clear_widgets()
 
@@ -911,6 +860,9 @@ class ProtocolScreen(ProtocolBase):
 
 		elif self.delay_active:
 			self.tutorial_video.state = 'pause'
+			self.tutorial_video.reset()
+			self.tutorial_video.unload()
+			self.tutorial_video.reload()
 
 			self.video_end_time = time.perf_counter()
 			self.video_time = self.video_end_time - self.video_start_time
