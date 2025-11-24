@@ -14,22 +14,22 @@ class ConfigureScreen(MenuBase):
         self.name = self.protocol + '_configscreen'
 
         self.image_set_similarity_targets = [{'label': 'Target 1', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1132.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1132.png'], 
                                               'value': 'Fb2_1132'},
                                               {'label': 'Target 2', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1211.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1211.png'], 
                                               'value': 'Fb2_1211'},
                                               {'label': 'Target 3', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1221.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1221.png'], 
                                               'value': 'Fb2_1221'},
                                               {'label': 'Target 4', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1312.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1312.png'], 
                                               'value': 'Fb2_1312'},
                                               {'label': 'Target 5', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1322.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1322.png'], 
                                               'value': 'Fb2_1322'},
                                               {'label': 'Target 6', 
-                                              'images': ['Protocol/CPT/Image/Fribbles/Fb/Fb2_1332.png'], 
+                                              'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1332.png'], 
                                               'value': 'Fb2_1332'},
                                               {'label': 'Random', 
                                               'images': [], 
@@ -37,22 +37,22 @@ class ConfigureScreen(MenuBase):
                                               ]
         
         self.image_set_standard = [{'label': 'Image Set 1',
-                                    'images': ['Protocol/CPT/Image/Fribbles/Blues/FA2-1.png','Protocol/CPT/Image/black.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FA3-2.png','Protocol/CPT/Image/Fribbles/Blues/FB1-1.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FB2-2.png','Protocol/CPT/Image/Fribbles/Blues/FC1-1.png'
-                                               ,'Protocol/CPT/Image/Fribbles/Blues/FC3-2.png'],
+                                    'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA2-1.png',f'{self.app.app_root}/Protocol/CPT/Image/black.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA3-2.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB1-1.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB2-2.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC1-1.png'
+                                               ,f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC3-2.png'],
                                     'value': 'set1'},
                                     {'label': 'Image Set 2',
-                                    'images': ['Protocol/CPT/Image/Fribbles/Blues/FB2-3.png','Protocol/CPT/Image/black.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FB3-1.png','Protocol/CPT/Image/Fribbles/Blues/FA2-2.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FA4-1.png','Protocol/CPT/Image/Fribbles/Blues/FC2-2.png'
-                                               ,'Protocol/CPT/Image/Fribbles/Blues/FC4-2.png'],
+                                    'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB2-3.png',f'{self.app.app_root}/Protocol/CPT/Image/black.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB3-1.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA2-2.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA4-1.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC2-2.png'
+                                               ,f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC4-2.png'],
                                     'value': 'set2'},
                                     {'label': 'Image Set 3',
-                                    'images': ['Protocol/CPT/Image/Fribbles/Blues/FC1-3.png','Protocol/CPT/Image/black.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FC4-1.png','Protocol/CPT/Image/Fribbles/Blues/FA1-2.png',
-                                               'Protocol/CPT/Image/Fribbles/Blues/FA3-3.png','Protocol/CPT/Image/Fribbles/Blues/FB2-2.png'
-                                               ,'Protocol/CPT/Image/Fribbles/Blues/FB4-3.png'],
+                                    'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC1-3.png',f'{self.app.app_root}/Protocol/CPT/Image/black.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FC4-1.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA1-2.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FA3-3.png',f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB2-2.png'
+                                               ,f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Blues/FB4-3.png'],
                                     'value': 'set3',
                                     },
                                     {'label': 'Random',
