@@ -15,7 +15,7 @@ from collections import Counter
 from ffpyplayer.player import MediaPlayer
 
 from kivy.app import App
-from kivy.clock import Clock
+from kivy.clock import Clock, mainthread
 from kivy.loader import Loader
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.floatlayout import FloatLayout
@@ -445,82 +445,170 @@ class FloatLayoutLog(FloatLayout):
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
 
-
 class PreloadedVideo(Image):
-	def __init__(self, player, source_path='', loop=False, **kwargs):
-		super().__init__(**kwargs)
-		self.player = player
-		self._source_path = source_path
-		self.loop = loop
-		self._state = 'stop'
-		self.player.set_pause(True)
-		
-		# Get FPS
-		metadata = self.player.get_metadata()
-		self.duration = metadata.get('duration', 15.0)
-		self.video_fps = float(metadata.get('frame_rate', 30.0)[0])
-		if self.video_fps is None or self.video_fps == 0:
-			self.video_fps = 30.0
-		
-		# Get Kivy Max FPS
-		self.kivy_max_fps = float(Config.get('graphics', 'maxfps'))
-		if self.kivy_max_fps <= 0:
-			self.kivy_max_fps = 60.0
+    def __init__(self, source_path, player=None, loop=False, **kwargs):
+        # We accept 'player' arg just to keep compatibility with your Protocol.py calls,
+        # BUT we ignore it. We create a fresh one based on source_path.
+        super().__init__(**kwargs)
+        self._source_path = source_path
+        self.loop = loop
+        self._state = 'stop'
+        self._stop_event = threading.Event()
+        self._playback_thread = None
+        self.texture = None
+        
+        # --- FRESH PLAYER INSTANTIATION ---
+        # ff_opts={'out_fmt': 'rgb24'} ensures we get raw RGB bytes for Kivy texture
+        self.player = MediaPlayer(
+            self._source_path, 
+            ff_opts={'out_fmt': 'rgb24'}
+        )
+        
+        # Force pause immediately upon creation so it doesn't auto-start
+        self.player.set_pause(True)
+        
+        # --- Metadata Logic ---
+        # We wait briefly for metadata to be available (sometimes takes a ms)
+        timeout = 0
+        while self.player.get_metadata()['duration'] is None and timeout < 5:
+            time.sleep(0.01)
+            timeout += 1
+
+        metadata = self.player.get_metadata()
+        fr = metadata.get('frame_rate', (30, 1))
+        if isinstance(fr, (tuple, list)) and len(fr) == 2 and fr[1] != 0:
+            self.video_fps = float(fr[0]) / float(fr[1])
+        else:
+            self.video_fps = 30.0
+            
+        # Initial Frame Load (Thumbnail)
+        try:
+            # We explicitly seek to 0 to ensure we are at start
+            self.player.seek(0)
+            frame, val = self.player.get_frame()
+            if frame:
+                self._update_texture(frame[0])
+        except Exception:
+            pass
+
+    @mainthread
+    def _update_texture(self, img):
+        if not self.texture or self.texture.size != img.get_size():
+            self.texture = Texture.create(size=img.get_size(), colorfmt='rgb')
+            self.texture.flip_vertical()
+        self.texture.blit_buffer(img.to_bytearray()[0], colorfmt='rgb', bufferfmt='ubyte')
+        self.canvas.ask_update()
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        if value == self._state:
+            return
+        
+        self._state = value
+        
+        if value == 'play':
+            self.player.set_pause(False)
+            self._start_thread()
+        else:
+            self.player.set_pause(True)
+            self._stop_thread()
+            if value == 'stop':
+                self.reset()
+
+    def _start_thread(self):
+        if self._playback_thread and self._playback_thread.is_alive():
+            return
+        self._stop_event.clear()
+        self._playback_thread = threading.Thread(target=self._video_loop, daemon=True)
+        self._playback_thread.start()
+
+    def _stop_thread(self):
+        self._stop_event.set()
+
+    def _video_loop(self):
+        while not self._stop_event.is_set():
+            try:
+                frame, val = self.player.get_frame()
+            except Exception:
+                break
+            
+            if val == 'eof':
+                if self.loop:
+                    self.player.seek(0)
+                    time.sleep(0.01)
+                    continue
+                else:
+                    Clock.schedule_once(lambda dt: setattr(self, 'state', 'stop')) # Schedule on Kivy thread
+                    break
+            
+            if val == 'paused':
+                time.sleep(0.05)
+                continue
+            
+            if frame:
+                self._update_texture(frame[0])
+            
+            if val is not None:
+                if val > 0:
+                    time.sleep(val)
+            else:
+                time.sleep(1.0 / 30.0)
+
+    def unload(self):
+        """
+        The Nuclear Option: Completely destroy the player.
+        """
+        self.state = 'stop'
+        self._stop_thread()
+        
+        if self.player:
+            try:
+                self.player.toggle_pause() # Ensure player is not running
+                self.player.close_player()
+            except Exception:
+                pass # Best-effort: ignore failures
+            self.player = None
 			
-		self.display_fps = min(self.video_fps, self.kivy_max_fps)
-		
-		# Try to get a frame to initialize texture
-		frame, val = self.player.get_frame()
-		if frame:
-			self._update_texture(frame[0])
+    def reload(self):
+        try:
+            self.player = MediaPlayer(
+				self._source_path,
+				ff_opts={'out_fmt': 'rgb24'}
+			)
+			# Ensure newly created player is paused by default
+            self.player.set_pause(True)
+        except Exception:
+			# Best-effort: ignore failures
+            pass
 
-	def _update_texture(self, img):
-		if not self.texture or self.texture.size != img.get_size():
-			self.texture = Texture.create(size=img.get_size(), colorfmt='rgb')
-			self.texture.flip_vertical()
-		self.texture.blit_buffer(img.to_bytearray()[0], colorfmt='rgb', bufferfmt='ubyte')
-		self.canvas.ask_update()
+    def reset(self):
+		# Stop the playback thread and ensure state is stopped
+        try:
+            self._stop_thread()
+        except Exception:
+            pass
 
-	@property
-	def source(self):
-		return self._source_path
-		
-	@source.setter
-	def source(self, value):
-		self._source_path = value
+        self._state = 'stop'
+        try:
+            if self.player:
+                self.player.set_pause(True)
+                self.player.seek(0)
+                def _update_thumb(dt):
+                    try:
+                        f, v = self.player.get_frame()
+                        if f:
+                            self._update_texture(f[0])
+                    except Exception:
+                        pass
 
-	@property
-	def state(self):
-		return self._state
-
-	@state.setter
-	def state(self, value):
-		self._state = value
-		if value == 'play':
-			self.player.set_pause(False)
-			Clock.schedule_interval(self._next_frame, 1 / self.display_fps)
-		else:
-			self.player.set_pause(True)
-			Clock.unschedule(self._next_frame)
-			if value == 'stop':
-				self.player.seek(0)
-
-	def _next_frame(self, dt):
-		frame, val = self.player.get_frame()
-		if val == 'eof':
-			if self.loop:
-				self.player.seek(0)
-			else:
-				self.state = 'stop'
-			return
-		if frame:
-			self._update_texture(frame[0])
-			
-	def unload(self):
-		pass
-		
-	def reload(self):
-		pass
+                Clock.schedule_once(_update_thumb, 0.1)
+        except Exception:
+                # Best-effort: ignore failures
+            pass
 
 class ProtocolBase(Screen):
 	
@@ -714,21 +802,6 @@ class ProtocolBase(Screen):
 		self.return_button.size_hint = (0.1, 0.1)
 		self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
 		self.return_button.bind(on_press=self.return_to_main)
-	
-	def _preload_video(self, video_path):
-		vid_preload = MediaPlayer(str(video_path), ff_opts={'out_fmt': 'rgb24'})
-		try:
-			for _ in range(3):
-				frame, t = vid_preload.get_frame()
-				if frame:
-					break
-		except Exception:
-			pass
-		try:
-			vid_preload.set_pause(True)
-			return vid_preload
-		except Exception:
-			pass
 	
 	def update_task(self):
 		
