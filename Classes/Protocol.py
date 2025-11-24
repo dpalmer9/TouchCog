@@ -11,6 +11,7 @@ import threading
 import queue
 import random
 import gc
+import math
 from collections import Counter
 from ffpyplayer.player import MediaPlayer
 
@@ -828,6 +829,22 @@ class ProtocolBase(Screen):
 			rng = random
 		if not seq:
 			return []
+		
+		# Check if Sequence is Possible
+		counts = Counter(seq)
+		common_items, max_count = counts.most_common(1)[0]
+		total_items = len(seq) - max_count
+
+		max_possible_capacity = (total_items + 1) * max_run
+
+		if max_count > max_possible_capacity:
+			min_required_run = math.ceil(max_count / (total_items + 1))
+			raise ValueError(
+				f"Impossible constraints: You have {max_count} '{common_items}'s "
+            f"but only {total_items} other items to separate them. "
+            f"With max_run={max_run}, you can only fit {max_possible_capacity}. "
+            f"Minimum max_run required is {min_required_run}."
+			)
 
 		n = len(seq)
 		
@@ -857,6 +874,18 @@ class ProtocolBase(Screen):
 					# This attempt is stuck (e.g., only 'A's are left but the run of 'A's is maxed out)
 					# Break the inner while loop to start a new attempt.
 					break 
+
+				# Check if item is already near critical
+				critical_items = []
+				for cand in candidates:
+					others = sum(c for k, c in remaining.items() if k != cand)
+
+					if remaining[cand] > others * max_run * 0.8:
+						critical_items.append(cand)
+				
+				if critical_items:
+					candidates = critical_items
+	
 
 				# Weighted random choice from the valid candidates
 				weights = [remaining[k] for k in candidates]
