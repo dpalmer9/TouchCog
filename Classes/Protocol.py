@@ -717,6 +717,7 @@ class ProtocolBase(Screen):
 		self.feedback_on_screen = False
 		self.hold_active = True
 		self.hold_button_pressed = False
+		self.premature_override = False
 		
 		
 		# Define Variables - Counter
@@ -1285,7 +1286,8 @@ class ProtocolBase(Screen):
 			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
-			self.hold_button.bind(on_release=self.hold_remind)
+			if not self.premature_override:
+				self.hold_button.bind(on_release=self.hold_remind)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
 			self.start_iti = time.perf_counter()
