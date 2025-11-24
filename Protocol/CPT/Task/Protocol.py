@@ -1378,6 +1378,8 @@ class ProtocolScreen(ProtocolBase):
 
 	def section_start(self, *args):
 
+		self.block_started = False
+
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
@@ -2008,10 +2010,11 @@ class ProtocolScreen(ProtocolBase):
 
 			self.trial_end_time = time.perf_counter()
 			
-			if self.hold_button_pressed == True:
-				self.iti_start()
-			else:
-				Clock.schedule_once(self.hold_remind, 2.0)
+			if not self.block_started:
+				if self.hold_button_pressed == True:
+					self.iti_start()
+				else:
+					Clock.schedule_once(self.hold_remind, 2.0)
 		
 		
 		except KeyboardInterrupt:
