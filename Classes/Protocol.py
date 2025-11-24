@@ -717,6 +717,7 @@ class ProtocolBase(Screen):
 		self.feedback_on_screen = False
 		self.hold_active = True
 		self.hold_button_pressed = False
+		self.premature_override = False
 		
 		
 		# Define Variables - Counter
@@ -1255,6 +1256,7 @@ class ProtocolBase(Screen):
 		if self.feedback_on_screen:
 			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
+				Clock.unschedule(self.remove_feedback)
 				return
 			elif self.block_started:
 				return
@@ -1284,7 +1286,8 @@ class ProtocolBase(Screen):
 			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
-			self.hold_button.bind(on_release=self.hold_remind)
+			if not self.premature_override:
+				self.hold_button.bind(on_release=self.hold_remind)
 			# bind release to hold_remind instead of premature_response to drive reminder logic
 
 			self.start_iti = time.perf_counter()
