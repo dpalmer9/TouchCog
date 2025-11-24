@@ -88,8 +88,14 @@ class ImageButton(ButtonBehavior, Image):
 			# consume the move event
 			return True
 
-		# If moved back inside, do not re-press automatically; simply update flag
+		# If moved back inside, press it again
 		if inside and not self._touch_inside:
+			if getattr(self, 'state', None) != 'down':
+				try:
+					self.dispatch('on_press')
+				except Exception:
+					pass
+				self.state = 'down'
 			self._touch_inside = True
 			# consume the move event
 			return True
@@ -244,6 +250,9 @@ class FloatLayoutLog(FloatLayout):
 		
 		for child in self.children:
 			
+			if child.collide_point(*touch.pos):
+				child.dispatch('on_touch_down', touch)
+
 			if child.dispatch('on_touch_move', touch):
 				
 				if isinstance(child, ImageButton):
