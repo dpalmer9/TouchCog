@@ -1255,6 +1255,7 @@ class ProtocolBase(Screen):
 		if self.feedback_on_screen:
 			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
+				Clock.unschedule(self.remove_feedback)
 				return
 			elif self.block_started:
 				return
