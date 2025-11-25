@@ -135,6 +135,10 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_list = ['Training']
 		self.stage_index = 0
 
+		if not self.test_location_discrimination:
+			self.include_easy_separation = False
+			self.include_hard_separation = False
+
 		if self.deterministic_probes \
 				and self.include_easy_separation:
 			self.stage_list.append('LD-E')
@@ -692,7 +696,7 @@ class ProtocolScreen(ProtocolBase):
 				if (time.perf_counter() - self.block_start >= self.block_duration):
 					self.stage_results_screen()
 				
-				elif not self.uncapped_probe_reversals  \
+				elif not self.uncapped_probe_reversals \
 						and (self.current_block_trial >= self.block_trial_max):
 					self.stage_results_screen()
 
