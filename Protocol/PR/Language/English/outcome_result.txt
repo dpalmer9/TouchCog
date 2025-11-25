@@ -1,0 +1,1 @@
+Great job!\n\nYou completed {str(self.total_hit_count//2)} trials and {str(self.current_block - 1)} blocks!\n\n Please inform the researcher that you have finished this task.
