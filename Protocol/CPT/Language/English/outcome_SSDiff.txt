@@ -1,0 +1,1 @@
+Great job!\n\nYou were able to correctly discriminate between stimuli\nwith {str(int(self.outcome_value*100))}% similarity.

@@ -964,24 +964,24 @@ class ProtocolBase(Screen):
 		
 		self.language = language
 		
-		lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
+		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 		
-		start_path = lang_folder_path / 'Start.txt'
+		start_path = self.lang_folder_path / 'Start.txt'
 		with open(start_path, 'r', encoding='utf-8') as file:
 			start_label_str = file.read()
 		self.instruction_label.text = start_label_str
 		
-		break_path = lang_folder_path / 'Break.txt'
+		break_path = self.lang_folder_path / 'Break.txt'
 		with open(break_path , 'r', encoding='utf-8') as file:
 			break_label_str = file.read()
 		self.block_label.text = break_label_str
 		
-		end_path = lang_folder_path / 'End.txt'
+		end_path = self.lang_folder_path / 'End.txt'
 		with open(end_path, 'r', encoding='utf-8') as file:
 			end_label_str = file.read()
 		self.end_label.text = end_label_str
 		
-		button_lang_path = lang_folder_path / 'Button.ini'
+		button_lang_path = self.lang_folder_path / 'Button.ini'
 		button_lang_config = configparser.ConfigParser()
 		button_lang_config.read(button_lang_path, encoding='utf-8')
 		
@@ -1006,7 +1006,7 @@ class ProtocolBase(Screen):
 		tutorial_button_label_str = button_lang_config.get('Button', 'tutorial', fallback='Tap the screen\nto start video')
 		self.tutorial_video_button.text = tutorial_button_label_str
 		
-		feedback_lang_path = lang_folder_path / 'Feedback.ini'
+		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
 		feedback_lang_config.read(feedback_lang_path, encoding='utf-8')
 		

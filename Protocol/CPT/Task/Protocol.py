@@ -58,15 +58,9 @@ class ProtocolScreen(ProtocolBase):
 		self.metadata_cols = [
 			'participant_id'
 			, 'skip_tutorial_video'
-			, 'tutorial_video_duration'
 			, 'block_change_on_duration_only'
 			, 'training_task'
-			# , 'limhold_difficulty'
 			, 'similarity_difficulty'
-			# , 'noise_difficulty'
-			# , 'blur_difficulty'
-			# , 'noise_probe'
-			# , 'blur_probe'
 			, 'stimdur_probe'
 			, 'flanker_probe'
 			, 'tarprob_probe'
@@ -623,6 +617,29 @@ class ProtocolScreen(ProtocolBase):
 		self.set_language(self.language)
 		self.stage_instructions = ''
 
+		button_lang_path = self.lang_folder_path / 'Button.ini'
+		button_lang_config = configparser.ConfigParser()
+		button_lang_config.read(button_lang_path, encoding='utf-8')
+
+		self.stage_continue_button.text = button_lang_config.get('Buttons', 'stage_continue', fallback='Continue')
+		self.session_end_button.text = button_lang_config.get('Buttons', 'session_end', fallback='End Session')
+		self.training_block_button_str = button_lang_config.get('Buttons', 'instruction_training', fallback='Begin Training Block')
+
+		self.outcome_dict = {}
+		self.staging_dict = {}
+
+		for file_path in self.lang_folder_path.glob('outcome_*.txt'):
+			key = file_path.stem.replace('outcome_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.outcome_dict[key] = f.read()
+
+		for file_path in self.lang_folder_path.glob('staging_*.txt'):
+			key = file_path.stem.replace('staging_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.staging_dict[key] = f.read()
+
+		
+
 	def _load_video_and_instruction_components(self):
 
 		# Instruction Import
@@ -734,13 +751,11 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button = Button(font_size='60sp')
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint = self.text_button_pos_UC
-		self.stage_continue_button.text = 'Continue'
 		self.stage_continue_button.bind(on_press=self.block_contingency)
 		
 		self.session_end_button = Button(font_size='60sp')
 		self.session_end_button.size_hint = self.text_button_size
 		self.session_end_button.pos_hint = self.text_button_pos_LL
-		self.session_end_button.text = 'End Session'
 		self.session_end_button.bind(on_press=self.protocol_end)
 		
 		
@@ -754,14 +769,13 @@ class ProtocolScreen(ProtocolBase):
 		self._load_staircase_variables()
 		self._setup_session_stages()
 		self._setup_image_widgets()
-		self._setup_language_localization()
 		self._load_video_and_instruction_components()
+		self._setup_language_localization()
 
 		self.start_button.bind(on_press=self.start_protocol_from_tutorial)
 
 		self.start_clock()
-		if (self.lang_folder_path / 'Tutorial_Video').is_dir() \
-			and not self.skip_tutorial_video:
+		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 
 			self.protocol_floatlayout.clear_widgets()
 			self.present_tutorial_video()
@@ -1994,40 +2008,40 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 			
 		if self.current_stage == 'Similarity_Staircase_Difficulty':
-			self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value*100)) + '%' + ' similarity.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("SSDiff", "")}"""')
 			
 		elif self.current_stage in ['Blur_Staircase_Difficulty', 'Blur_Staircase_Probe']:
-			self.outcome_string = 'Great job!\n\nYou were able to correctly discriminate between stimuli\nwith ' + str(int(self.outcome_value)) + ' pixels of blur.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("blur", "")}"""')
 			
 		elif self.current_stage in ['Noise_Staircase_Difficulty', 'Noise_Staircase_Probe']:
-			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli with \n' + str(100 - self.outcome_value) + '%' + ' of the image visible.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("noise", "")}"""')
 
 		elif self.current_stage == 'LimHold_Staircase_Difficulty':
-			self.outcome_string = 'Great job!\n\nYou were able to correctly respond to stimuli\nwithin ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("limhold", "")}"""')
 			
 		elif self.current_stage == 'StimDur_Staircase_Probe':
-			self.outcome_string = 'Great job!\n\nYou were able to correctly identify stimuli presented\nfor ' + str(round((self.outcome_value * self.frame_duration), 3)) + ' seconds.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("stimdur", "")}"""')
 
 		elif self.current_stage in ['TarProb_Fixed_Probe', 'Flanker_Fixed_Probe']:
 
 			if len(self.total_hit_tracking) == 0:
-				self.outcome_string = 'Great job!\n\n'
+				self.outcome_string = eval(f'f"""{self.outcome_dict.get("gj", "")}"""')
 				
 			else:
 				self.hit_accuracy = (sum(self.total_hit_tracking) / len(self.total_hit_tracking))
-				self.outcome_string = 'Great job!\n\nYou responded to ' + str(round(self.hit_accuracy, 2) * 100) + '%' + ' of the target images!\n\nYou responded to ' + str(sum(self.total_false_alarm_tracking)) + ' of the non-target images.'
+				self.outcome_string = eval(f'f"""{self.outcome_dict.get("probe", "")}"""')
 			
 		else:
-			self.outcome_string = "Great job!\n\n"
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("gj", "")}"""')
 
 
 		if self.stage_index < (len(self.stage_list) - 1) \
 			or (self.current_block <= self.block_max_count):
 
-			self.stage_string = 'Please press "Continue" to start the next block.'
+			self.stage_string = eval(f'f"""{self.staging_dict.get("continue", "")}"""')
 
 		else:
-			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.' # 'Please press "End Session" to end the session.'
+			self.stage_string = eval(f'f"""{self.staging_dict.get("end", "")}"""') # 'Please press "End Session" to end the session.'
 			self.session_end_button.pos_hint = self.text_button_pos_UC
 			self.protocol_floatlayout.add_widget(self.session_end_button)
 			
@@ -2136,10 +2150,6 @@ class ProtocolScreen(ProtocolBase):
 				self.training_complete = True
 
 				self.hold_button.bind(on_press=self.iti_start)
-				
-				# self.protocol_floatlayout.add_widget(self.hold_button)
-				
-				# self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 
 			# If current block is 0 (tutorial block for stage)
 			elif self.current_block == 0:
@@ -2149,7 +2159,7 @@ class ProtocolScreen(ProtocolBase):
 				self.block_trial_max = 2*(self.training_block_max_correct)
 				self.block_duration = 3*(self.block_trial_max)
 				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['train']
-				self.instruction_button.text = 'Begin Training Block'
+				self.instruction_button.text = self.training_block_button_str
 				self.center_instr_image.texture = self.image_dict[self.target_image].image.texture
 				
 				self.protocol_floatlayout.add_widget(self.center_instr_image)
