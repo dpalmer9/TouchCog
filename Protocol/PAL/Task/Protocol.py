@@ -354,6 +354,7 @@ class ProtocolScreen(ProtocolBase):
 		button_lang_config = configparser.ConfigParser()
 		button_lang_config.read(button_lang_path, encoding='utf-8')
 
+		self.instruction_button.text = button_lang_config.get('Buttons', 'instruction_section', fallback='Start Section')
 		self.stage_continue_button.text = button_lang_config.get('Buttons', 'stage_continue', fallback='Continue')
 		self.image_recall_button_str = button_lang_config.get('Buttons', 'instruction_locations', fallback='See Image Locations')
 		self.instruction_section_button_str = button_lang_config.get('Buttons', 'instruction_section', fallback='Start Section')
@@ -423,13 +424,11 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button = Button(font_size='60sp')
 		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  {"center_x": 0.50, "center_y": 0.9}
-		self.instruction_button.text = 'Start Section'
 		self.instruction_button.bind(on_press=self.section_start)
 		
 		self.stage_continue_button = Button(font_size='60sp')
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint =  {"center_x": 0.50, "center_y": 0.9}
-		self.stage_continue_button.text = self.stage
 		self.stage_continue_button.bind(on_press=self.block_contingency)
 
 		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)

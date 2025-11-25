@@ -257,6 +257,13 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
 		self.feedback_label.text = ''
 
+		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
+		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
+		feedback_lang_config.read(feedback_lang_path, encoding='utf-8')
+
+		self.feedback_dict['start_block'] = feedback_lang_config.get('Feedback', 'start_block', fallback='Press and hold the white button to start the first \ntrial, or press "End Task" to end the task.').replace('\\n', '\n')
+		self.feedback_dict['mid_block'] = feedback_lang_config.get('Feedback', 'mid_block', fallback='Block complete!\n\nPress and hold the white button to start the next \ntrial, or press "End Task" to end the task.').replace('\\n', '\n')
+
 		self.outcome_dict = {}
 		self.staging_dict = {}
 

@@ -1003,7 +1003,7 @@ class ProtocolBase(Screen):
 		tutorial_restart_button_label_str = button_lang_config.get('Button', 'tutorial_restart', fallback='Restart Video')
 		self.tutorial_restart_button.text = tutorial_restart_button_label_str
 
-		tutorial_button_label_str = button_lang_config.get('Button', 'tutorial', fallback='Tap the screen\nto start video')
+		tutorial_button_label_str = button_lang_config.get('Button', 'tutorial', fallback='Tap the screen\nto start video').replace('\\n', '\n')
 		self.tutorial_video_button.text = tutorial_button_label_str
 		
 		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
