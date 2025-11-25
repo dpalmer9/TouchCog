@@ -1,6 +1,7 @@
 {
     "name": "TouchCog Attention, Visual Spatial Memory, Working Memory Battery",
     "version": "1.0.0",
+    "touchcog_version": "<2.1.0",
     "description": "Touchscreen Cognition Battery for assessing Attention, Visual Spatial Memory, and Working Memory.",
     "author": "Daniel Palmer, PhD",
     "tasks": [
