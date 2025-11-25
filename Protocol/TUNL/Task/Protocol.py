@@ -318,6 +318,25 @@ class ProtocolScreen(ProtocolBase):
 	def _setup_language_localization(self):
 		self.set_language(self.language)
 
+		button_lang_path = self.lang_folder_path / 'Button.ini'
+		button_lang_config = configparser.ConfigParser()
+		button_lang_config.read(button_lang_path, encoding='utf-8')
+
+		self.end_task_str = button_lang_config.get('Button', 'end_task', fallback='End Task')
+
+		self.outcome_dict = {}
+		self.staging_dict = {}
+
+		for file_path in self.lang_folder_path.glob('outcome_*.txt'):
+			key = file_path.stem.replace('outcome_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.outcome_dict[key] = f.read()
+
+		for file_path in self.lang_folder_path.glob('staging_*.txt'):
+			key = file_path.stem.replace('staging_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.staging_dict[key] = f.read()
+
 	def _load_video_and_instruction_components(self):
 		# self.video_size = (1, 1)
 		# self.video_pos = {"center_x": 0.5, "y": 0.125}
@@ -521,7 +540,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.instruction_button.pos_hint = {'center_x': 0.5, 'y': 0.05}
 		self.instruction_button.size_hint = (0.4, 0.15)
-		self.instruction_button.text = 'Start Task'
+		self.instruction_button.text = self.tutorial_start_button_label_str
 		self.instruction_button.bind(on_press=self.start_protocol_from_tutorial)
 		
 		self.protocol_floatlayout.add_widget(self.section_instr_label)
@@ -595,16 +614,11 @@ class ProtocolScreen(ProtocolBase):
 			and (len(self.accuracy_tracking) > 0):
 			self.hit_accuracy = sum(self.accuracy_tracking) / len(self.accuracy_tracking)
 			
-			outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-				+ str(round(self.hit_accuracy * 100)) \
-				+ '%!\n\nPlease inform the researcher that you have finished this task.'
+			outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
 		
 		# Else, if combo block, provide maximum delays at each separation
 		elif self.current_stage == 'Combo':
-			outcome_string = 'Great job!\n\n'
-
 			for iElem in self.combo_probe_delay_limit_dict:
-
 				if len(self.combo_probe_delay_tracking_dict[iElem]) > 0:
 					
 					if iElem == max(self.combo_probe_sep_list):
@@ -615,26 +629,18 @@ class ProtocolScreen(ProtocolBase):
 
 					else:
 						difficulty_string = 'Medium'
-
-					outcome_string = outcome_string \
-						+ 'The maximum time you could identify locations \non the ' \
-						+ difficulty_string \
-						+ ' difficulty was ' \
-						+ str(self.combo_probe_delay_limit_dict[iElem]['min']) \
-						+ ' seconds!\n\n'
 			
-			outcome_string = outcome_string \
-				+ 'Please inform the researcher that you have finished this task.'
+			outcome_string = eval(f'f"""{self.outcome_dict.get("longresult", "")}"""')
 
 		# Else, provide generic feedback
 		else:
-			outcome_string = 'Great job!\n\nPlease inform the researcher that you have finished this task.'
+			outcome_string = eval(f'f"""{self.staging_dict.get("end", "")}"""')
 		
 		self.instruction_button.size_hint = (0.4, 0.15)
 		self.instruction_button.pos_hint = {'center_x': 0.5, 'y': 0.05}
 		self.instruction_button.unbind(on_press=self.section_start)
 		self.instruction_button.bind(on_press=self.protocol_end)
-		self.instruction_button.text = 'End Task'
+		self.instruction_button.text = self.end_task_str
 
 		self.section_instr_label.size_hint = {0.8, 0.5}
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.65}
