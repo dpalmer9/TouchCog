@@ -437,7 +437,7 @@ class LanguageMenu(Screen):
 
 		if not items_to_download:
 			# Nothing to download
-			self.main_menu = MainMenu(self.app.language)
+			self.main_menu = MainMenu()
 			self.manager.add_widget(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
