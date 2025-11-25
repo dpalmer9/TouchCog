@@ -2,14 +2,6 @@
     "questions" : [
         {
             "index": 1,
-            "text" : "What is your name?",
-            "type" : "text_input",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : []
-        },
-        {
-            "index": 2,
             "text" : "What is your age?",
             "type" : "text_input",
             "visible": true,
@@ -17,8 +9,8 @@
             "exclusions" : []
         },
         {
-            "index": 3,
-            "text" : "What was your assigned sex at birth?",
+            "index": 2,
+            "text" : "What sex were you assigned at birth (meaning on your original birth certificate)?",
             "type" : "multiple_choice",
             "visible": true,
             "inclusions" : [],
@@ -26,172 +18,85 @@
             "options" : {
                 "male": "Male",
                 "female": "Female",
-                "nodisclose": "Prefer not to disclose"
+                "undetermined": "Undetermined",
+                "nodisclose": "Prefer not to answer"
+            }
+        },
+        {
+            "index": 3,
+            "text" : "Select the option that best describes your current gender identity",
+            "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
+            "options" : {
+                "woman": "Woman",
+                "genderfluid": "Gender-fluid",
+                "man": "Man",
+                "nonbinary": "Non-binary",
+                "transwoman": "Trans woman",
+                "transman": "Trans man",
+                "twospirit": "Two-Spirit",
+                "another" : "Another",
+                "nodisclose": "Prefer not to answer"
             }
         },
         {
             "index": 4,
-            "text" : "What was your assigned sex at birth?",
-            "type" : "multi_response",
+            "text" : "The Accessible Canada Act defines disability as “any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment—or a \nfunctional limitation—whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person’s full and equal participation in society.” \nDo you identify as a person with a disability as described in the Act?",
+            "type" : "multiple_choice",
             "visible": true,
             "inclusions" : [],
             "exclusions" : [],
             "options" : {
-                "male": "Man",
-                "woman": "Woman",
-                "nonbinary": "Non-binary",
-                "fluid": "Gender Fluid",
-                "other" : "Other"
+                "yes": "Yes",
+                "no": "No",
+                "prefer_not_to_say": "Prefer not to say"
             }
         },
         {
             "index": 5,
-            "text" : "Do you self-identify as an Indigenous Person that is First Nations, Metis, or Inuk (Inuit)?",
-            "type" : "multiple_choice",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "yes": "Yes",
-                "no": "No",
-                "prefer_not_to_say": "Prefer not to say"
-            }
-        },
-        {
-            "index": 6,
-            "text" : "What racial and/or ethnic groups do you self-identify with?",
-            "type" : "multi_response",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "arab": "Arab",
-                "black": "Black",
-                "chinese": "Chinese",
-                "filipino": "Filipino",
-                "japanese": "Japanese",
-                "korean": "Korean",
-                "latin_american": "Latin American",
-                "south_asian": "South Asian (e.g., East Indian, Pakistani, Sri Lankan)",
-                "southeast_asian": "Southeast Asian (e.g., Cambodian, Laotian, Vietnamese)",
-                "west_asian": "West Asian (e.g., Iranian, Afghan)",
-                "white": "White",
-                "other": "Other"
-            }
-        },
-        {
-            "index": 7,
-            "text" : "Do you identify as a person with a disability?",
-            "type" : "multiple_choice",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "yes": "Yes",
-                "no": "No",
-                "prefer_not_to_say": "Prefer not to say"
-            }
-        },
-        {
-            "index": 8,
             "text" : "Your disability is related to... (Please check all boxes that apply to you)",
             "type" : "multi_response",
             "visible": false,
             "inclusions" : [
                 {
-                    "question_index": 7,
-                    "question": "Do you identify as a person with a disability?",
+                    "question_index": 4,
+                    "question": "The Accessible Canada Act defines disability as “any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment—or a \nfunctional limitation—whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person’s full and equal participation in society.” \nDo you identify as a person with a disability as described in the Act?",
                     "response_value": "Yes"
                 }
             ],
             "exclusions" : [],
             "options" : {
+                "communication": "Communication",
+                "developmental": "Developmental",
                 "dexterity": "Dexterity",
                 "flexibility": "Flexibility",
                 "hearing": "Hearing",
                 "learning": "Learning",
                 "memory": "Memory",
-                "mental_health": "Mental Health",
+                "mental_health": "Mental Health related",
                 "mobility": "Mobility",
-                "pain": "Pain",
-                "vision": "Vision",
-                "not_represented": "My disability is not represented in this list"
+                "pain": "Pain-related",
+                "seeing": "Seeing",
+                "other": "Other",
+                "nodisclose": "Prefer not to answer"
             }
         },
         {   
-            "index": 9,
-            "text" : "Please indicate your current sexual identity based on the following response options. Select all that apply.",
-            "type" : "multi_response",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "asexual": "Asexual",
-                "bisexual": "Bisexual",
-                "gay": "Gay",
-                "heterosexual": "Heterosexual",
-                "lesbian": "Lesbian",
-                "queer": "Queer",
-                "other": "Other"
-            }
-        },
-        {
-            "index": 10,
-            "text" : "What are the first 3 digits of your postal Code?",
-            "type" : "text_input",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : []
-        },
-        {
-            "index": 11,
-            "text" : "What is your household income range?",
+            "index": 6,
+            "text" : "Your level of education may influence your performance on certain tasks. What is the current \nhighest level of education you have achieved (note: this may differ from any courses/training \nyou are currently enrolled in).",
             "type" : "multiple_choice",
             "visible": true,
             "inclusions" : [],
             "exclusions" : [],
             "options" : {
-                "1" : "Less than $50,000",
-                "2" : "$50,000 to $59,999",
-                "3" : "$60,000 to $69,999",
-                "4" : "$70,000 to $79,999",
-                "5" : "$80,000 to $89,999",
-                "6" : "$90,000 to $99,999",
-                "7" : "$100,000 to $109,999",
-                "8" : "$110,000 to $119,999",
-                "9" : "$120,000 or more",
-                "prefer_not_to_say" : "Prefer not to say"
-            }
-        },
-        {
-            "index": 12,
-            "text" : "What best describes your current employment status?",
-            "type" : "multiple_choice",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "employed" : "Employed (full-time or part-time)",
-                "self_employed" : "Self-employed (full-time or part-time)",
-                "unemployed" : "Unemployed",
-                "student" : "Student",
-                "retired" : "Retired",
-                "prefer_not_to_say" : "Prefer not to say"
-            }
-        },
-        {
-            "index": 13,
-            "text" : "How Comfortable are you using technology, like an tablet/iPad?",
-            "type" : "rating_scale",
-            "visible": true,
-            "inclusions" : [],
-            "exclusions" : [],
-            "options" : {
-                "1" : "not at all comfortable",
-                "2" : "slightly comfortable",
-                "3" : "moderately comfortable",
-                "4" : "very comfortable",
-                "5" : "extremely comfortable"
+                "nohighschool": "Did not complete secondary (high) school or less",
+                "highschool": "Secondary (high) school diploma or equivalency",
+                "somepostsecondary": "Some post-secondary school or completed certificate program",
+                "postsecondary": "Completed post-secondary (undergraduate degree or diploma)",
+                "somegraduate" : "Some graduate school (including professional programs or graduate diploma)",
+                "graduate": "Completed graduate degree (including professional programs or graduate diploma)"
             }
         }
     ]
