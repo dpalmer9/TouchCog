@@ -45,8 +45,6 @@ class ProtocolScreen(ProtocolBase):
 		self.metadata_cols = [
 			'participant_id'
 			, 'skip_tutorial_video'
-			, 'tutorial_video_duration_pal'
-			, 'tutorial_video_duration_pa'
 			, 'block_change_on_duration_only'
 			, 'training_task'
 			, 'dpal_probe'
