@@ -350,6 +350,27 @@ class ProtocolScreen(ProtocolBase):
 	def _setup_language_localization(self):
 		self.set_language(self.language)
 
+		button_lang_path = self.lang_folder_path / 'Button.ini'
+		button_lang_config = configparser.ConfigParser()
+		button_lang_config.read(button_lang_path, encoding='utf-8')
+
+		self.stage_continue_button.text = button_lang_config.get('Buttons', 'stage_continue', fallback='Continue')
+		self.image_recall_button_str = button_lang_config.get('Buttons', 'instruction_locations', fallback='See Image Locations')
+		self.instruction_section_button_str = button_lang_config.get('Buttons', 'instruction_section', fallback='Start Section')
+
+		self.outcome_dict = {}
+		self.staging_dict = {}
+
+		for file_path in self.lang_folder_path.glob('outcome_*.txt'):
+			key = file_path.stem.replace('outcome_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.outcome_dict[key] = f.read()
+
+		for file_path in self.lang_folder_path.glob('staging_*.txt'):
+			key = file_path.stem.replace('staging_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.staging_dict[key] = f.read()
+
 	def _load_video_and_instruction_components(self):
 		# Define Widgets - Instructions
 		
@@ -408,7 +429,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button = Button(font_size='60sp')
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint =  {"center_x": 0.50, "center_y": 0.9}
-		self.stage_continue_button.text = 'Continue'
+		self.stage_continue_button.text = self.stage
 		self.stage_continue_button.bind(on_press=self.block_contingency)
 
 		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
@@ -418,8 +439,8 @@ class ProtocolScreen(ProtocolBase):
 		self._load_task_variables()
 		self._setup_session_stages()
 		self._setup_image_widgets()
-		self._setup_language_localization()
 		self._load_video_and_instruction_components()
+		self._setup_language_localization()
 
 		for stimulus in self.stimulus_grid_list:
 			self.protocol_floatlayout.add_widget(stimulus)
@@ -513,18 +534,16 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 
 		if len(self.response_tracking) <1:
-			self.outcome_string = "Great job!\n\n"
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("gj", "")}"""')
 		else:
 			hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
-			self.outcome_string = 'Great job!\n\nYour overall accuracy was ' \
-				+ str(round(hit_accuracy * 100)) \
-				+ '%!'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("acc", "")}"""')
 
 		if self.stage_index < len(self.stage_list):
-			self.stage_string = 'Please press "Continue" to start the next block.'
+			self.stage_string = eval(f'f"""{self.staging_dict.get("continue", "")}"""')
 
 		else:
-			self.stage_string = 'You have completed this task.\n\nPlease inform your researcher.'
+			self.stage_string = eval(f'f"""{self.staging_dict.get("end", "")}"""')
 			
 		stage_text = self.outcome_string + '\n\n' + self.stage_string
 		self.stage_results_label.text = stage_text
@@ -1082,13 +1101,13 @@ class ProtocolScreen(ProtocolBase):
 					self.block_max_length = self.training_block_max_correct
 
 				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
-				self.instruction_button.text = 'Start Section'
+				self.instruction_button.text = self.instruction_section_button_str
 
 				if self.current_stage == 'Recall':
 					self.tutorial_video.state = 'stop'
 					self.instruction_button.unbind(on_press=self.section_start)
 					self.instruction_button.bind(on_press=self.start_recall_target_screen)
-					self.instruction_button.text = 'See Image Locations'
+					self.instruction_button.text = self.image_recall_button_str
 					
 				self.protocol_floatlayout.add_widget(self.section_instr_label)
 				self.protocol_floatlayout.add_widget(self.instruction_button)
