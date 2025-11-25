@@ -2,7 +2,7 @@
 #                      Kivy Launcher Interface                               #
 #                      by: Daniel Palmer PhD                                 #
 #                      revisions: Filip Kosel PhD                            #
-#                      Version: 2.1                                          #
+#                      Version: 2.0.0                                        #
 ##############################################################################
 
 # Setup #
@@ -17,6 +17,8 @@ import subprocess
 import re
 import sys
 import queue
+
+TOUCHCOG_VERSION = "2.0.0"
 
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
@@ -206,6 +208,8 @@ import sys
 import json
 import threading
 import urllib.request
+import zipfile
+from datetime import datetime
 
 from Classes.Menu import MenuBase
 from Classes.Survey import SurveyBase
@@ -366,37 +370,77 @@ class LanguageMenu(Screen):
 			self.manager.current = 'mainmenu'
 			return
 
-		# Extract language entries
-		self.config['language']['language'] = self.app.language
 		# Write the user-local Config.ini in the user's home directory
+		self.config['language']['language'] = self.app.language
 		try:
 			with open(str(user_config_path), 'w', encoding='utf-8') as f:
 				self.config.write(f)
 		except Exception as e:
 			print('WARNING: Could not write Config.ini to user home:', e)
-		language_entries = None
+
+		# Ensure bin folder exists
+		self._ensure_destination(None)
+
+		# Collect all potential downloads
+		download_candidates = []
+
+		# 1. Language file
 		try:
 			for lang_block in manifest.get('languages', []):
 				if self.app.language in lang_block:
 					# lang_block[self.app.language] is a list with one dict
-					language_entries = lang_block[self.app.language][0]
+					entry = lang_block[self.app.language][0]
+					download_candidates.append(entry)
 					break
 		except Exception:
-			language_entries = None
+			pass
 
-		if not language_entries:
-			# Nothing to download for this language
+		# 2. Videos
+		for entry in manifest.get('Videos', []):
+			download_candidates.append(entry)
+
+		# 3. Battery
+		for entry in manifest.get('Battery', []):
+			download_candidates.append(entry)
+
+		# Filter for what actually needs downloading
+		items_to_download = []
+		bin_path = app_root / 'bin'
+		
+		for entry in download_candidates:
+			filename = entry.get('filename')
+			if not filename:
+				continue
+			
+			local_file = bin_path / filename
+			needs_download = False
+			
+			if not local_file.exists():
+				needs_download = True
+			else:
+				# Check date
+				manifest_date_str = entry.get('date')
+				if manifest_date_str:
+					try:
+						manifest_date = datetime.strptime(manifest_date_str, '%Y-%m-%d')
+						local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime)
+						# Compare dates (ignoring time for manifest date)
+						# If local file is older than manifest date, update
+						if local_mtime < manifest_date:
+							needs_download = True
+					except Exception as e:
+						print(f"Date comparison failed for {filename}: {e}")
+						pass
+			
+			if needs_download:
+				items_to_download.append(entry)
+
+		if not items_to_download:
+			# Nothing to download
 			self.main_menu = MainMenu(self.app.language)
 			self.manager.add_widget(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
-
-		# Collect files from Videos and Text keys
-		file_list = []
-		for key in ('Videos', 'Text'):
-			items = language_entries.get(key, [])
-			for item in items:
-				file_list.append(item)
 
 		# Prepare UI: popup with progress bar and filename label
 		self._download_popup_content = BoxLayout(orientation='vertical', spacing=10, padding=10)
@@ -404,11 +448,11 @@ class LanguageMenu(Screen):
 		self._download_bar = ProgressBar(max=100, value=0)
 		self._download_popup_content.add_widget(self._download_label)
 		self._download_popup_content.add_widget(self._download_bar)
-		self._download_popup = Popup(title='Downloading language files', content=self._download_popup_content, size_hint=(0.6, 0.3))
+		self._download_popup = Popup(title='Downloading updates', content=self._download_popup_content, size_hint=(0.6, 0.3))
 		self._download_popup.open()
 
 		# Run downloads in background thread
-		thread = threading.Thread(target=self._download_files_thread, args=(file_list,))
+		thread = threading.Thread(target=self._download_files_thread, args=(items_to_download,))
 		thread.daemon = True
 		thread.start()
 
@@ -474,66 +518,59 @@ class LanguageMenu(Screen):
 
 
 	def _ensure_destination(self, destination_path):
-		# destination_path is like '/Protocol/CPT/Language/English/' in manifest
-		# Convert to local path under app_root
-		# Strip leading slash if present
-		rel = destination_path.lstrip('/').replace('/', os.sep)
-		full = app_root / rel
-		if not full.exists():
-			full.mkdir(parents=True, exist_ok=True)
-		return full
+		# Ensure bin folder exists
+		bin_path = app_root / 'bin'
+		if not bin_path.exists():
+			bin_path.mkdir(parents=True, exist_ok=True)
+		return bin_path
 
 
 	def _download_files_thread(self, file_list):
 		total = len(file_list)
 		completed = 0
-		for entry in file_list:
-			name = entry.get('name')
-			server_path = entry.get('server_path', '')
-			destination_path = entry.get('destination_path', '')
+		bin_path = app_root / 'bin'
 
+		for entry in file_list:
+			name = entry.get('filename')
+			server_path = entry.get('server_path', '')
+			
 			# Update label to current file
 			Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Downloading: {n}'))
 
-			# Determine local destination
-			local_dest_dir = self._ensure_destination(destination_path)
-			local_file = local_dest_dir / name
-
-			# If file exists, skip
-			if local_file.exists():
-				completed += 1
-				pct = int((completed / total) * 100)
-				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
-				continue
-
-			# If no server_path provided, skip
-			if not server_path:
-				completed += 1
-				pct = int((completed / total) * 100)
-				Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
-				continue
+			local_file = bin_path / name
 
 			# Attempt download with progress
 			try:
-				with urllib.request.urlopen(server_path, timeout=30) as resp:
-					length = resp.getheader('Content-Length')
-					if length:
-						total_size = int(length)
-						bytes_so_far = 0
-						with open(local_file, 'wb') as out:
-							while True:
-								chunk = resp.read(8192)
-								if not chunk:
-									break
-								out.write(chunk)
-								bytes_so_far += len(chunk)
-								pct = int(((completed + bytes_so_far / total_size) / total) * 100)
-								Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
-					else:
-						# Unknown total size: stream to file without progress
-						with open(local_file, 'wb') as out:
-							out.write(resp.read())
-			except Exception:
+				if server_path:
+					with urllib.request.urlopen(server_path, timeout=30) as resp:
+						length = resp.getheader('Content-Length')
+						if length:
+							total_size = int(length)
+							bytes_so_far = 0
+							with open(local_file, 'wb') as out:
+								while True:
+									chunk = resp.read(8192)
+									if not chunk:
+										break
+									out.write(chunk)
+									bytes_so_far += len(chunk)
+									pct = int(((completed + bytes_so_far / total_size) / total) * 100)
+									Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+						else:
+							# Unknown total size: stream to file without progress
+							with open(local_file, 'wb') as out:
+								out.write(resp.read())
+					
+					# Extract
+					Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Extracting: {n}'))
+					try:
+						with zipfile.ZipFile(local_file, 'r') as zip_ref:
+							zip_ref.extractall(app_root)
+					except Exception as e:
+						print(f"Failed to extract {name}: {e}")
+
+			except Exception as e:
+				print(f"Failed to download {name}: {e}")
 				# On failure, ensure file doesn't exist
 				try:
 					if local_file.exists():

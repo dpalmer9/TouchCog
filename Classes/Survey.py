@@ -255,7 +255,7 @@ class SurveyBase(Screen):
             # The question at question_index should have been recorded
             if question_index < len(self.question_list):
                 # Get the question text from the question metadata
-                question_metadata = self.question_metadata_list[question_index]
+                question_metadata = self.question_metadata_list[(question_index - 1) if question_index > 0 else 0]
                 question_text = question_metadata.get('text', '')
                 
                 # Find the response for this question in survey_data

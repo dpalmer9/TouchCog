@@ -101,7 +101,7 @@
                 {
                     "question_index": 7,
                     "question": "Do you identify as a person with a disability?",
-                    "response_value": "yes"
+                    "response_value": "Yes"
                 }
             ],
             "exclusions" : [],
