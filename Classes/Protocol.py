@@ -485,6 +485,7 @@ class PreloadedVideo(Image):
 
         metadata = self.player.get_metadata()
         fr = metadata.get('frame_rate', (30, 1))
+        self.duration = metadata.get('duration', 0)
         if isinstance(fr, (tuple, list)) and len(fr) == 2 and fr[1] != 0:
             self.video_fps = float(fr[0]) / float(fr[1])
         else:
@@ -728,6 +729,7 @@ class ProtocolBase(Screen):
 		self.hold_active = True
 		self.hold_button_pressed = False
 		self.premature_override = False
+		self.skip_tutorial_video = False
 		
 		
 		# Define Variables - Counter
@@ -774,6 +776,9 @@ class ProtocolBase(Screen):
 		self.hold_button.bind(on_release=self.hold_lift_trial)
 		self.hold_button.bind(on_press=self.hold_lift_returned)
 		self.hold_button.always_release = True
+
+		# Define widgets - Video (hold)
+		self.tutorial_video = None
 		
 		
 		# Define Widgets - Text
@@ -811,6 +816,20 @@ class ProtocolBase(Screen):
 		self.return_button.size_hint = (0.1, 0.1)
 		self.return_button.pos_hint = {'center_x': 0.5, 'center_y': 0.7}
 		self.return_button.bind(on_press=self.return_to_main)
+
+		self.tutorial_continue_button = Button(text='Continue', font_size='48sp')
+		self.tutorial_continue_button.size_hint = [0.4, 0.15]
+		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
+		self.tutorial_start_button.size_hint = [0.4, 0.15]
+		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
+		self.tutorial_restart_button.size_hint = [0.4, 0.15]
+		self.tutorial_restart_button.pos_hint = {"center_x": 0.25, "y": 0.01}
+		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
+		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+		
 	
 	def update_task(self):
 		
@@ -966,14 +985,26 @@ class ProtocolBase(Screen):
 		button_lang_config = configparser.ConfigParser()
 		button_lang_config.read(button_lang_path, encoding='utf-8')
 		
-		start_button_label_str = button_lang_config['Button']['start']
+		start_button_label_str = button_lang_config.get('Button', 'start', fallback='Start')
 		self.start_button.text = start_button_label_str
 		
-		continue_button_label_str = button_lang_config['Button']['continue']
+		continue_button_label_str = button_lang_config.get('Button', 'continue', fallback='Continue')
 		self.continue_button.text = continue_button_label_str
 		
-		return_button_label_str = button_lang_config['Button']['return']
+		return_button_label_str = button_lang_config.get('Button', 'return', fallback='Return')
 		self.return_button.text = return_button_label_str
+		
+		tutorial_continue_button_label_str = button_lang_config.get('Button', 'tutorial_continue', fallback='Continue')
+		self.tutorial_continue_button.text = tutorial_continue_button_label_str
+
+		tutorial_start_button_label_str = button_lang_config.get('Button', 'tutorial_start', fallback='Start Task')
+		self.tutorial_start_button.text = tutorial_start_button_label_str
+
+		tutorial_restart_button_label_str = button_lang_config.get('Button', 'tutorial_restart', fallback='Restart Video')
+		self.tutorial_restart_button.text = tutorial_restart_button_label_str
+
+		tutorial_button_label_str = button_lang_config.get('Button', 'tutorial', fallback='Tap the screen\nto start video')
+		self.tutorial_video_button.text = tutorial_button_label_str
 		
 		feedback_lang_path = lang_folder_path / 'Feedback.ini'
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
@@ -1105,7 +1136,57 @@ class ProtocolBase(Screen):
 		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
 		return
 	
+	def present_tutorial_video(self, *args):
+
+		self.protocol_floatlayout.clear_widgets()
+
+		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
+		self.tutorial_restart_button.size_hint = [0.4, 0.15]
+		self.tutorial_restart_button.pos_hint = {"center_x": 0.25, "y": 0.01}
+		self.tutorial_video_button.size_hint = (1, 1)
+		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+			
+		self.protocol_floatlayout.add_stage_event('Object Display')
+
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
+
+		
+		self.tutorial_video.state = 'stop'
+		if self.skip_tutorial_video:
+			self.tutorial_video_duration = 0.0
+		else:
+			self.tutorial_video_duration = self.tutorial_video.duration
+
+		self.tutorial_video_first_play = True
+
+		return
 	
+
+	def start_tutorial_video(self, *args):
+
+		self.tutorial_video.state = 'play'
+
+		if self.tutorial_video_first_play:
+			self.tutorial_video_first_play = False
+			self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
+			Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
+			self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
+
+		return
+
+
+	def present_tutorial_video_start_button(self, *args):
+
+		self.protocol_floatlayout.add_widget(self.tutorial_continue_button)
+		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
+		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
+		return
+
+	def tutorial_restart(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.start_tutorial_video()
 	
 	def present_instructions(self):
 		

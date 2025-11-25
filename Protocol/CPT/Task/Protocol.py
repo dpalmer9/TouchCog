@@ -9,7 +9,7 @@ import statistics
 import time
 from collections import Counter
 
-from Classes.Protocol import ImageButton, ProtocolBase
+from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
 from kivy.clock import Clock
 from kivy.config import Config
@@ -128,7 +128,6 @@ class ProtocolScreen(ProtocolBase):
 		self.participant_id = parameters_dict.get('participant_id', '')
 
 		self.skip_tutorial_video = parameters_dict.get('skip_tutorial_video', 'False')
-		self.tutorial_video_duration = float(parameters_dict.get('tutorial_video_duration', '69.00'))
 
 		self.block_change_on_duration = parameters_dict.get('block_change_on_duration_only', 'True')
 		
@@ -545,6 +544,7 @@ class ProtocolScreen(ProtocolBase):
 		# Define Widgets - Images
 
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
+		self.tutorial_continue_button.bind(on_press=self.tutorial_video_stop)
 		
 		self.hold_button.source = str(self.hold_image_path)
 		self.hold_button.bind(on_press=self.iti_start)
@@ -633,10 +633,11 @@ class ProtocolScreen(ProtocolBase):
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_path
+			self.tutorial_video = PreloadedVideo(
+				source_path = self.tutorial_video_path
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
-				, fit_mode = 'contain'
+				, fit_mode = 'contain',
+				loop=False
 				)
 
 		# Define Instruction Components
@@ -690,15 +691,9 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_stimulus_image = ImageButton(source=str(self.image_folder / self.fribble_folder / (self.target_image + '.png')))
 		self.tutorial_outline = ImageButton(source=str(self.outline_mask_path))
 		self.tutorial_checkmark = ImageButton(source=str(self.image_folder / 'checkmark.png'))
-		self.tutorial_continue = Button(text='Continue', font_size='48sp')
-		self.tutorial_continue.bind(on_press=self.tutorial_target_present_screen)
-		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
-		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
-		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
+		self.tutorial_continue_button.bind(on_press=self.tutorial_target_present_screen)
 		self.tutorial_start_button.bind(on_press=self.start_protocol_from_tutorial)
-		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
-		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+		
 		
 		self.tutorial_stimulus_image.size_hint = self.stimulus_image_size
 		self.tutorial_stimulus_image.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
@@ -706,9 +701,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_outline.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
 		self.tutorial_checkmark.size_hint = ((0.2 * self.width_adjust), (0.2 * self.height_adjust))
 		self.tutorial_checkmark.pos_hint = {'center_x': 0.52, 'center_y': 0.9}
-		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
-		self.tutorial_continue.size_hint = self.text_button_size
 		
 		# Instruction - Text Widget
 		self.section_instr_string = ''
@@ -780,63 +772,18 @@ class ProtocolScreen(ProtocolBase):
 
 	# Protocol Staging
 
-	def present_tutorial_video(self, *args):
-
-		self.protocol_floatlayout.clear_widgets()
-
-		self.tutorial_continue.pos_hint = self.text_button_pos_LR
-		self.tutorial_continue.bind(on_press=self.tutorial_video_stop)
-		self.tutorial_restart_button.size_hint = self.text_button_size
-		self.tutorial_restart_button.pos_hint = self.text_button_pos_LL
-		self.tutorial_video_button.size_hint = (1, 1)
-		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
-			
-		self.protocol_floatlayout.add_stage_event('Object Display')
-
-		self.protocol_floatlayout.add_widget(self.tutorial_video)
-		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
-
-		self.tutorial_video.state = 'stop'
-
-		self.tutorial_video_first_play = True
-
-		return
-	
-
-	def start_tutorial_video(self, *args):
-
-		self.tutorial_video.state = 'play'
-
-		if self.tutorial_video_first_play:
-			self.tutorial_video_first_play = False
-			self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
-			Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
-			self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
-
-		return
-
-
-	def present_tutorial_video_start_button(self, *args):
-
-		self.protocol_floatlayout.add_widget(self.tutorial_continue)
-		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
-		return
-
-
 
 	def present_tutorial_text(self, *args):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.tutorial_continue.pos_hint = self.text_button_pos_LR
+		self.tutorial_continue_button.pos_hint = self.text_button_pos_LR
 
 		self.instruction_label.pos_hint = {'center_x': 0.5, 'y': 0.35}
 		self.instruction_label.text = self.instruction_config['Main']['no_video']
 		
 		self.protocol_floatlayout.add_widget(self.instruction_label)
-		self.protocol_floatlayout.add_widget(self.tutorial_continue)
+		self.protocol_floatlayout.add_widget(self.tutorial_continue_button)
 
 		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
 		self.protocol_floatlayout.add_text_event('Displayed', 'Task Instruction')
@@ -849,10 +796,6 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.state = 'stop'
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.tutorial_target_present_screen()
-
-	def tutorial_restart(self, *args):
-		self.tutorial_video.state = 'stop'
-		self.start_tutorial_video()
 
 
 

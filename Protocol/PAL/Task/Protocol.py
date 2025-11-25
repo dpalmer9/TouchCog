@@ -7,7 +7,7 @@ import random
 import statistics
 import time
 
-from Classes.Protocol import ImageButton, ProtocolBase
+from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
 from kivy.clock import Clock
 from kivy.config import Config
@@ -106,8 +106,6 @@ class ProtocolScreen(ProtocolBase):
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
 		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
-		self.tutorial_video_duration_PAL = float(self.parameters_dict.get('tutorial_video_duration_pal', '45.20'))
-		self.tutorial_video_duration_PA = float(self.parameters_dict.get('tutorial_video_duration_pa', '59.00'))
 
 		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
 		
@@ -381,11 +379,11 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video_PAL_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 1*'))[0])
 			self.tutorial_video_PA_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 2*'))[0])
 
-			self.tutorial_video = Video(
-				source = self.tutorial_video_PAL_path
+			self.tutorial_video = PreloadedVideo(
+				source_path = self.tutorial_video_PAL_path
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
 				, fit_mode = 'contain'
-				, state = 'stop'
+				, loop=False
 				)
 		
 		
@@ -415,15 +413,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button.text = 'Continue'
 		self.stage_continue_button.bind(on_press=self.block_contingency)
 
-		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
-		self.tutorial_start_button.bind(on_press=self.stop_tutorial_video)
-		
-		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
-		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
-		
-		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
-		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
 
 	def load_parameters(self,parameter_dict):
 		self._load_config_parameters(parameter_dict)
@@ -489,68 +479,11 @@ class ProtocolScreen(ProtocolBase):
 			x_pos += 1
 		
 		return stimulus_grid_loc
-
-
-	def present_tutorial_video(self, *args):
-
-		self.protocol_floatlayout.clear_widgets()
-
-		self.protocol_floatlayout.add_stage_event('Object Display')
-
-		if self.current_stage == 'Recall':
-			self.tutorial_video.source = self.tutorial_video_PA_path
-			self.tutorial_video_duration = self.tutorial_video_duration_PA
-		else:
-			self.tutorial_video_duration = self.tutorial_video_duration_PAL
-
-		self.tutorial_video.state = 'stop'
-		self.tutorial_video._video = None
-		self.tutorial_video.reload()
-		
-		self.tutorial_start_button.size_hint = self.text_button_size
-		self.tutorial_start_button.pos_hint = self.text_button_pos_LR
-		
-		self.tutorial_restart_button.size_hint = self.text_button_size
-		self.tutorial_restart_button.pos_hint = self.text_button_pos_LL
-		
-		self.tutorial_video_button.size_hint = (1, 1)
-		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
-
-		self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', self.tutorial_video.source)
-
-		self.protocol_floatlayout.add_widget(self.tutorial_video)
-		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
-
-		self.tutorial_video.state = 'stop'
-
-		self.tutorial_video_first_play = True
-
-		return
-
-	def start_tutorial_video(self, *args):
-
-		self.tutorial_video.state = 'play'
-
-		if self.tutorial_video_first_play:
-			self.tutorial_video_first_play = False
-			self.protocol_floatlayout.remove_widget(self.tutorial_video_button)
-			Clock.schedule_once(self.present_tutorial_video_start_button, self.tutorial_video_duration)
-			self.protocol_floatlayout.add_object_event('Display', 'Video', 'Section', 'Instructions')
-
-		return
-
-	def present_tutorial_video_start_button(self, *args):
-
-		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
-		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
-			
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Section Start')
-		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Section', 'Instructions - Video Restart')
-		return
 	
 	
 	def stop_tutorial_video(self, *args):
 		self.tutorial_video.state = 'stop'
+		self.tutorial_video.unload()
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 
 		if self.stage_index < 0:
@@ -559,10 +492,6 @@ class ProtocolScreen(ProtocolBase):
 		# 	self.start_recall_target_screen()
 		else:
 			self.block_contingency()
-
-	def tutorial_restart(self, *args):
-		self.tutorial_video.state = 'stop'
-		self.start_tutorial_video()
 
 	def section_start(self, *args):
 
@@ -1085,6 +1014,8 @@ class ProtocolScreen(ProtocolBase):
 				# self.tutorial_start_button.unbind(on_press=self.start_protocol_from_tutorial)
 				# self.tutorial_start_button.bind(on_press=self.block_contingency)
 				self.recall_video_presented = True
+				self.tutorial_video.source = self.tutorial_video_PA_path
+				self.tutorial_video.reload()
 				self.present_tutorial_video()
 				return
 			else:
