@@ -257,6 +257,19 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
 		self.feedback_label.text = ''
 
+		self.outcome_dict = {}
+		self.staging_dict = {}
+
+		for file_path in self.lang_folder_path.glob('outcome_*.txt'):
+			key = file_path.stem.replace('outcome_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.outcome_dict[key] = f.read()
+
+		for file_path in self.lang_folder_path.glob('staging_*.txt'):
+			key = file_path.stem.replace('staging_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.staging_dict[key] = f.read()
+
 
 	def _load_video_and_instruction_components(self):
 		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
@@ -364,12 +377,7 @@ class ProtocolScreen(ProtocolBase):
 			self.participant_stopped = True
 			self.feedback_on_screen = False
 
-			self.outcome_string = 'Great job!\n\nYou completed ' \
-				+ str(self.total_hit_count//2) \
-				+ ' trials and ' \
-				+ str(self.current_block - 1) \
-				+ ' blocks!\n\n' \
-				+ 'Please inform the researcher that you have finished this task.'
+			self.outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
 
 			self.feedback_label.text = self.outcome_string
 			
@@ -617,8 +625,7 @@ class ProtocolScreen(ProtocolBase):
 			else:
 
 				if self.current_block == 1:
-					self.feedback_label.text = 'Press and hold the white button to start the first \ntrial, or press "End Task" to end the task.'
-
+					self.feedback_label.text = self.feedback_dict['start_block']
 					self.hold_button.bind(on_press=self.start_block)
 					
 					self.protocol_floatlayout.add_widget(self.quit_button)
@@ -627,7 +634,7 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
 					
 				else:
-					self.feedback_label.text = 'Block complete!\n\nPress and hold the white button to start the next \ntrial, or press "End Task" to end the task.'
+					self.feedback_label.text = self.feedback_dict['mid_block']
 
 					self.hold_button.bind(on_press=self.start_block)
 					
