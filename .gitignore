@@ -1,6 +1,7 @@
 *.mp4
 *.MP4
 *.pyc
+*.zip
 .DS_Store
 build/
 dist/
