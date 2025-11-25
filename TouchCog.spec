@@ -9,7 +9,8 @@ datas = [
     ('Protocol', 'Protocol'),
     ('Classes', 'Classes'),
     ('Language', 'Language'),
-    ('Battery', 'Battery')
+    ('Battery', 'Battery'),
+    ('bin', 'bin')
 ]
 
 a = Analysis(['C:\\Users\\MOUSETRAP-DAN\\Documents\\TouchCog\\TouchCog\\KivyMenuInterface.py'],
