@@ -1,0 +1,1 @@
+Great job! You have earned {str(self.point_counter)} points!

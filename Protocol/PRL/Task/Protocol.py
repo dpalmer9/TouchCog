@@ -260,6 +260,26 @@ class ProtocolScreen(ProtocolBase):
 	def _setup_language_localization(self):
 		self.set_language(self.language)
 
+		button_lang_path = self.lang_folder_path / 'Button.ini'
+		button_lang_config = configparser.ConfigParser()
+		button_lang_config.read(button_lang_path, encoding='utf-8')
+
+		self.end_protocol_button_str = button_lang_config['Button']['end_task']
+		self.begin_section_button_str = button_lang_config['Button']['begin_section']
+
+		self.outcome_dict = {}
+		self.staging_dict = {}
+
+		for file_path in self.lang_folder_path.glob('outcome_*.txt'):
+			key = file_path.stem.replace('outcome_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.outcome_dict[key] = f.read()
+
+		for file_path in self.lang_folder_path.glob('staging_*.txt'):
+			key = file_path.stem.replace('staging_', '')
+			with open(file_path, 'r', encoding='utf-8') as f:
+				self.staging_dict[key] = f.read()
+
 	def _load_video_and_instruction_components(self):
 		# Tutorial Import
 
@@ -364,10 +384,10 @@ class ProtocolScreen(ProtocolBase):
 		self.end_protocol_button = Button(font_size='60sp')
 		self.end_protocol_button.size_hint = [0.4, 0.15]
 		self.end_protocol_button.pos_hint =  {"center_x": 0.50, "center_y": 0.1}
-		self.end_protocol_button.text = 'End Task'
+		self.end_protocol_button.text = self.end_protocol_button_str
 		self.end_protocol_button.bind(on_press=self.protocol_end)
 
-		self.result_label_str = 'Great job! You have earned ' + str(self.point_counter) + ' points!'
+		self.result_label_str = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
 		self.result_label = Label(text=self.result_label_str, font_size='50sp', markup=True, halign='center')
 		self.result_label.size_hint = (0.8, 0.3)
 		self.result_label.pos_hint = {'center_x': 0.5, 'center_y': 0.6}
@@ -767,7 +787,7 @@ class ProtocolScreen(ProtocolBase):
 				else:
 					self.instruction_label.text = self.instruction_dict['Main']['task']
 
-				self.instruction_button.text = 'Begin Section'
+				self.instruction_button.text = self.begin_section_button_str
 
 				self.protocol_floatlayout.add_widget(self.instruction_label)
 				self.protocol_floatlayout.add_widget(self.instruction_button)
