@@ -1,0 +1,71 @@
+{
+    "name": "TouchCog Full Battery - 2.0.0",
+    "version": "1.0.0",
+    "touchcog_version": "<2.1.0",
+    "description": "Full Touchscreen Cognition Battery",
+    "author": "Daniel Palmer, PhD",
+    "tasks": [
+        {
+            "task": "Demographic",
+            "name": "Demographic Survey",
+            "type": "survey",
+            "description": "A survey to collect demographic information from participants.",
+            "overrides": {
+
+            }
+        },
+        {
+            "task": "CPT",
+            "name": "Continuous Performance Task",
+            "type": "task",
+            "description": "A task measuring sustained attention and response inhibition.",
+            "overrides": {
+            },
+            "required": {
+                "image_set": "Image Set"
+            }
+        },
+        {
+            "task": "TUNL",
+            "name": "Trial-Unique Non-Matching to Location",
+            "type": "task",
+            "description": "A task evaluating spatial working memory by requiring non-matching to location responses.",
+            "overrides": {
+            },
+            "required": {
+            }
+        },
+        {
+            "task": "PAL",
+            "name": "Paired Associates Learning",
+            "type": "task",
+            "description": "A task assessing visual spatial memory through paired associations.",
+            "overrides": {
+            },
+            "required": {
+                "dspal_image_set": "dsPAL Image Set",
+                "recall_image_set": "Recall Image Set"
+            }
+        },
+        {
+            "task": "PRL",
+            "name": "Probabilistic Reversal Learning",
+            "type": "task",
+            "description": "A task evaluating cognitive flexibility through probabilistic reversal learning.",
+            "overrides": {
+            },
+            "required": {
+            }
+        },
+        {
+            "task": "PR",
+            "name": "Progressive Ratio",
+            "type": "task",
+            "description": "A task evaluating motivation by requiring increasing effort for feedback.",
+            "overrides": {
+            },
+            "required": {
+            }
+        }
+    ]
+}
