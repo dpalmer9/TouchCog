@@ -780,6 +780,8 @@ class ProtocolScreen(ProtocolBase):
 	def hold_released(self, *args): # Trial outcomes: 7-Cue abort,8-Delay abort
 		Clock.unschedule(self.delay_present)
 		Clock.unschedule(self.delay_end)
+		Clock.unschedule(self.stimulus_presentation_end)
+		self.hold_button_pressed = False
 		
 		self.protocol_floatlayout.clear_widgets()
 
