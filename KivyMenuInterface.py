@@ -1415,6 +1415,10 @@ class MenuApp(App):
 	
 	def on_stop(self):
 		self.event_queue.put(None)
+		try:
+			self.s_manager.current_screen.clear_video_cache()
+		except Exception:
+			pass
 		if len(self.event_list) > 0:
 			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
 			self.session_event_data = self.session_event_data.sort_values(by=['Time'])

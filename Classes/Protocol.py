@@ -1186,7 +1186,10 @@ class ProtocolBase(Screen):
 
 	def tutorial_restart(self, *args):
 		self.tutorial_video.state = 'stop'
-		self.start_tutorial_video()
+		self.tutorial_video.unload()
+		self.tutorial_video.reload()
+		self.tutorial_video.state = 'play'
+		# self.start_tutorial_video()
 	
 	def present_instructions(self):
 		
@@ -1255,7 +1258,7 @@ class ProtocolBase(Screen):
 	
 	# End Staging #
 
-	def _clear_video_cache(self):
+	def clear_video_cache(self):
 		video_file_names = ['delay_video','tutorial_video']
 
 		for video_name in video_file_names:
@@ -1271,36 +1274,17 @@ class ProtocolBase(Screen):
 				pass
 
 			try:
-				if video_attr._video:
-					video_attr._video.stop()
-					video_attr._video.unload()
+				video_attr.unload()
+				video_attr = None
 			except Exception:	
 				pass
 
-			try:
-				if hasattr(self,'_check_delay_video_loaded'):
-					video_attr.unbind(loaded=self._check_delay_video_loaded)
-			except Exception:
-				pass
-
-			try:
-				video_attr.source = ''
-			except Exception:
-				pass
-
-			try:
-				delattr(self, video_name)
-			except Exception:
-				try:
-					setattr(self, video_name, None)
-				except Exception:
-					pass
 			
 		gc.collect()
 	
 	def protocol_end(self, *args):
 		# Check Video Removal
-		self._clear_video_cache()
+		self.clear_video_cache()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
 		
