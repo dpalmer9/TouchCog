@@ -309,7 +309,8 @@ class ProtocolScreen(ProtocolBase):
 		self._load_video_and_instruction_components()
 		
 		# Begin Task
-
+		
+		self.start_clock()
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 
 			self.protocol_floatlayout.clear_widgets()
@@ -373,8 +374,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		self.generate_output_files()
 		self.metadata_output_generation()
-
-		self.start_clock()
 
 		self.block_contingency()
 

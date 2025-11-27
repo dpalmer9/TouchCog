@@ -444,6 +444,7 @@ class ProtocolScreen(ProtocolBase):
 		self._load_video_and_instruction_components()
 
 
+		self.start_clock()
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 
 			self.protocol_floatlayout.clear_widgets()
