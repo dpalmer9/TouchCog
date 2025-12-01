@@ -1,0 +1,1 @@
+Great job!\n\nYour overall accuracy was {str(round(self.hit_accuracy * 100))}%!\n\nPlease inform the researcher that you have finished this task.

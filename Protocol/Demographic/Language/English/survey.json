@@ -1,0 +1,103 @@
+{
+    "questions" : [
+        {
+            "index": 1,
+            "text" : "What is your age?",
+            "type" : "text_input",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : []
+        },
+        {
+            "index": 2,
+            "text" : "What sex were you assigned at birth (meaning on your original birth certificate)?",
+            "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
+            "options" : {
+                "male": "Male",
+                "female": "Female",
+                "undetermined": "Undetermined",
+                "nodisclose": "Prefer not to answer"
+            }
+        },
+        {
+            "index": 3,
+            "text" : "Select the option that best describes your current gender identity",
+            "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
+            "options" : {
+                "woman": "Woman",
+                "genderfluid": "Gender-fluid",
+                "man": "Man",
+                "nonbinary": "Non-binary",
+                "transwoman": "Trans woman",
+                "transman": "Trans man",
+                "twospirit": "Two-Spirit",
+                "another" : "Another",
+                "nodisclose": "Prefer not to answer"
+            }
+        },
+        {
+            "index": 4,
+            "text" : "The Accessible Canada Act defines disability as 'any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment—or a \nfunctional limitation—whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person’s full and equal participation in society.' \nDo you identify as a person with a disability as described in the Act?",
+            "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
+            "options" : {
+                "yes": "Yes",
+                "no": "No",
+                "prefer_not_to_say": "Prefer not to say"
+            }
+        },
+        {
+            "index": 5,
+            "text" : "Your disability is related to... (Please check all boxes that apply to you)",
+            "type" : "multi_response",
+            "visible": false,
+            "inclusions" : [
+                {
+                    "question_index": 4,
+                    "question": "The Accessible Canada Act defines disability as 'any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment—or a \nfunctional limitation—whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person’s full and equal participation in society.' \nDo you identify as a person with a disability as described in the Act?",
+                    "response_value": "Yes"
+                }
+            ],
+            "exclusions" : [],
+            "options" : {
+                "communication": "Communication",
+                "developmental": "Developmental",
+                "dexterity": "Dexterity",
+                "flexibility": "Flexibility",
+                "hearing": "Hearing",
+                "learning": "Learning",
+                "memory": "Memory",
+                "mental_health": "Mental Health related",
+                "mobility": "Mobility",
+                "pain": "Pain-related",
+                "seeing": "Seeing",
+                "other": "Other",
+                "nodisclose": "Prefer not to answer"
+            }
+        },
+        {   
+            "index": 6,
+            "text" : "Your level of education may influence your performance on certain tasks. What is the current \nhighest level of education you have achieved (note: this may differ from any courses/training \nyou are currently enrolled in).",
+            "type" : "multiple_choice",
+            "visible": true,
+            "inclusions" : [],
+            "exclusions" : [],
+            "options" : {
+                "nohighschool": "Did not complete secondary (high) school or less",
+                "highschool": "Secondary (high) school diploma or equivalency",
+                "somepostsecondary": "Some post-secondary school or completed certificate program",
+                "postsecondary": "Completed post-secondary (undergraduate degree or diploma)",
+                "somegraduate" : "Some graduate school (including professional programs or graduate diploma)",
+                "graduate": "Completed graduate degree (including professional programs or graduate diploma)"
+            }
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+{
+	"application_name" : "TouchCog",
+	"current_version" : "2.0.0",
+	"languages" : [
+	{
+		"English" : [
+		{
+			"version" : "2.0.0",
+			"date" : "2025-11-24",
+			"filename" : "English.zip",
+			"server_path" : "https://touchscreencognition.org/uploads/English.zip"
+		}
+		]
+	}
+	],
+	"Videos" : [
+	{
+		"name" : "Delay Video",
+		"version" : "2.0.0",
+		"date" : "2025-11-24",
+		"filename" : "Delay_Video.zip",
+		"server_path" : "https://touchscreencognition.org/uploads/Delay_Video.zip"
+			}
+	],
+	"Battery" : [
+		{
+			"version" : "2.0.0",
+			"date" : "2025-11-24",
+			"filename" : "Battery.zip",
+			"server_path" : "https://touchscreencognition.org/uploads/Battery.zip"
+		}
+	]
+}

@@ -1,38 +1,158 @@
 ##############################################################################
 #                      Kivy Launcher Interface                               #
 #                      by: Daniel Palmer PhD                                 #
-#                      contributor: Filip Kosel PhD                          #
-#                      Version: 2.1                                          #
+#                      revisions: Filip Kosel PhD                            #
+#                      Version: 2.0.0                                        #
 ##############################################################################
-
-
-
 
 # Setup #
 
 import configparser
-import cProfile
 import importlib
 import importlib.util
 import os
+import shutil
 import pathlib
+import subprocess
+import re
+import sys
+import queue
+
+TOUCHCOG_VERSION = "2.0.0"
+
+os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+os.environ['KIVY_AUDIO'] = 'ffpyplayer'
+
+def get_base_path():
+	"""
+	Determines the correct base path for the executable, whether running
+	in a PyInstaller bundle or in development mode.
+	"""
+	if getattr(sys, 'frozen', False):
+		# When running as a PyInstaller executable, PyInstaller extracts
+		# bundled data to a temporary folder accessible via sys._MEIPASS.
+		# Prefer that location for resource access (onefile builds). If
+		# sys._MEIPASS is not present (e.g. onedir builds), fall back to
+		# the parent dir of the executable.
+		meipass = getattr(sys, '_MEIPASS', None)
+		if meipass:
+			return pathlib.Path(meipass).resolve()
+		return pathlib.Path(sys.executable).resolve().parent
+	else:
+		# Running in development: use the script's current directory
+		return pathlib.Path(__file__).parent.resolve()
 
 from kivy.config import Config
+# Change current working directory to location of this file
+
+def get_refresh_rate():
+	"""
+	Returns the current display refresh rate as an integer (Hz).
+	Falls back to sensible defaults or None when detection is not possible.
+	"""
+	if sys.platform.startswith('win'):
+		import ctypes
+		user32 = ctypes.windll.user32
+		class DEVMODE(ctypes.Structure):
+			_fields_ = [
+				("dmDeviceName", ctypes.c_wchar * 32),
+				("dmSpecVersion", ctypes.c_ushort),
+				("dmDriverVersion", ctypes.c_ushort),
+				("dmSize", ctypes.c_ushort),
+				("dmDriverExtra", ctypes.c_ushort),
+				("dmFields", ctypes.c_ulong),
+				("dmOrientation", ctypes.c_short),
+				("dmPaperSize", ctypes.c_short),
+				("dmPaperLength", ctypes.c_short),
+				("dmPaperWidth", ctypes.c_short),
+				("dmScale", ctypes.c_short),
+				("dmCopies", ctypes.c_short),
+				("dmDefaultSource", ctypes.c_short),
+				("dmPrintQuality", ctypes.c_short),
+				("dmColor", ctypes.c_short),
+				("dmDuplex", ctypes.c_short),
+				("dmYResolution", ctypes.c_short),
+				("dmTTOption", ctypes.c_short),
+				("dmCollate", ctypes.c_short),
+				("dmFormName", ctypes.c_wchar * 32),
+				("dmLogPixels", ctypes.c_ushort),
+				("dmBitsPerPel", ctypes.c_ulong),
+				("dmPelsWidth", ctypes.c_ulong),
+				("dmPelsHeight", ctypes.c_ulong),
+				("dmDisplayFlags", ctypes.c_ulong),
+				("dmDisplayFrequency", ctypes.c_ulong)
+			]
+		devmode = DEVMODE()
+		devmode.dmSize = ctypes.sizeof(DEVMODE)
+		if user32.EnumDisplaySettingsW(None, -1, ctypes.byref(devmode)):
+			return int(devmode.dmDisplayFrequency)
+		return 60  # fallback
+	elif sys.platform.startswith('linux'):
+		# Try to use xrandr (X11). For Wayland or systems without xrandr this will fail and return None
+		try:
+			out = subprocess.check_output(['xrandr', '--verbose'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')
+			# First try to find the frequency value that has a '*' (current mode), e.g. "60.00*"
+			m = re.search(r"(\d+(?:\.\d+)?)\s*\*", out)
+			if m:
+				rate = float(m.group(1))
+				return int(round(rate))
+			# Fallback: search for 'current' lines that mention Hz
+			m = re.search(r"[Cc]urrent[^\n\r]*?(\d+(?:\.\d+)?)\s*Hz", out)
+			if m:
+				rate = float(m.group(1))
+				return int(round(rate))
+		except Exception:
+			pass
+		# Could not detect
+		return None
+	elif sys.platform.startswith('darwin'):
+		try:
+			out = subprocess.check_output(['system_profiler', 'SPDisplaysDataType'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')
+			m = re.search(r'Refresh Rate:\s*(\d+(?:\.\d+)?)\s*Hz', out)
+			if m:
+				return int(round(float(m.group(1))))
+		except Exception:
+			pass
+		# Could not detect
+		return None
+	else:
+		return None
 
 
 
 
 # Change current working directory to location of this file
 
-os.chdir(pathlib.Path(__file__).parent.resolve())
+app_root = get_base_path()
 
-config_path = pathlib.Path('Screen.ini')
+# Ensure a per-user Config.ini exists in the user's home directory. If not, copy
+# the default packaged Config.ini from app_root into the user's home.
+user_config_path = pathlib.Path.home() / 'Documents' / 'TouchCog' / 'Config.ini'
+if not user_config_path.exists():
+	try:
+		# If running as a PyInstaller onefile executable, resources are extracted
+		# to sys._MEIPASS; prefer that path for the packaged config file.
+		packaged_root = pathlib.Path(getattr(sys, '_MEIPASS', app_root))
+		packaged_config = packaged_root / 'Config.ini'
+		# Ensure the parent folder exists for user_config_path
+		try:
+			user_config_path.parent.mkdir(parents=True, exist_ok=True)
+		except Exception:
+			pass
+		if packaged_config.exists():
+			shutil.copy2(str(packaged_config), str(user_config_path))
+			print("Copied Config.ini from packaged root to user home:", user_config_path)
+		else:
+			print("WARNING: default Config.ini not found in packaged root:", packaged_config)
+	except Exception as e:
+		print("WARNING: Could not copy Config.ini to user home:", e)
 
-# main_path = os.getcwd()
-# config_path = main_path + '/Screen.ini'
+# Use the user-local config path for all subsequent reads/writes
+config_path = user_config_path
 
 config_file = configparser.ConfigParser()
-config_file.read(config_path)
+read_files = config_file.read(str(config_path), encoding='utf-8')
+print("Read Config files:", read_files)
 
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']
@@ -42,14 +162,13 @@ virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 Config.set('graphics', 'allow_screensaver', 0)
 Config.set('kivy', 'kivy_clock', 'interrupt')
-Config.set('graphics', 'maxfps', 0)
-
-
-
+maxfps = get_refresh_rate()
+if maxfps is not None:
+	Config.set('graphics', 'maxfps', str(maxfps))
+else:
+	Config.set('graphics', 'maxfps', 0)
 
 if fullscreen == 0:
-	
-	
 	Config.set('graphics', 'width', str(x_dim))
 	Config.set('graphics', 'height', str(y_dim))
 	Config.set('graphics', 'fullscreen', '0')
@@ -57,10 +176,7 @@ if fullscreen == 0:
 	Config.set('graphics', 'top', 0)
 	Config.set('graphics', 'left', 0)
 
-
 elif fullscreen == 1:
-	
-	
 	Config.set('graphics', 'width', str(x_dim))
 	Config.set('graphics', 'height', str(y_dim))
 	Config.set('graphics', 'position', 'custom')
@@ -69,25 +185,14 @@ elif fullscreen == 1:
 	Config.set('graphics', 'fullscreen', True)
 
 
-
-
 if virtual_keyboard == 0:
-	
-	
 	Config.set('kivy', 'keyboard_mode', 'system')
 
-
 elif virtual_keyboard == 1:
-	
-	
 	Config.set('kivy', 'keyboard_mode', 'systemanddock')
 
 
-
-
 if use_mouse == 0:
-	
-	
 	Config.set('graphics', 'show_cursor', 0)
 
 
@@ -100,9 +205,14 @@ import kivy
 import os
 import pandas as pd
 import sys
-import zipimport
+import json
+import threading
+import urllib.request
+import zipfile
+from datetime import datetime
 
 from Classes.Menu import MenuBase
+from Classes.Survey import SurveyBase
 
 from functools import partial
 
@@ -114,16 +224,19 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.textinput import TextInput
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.widget import Widget
-
-# from Protocol_Configure import Protocol_Select
-
-# from win32api import GetSystemMetrics
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.scrollview import ScrollView
+from kivy.graphics import Color, Line
+from kivy.uix.dropdown import DropDown
+from kivy.uix.progressbar import ProgressBar
+from kivy.uix.popup import Popup
 
 
 
@@ -133,53 +246,44 @@ from kivy.uix.widget import Widget
 Window.size = (int(x_dim), int(y_dim))
 Window.borderless = '0'
 
+def search_protocols():
+		task_path = app_root / 'Protocol'
+		task_list = list(task_path.glob('*'))
+		output_list = list()
+		
+		for task in task_list:
+		
+			if not task.is_dir():
+				continue
+			
+			output_list.append(task.stem)
+		
+		return output_list
 
+def protocol_constructor(protocol, mod_name):
+		
+		def lazy_import(protocol, mod_name):
+			working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
+			unique_mod_name = f"{protocol}.{mod_name}"
+			mod_spec = importlib.util.spec_from_file_location(unique_mod_name, working)
+			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
+			mod_spec.loader = mod_loader
+			module = importlib.util.module_from_spec(mod_spec)
+			sys.modules[unique_mod_name] = module
+			mod_loader.exec_module(module)
+			
+			return module
+		
+		task_module = lazy_import(protocol, mod_name)
 
-
-# General Functions #
-
-def os_folder_modifier():
-	
-	
-	os_platform = sys.platform
-	
-	if os_platform == 'linux':
-		
-		
-		mod = '/'
-	
-	
-	elif os_platform == 'darwin':
-		
-		
-		mod = '/'
-	
-	
-	elif os_platform == 'win32':
-		
-		
-		mod = '\\'
-	
-	
-	else:
-		
-		
-		mod = '/'
-	
-	
-	return mod
-
-
+		return task_module
 
 
 # Class Objects #
 
 class ImageButton(ButtonBehavior, Image):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(ImageButton, self).__init__(**kwargs)
 
@@ -190,10 +294,7 @@ class ImageButton(ButtonBehavior, Image):
 
 class ScreenManager(ScreenManager):
 	
-	
-	
 	def __init__(self, **kwargs):
-		
 		
 		super(ScreenManager, self).__init__(**kwargs)
 
@@ -202,52 +303,377 @@ class ScreenManager(ScreenManager):
 
 # Class Task Selection #
 
-class MainMenu(Screen):
-	
-	
+class LanguageMenu(Screen):
 	
 	def __init__(self, **kwargs):
 		
+		super(LanguageMenu, self).__init__(**kwargs)
+		self.name = 'languagemenu'
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
+		self.config = configparser.ConfigParser()
+		# Load user-local Config.ini located in the user's home directory
+		try:
+			self.config.read(str(user_config_path), encoding='utf-8')
+		except Exception:
+			# Fallback: try to read from app_root
+			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
+		self.Language_Layout = FloatLayout()
+		self.add_widget(self.Language_Layout)
+
+		self.manifest_path = 'https://touchscreencognition.org/uploads/manifest.json'
+
+		self.language_list = list()
+
+		# Prefer to load the available language names from the manifest first
+		# (manifest format contains a list of dicts under key 'languages').
+		# Fall back to scanning the local Language/ directory when the
+		# manifest is unavailable or doesn't supply any languages.
+		try:
+			manifest = self._fetch_manifest()
+			if isinstance(manifest, dict):
+				for lang_block in manifest.get('languages', []):
+					if isinstance(lang_block, dict):
+						# Each block maps a language name to its entries, e.g.
+						# { "English": [{...}] }
+						for lang_name in lang_block.keys():
+							# guard against accidental duplicates
+							if lang_name not in self.language_list:
+								self.language_list.append(lang_name)
+		except Exception:
+			# Any failure while reading manifest should simply fall through
+			# to the filesystem-scanning fallback below.
+			pass
+
+		# Fallback: scan the Language/ directory for available languages
+		if not self.language_list:
+			with os.scandir(app_root / 'Language') as entries:
+				for entry in entries:
+					if entry.is_dir():
+						self.language_list.append(entry.name)
+		self.language_dropdown = DropDown()
+		self.language_drop_button = Button(text='Select Language')
+		# Position dropdown near top middle
+		self.language_drop_button.size_hint = (0.4, 0.08)
+		self.language_drop_button.pos_hint = {'x': 0.3, 'y': 0.5}
+		for language in self.language_list:
+			btn = Button(text=language, size_hint_y=None, height=44)
+			btn.bind(on_release=lambda btn: self.language_dropdown.select(btn.text))
+			self.language_dropdown.add_widget(btn)
+
+		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.language_drop_button, 'text', x))
+		self.language_drop_button.bind(on_release=self.language_dropdown.open)
+		self.Language_Layout.add_widget(self.language_drop_button)
+
+		self.start_button = Button(text='Start')
+		# Position start button near bottom center
+		self.start_button.size_hint = (0.3, 0.12)
+		self.start_button.pos_hint = {'x': 0.35, 'y': 0.08}
+		self.start_button.bind(on_press=self.start_touchcog)
+
+		self.Language_Layout.add_widget(self.start_button)
+	
+	def start_touchcog(self, *args):
+		self.app.language = self.language_drop_button.text
+		# If no language selected, just go to main menu
+		if self.app.language == 'Select Language' or not self.app.language:
+			self.app.language = self.config['language']['language']
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Fetch manifest (from web then fallback to local file)
+		manifest = self._fetch_manifest()
+		if manifest is None:
+			# Couldn't load manifest; proceed to main menu
+			self.app.language = self.config['language']['language']
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Write the user-local Config.ini in the user's home directory
+		self.config['language']['language'] = self.app.language
+		try:
+			with open(str(user_config_path), 'w', encoding='utf-8') as f:
+				self.config.write(f)
+		except Exception as e:
+			print('WARNING: Could not write Config.ini to user home:', e)
+
+		# Ensure bin folder exists
+		self._ensure_destination(None)
+
+		# Collect all potential downloads
+		download_candidates = []
+
+		# 1. Language file
+		try:
+			for lang_block in manifest.get('languages', []):
+				if self.app.language in lang_block:
+					# lang_block[self.app.language] is a list with one dict
+					entry = lang_block[self.app.language][0]
+					download_candidates.append(entry)
+					break
+		except Exception:
+			pass
+
+		# 2. Videos
+		for entry in manifest.get('Videos', []):
+			download_candidates.append(entry)
+
+		# 3. Battery
+		for entry in manifest.get('Battery', []):
+			download_candidates.append(entry)
+
+		# Filter for what actually needs downloading
+		items_to_download = []
+		bin_path = app_root / 'bin'
+		
+		for entry in download_candidates:
+			filename = entry.get('filename')
+			if not filename:
+				continue
+			
+			local_file = bin_path / filename
+			needs_download = False
+			
+			if not local_file.exists():
+				needs_download = True
+			else:
+				# Check date
+				manifest_date_str = entry.get('date')
+				if manifest_date_str:
+					try:
+						manifest_date = datetime.strptime(manifest_date_str, '%Y-%m-%d')
+						local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime)
+						# Compare dates (ignoring time for manifest date)
+						# If local file is older than manifest date, update
+						if local_mtime < manifest_date:
+							needs_download = True
+					except Exception as e:
+						print(f"Date comparison failed for {filename}: {e}")
+						pass
+			
+			if needs_download:
+				items_to_download.append(entry)
+
+		if not items_to_download:
+			# Nothing to download
+			self.main_menu = MainMenu()
+			self.manager.add_widget(self.main_menu)
+			self.manager.current = 'mainmenu'
+			return
+
+		# Prepare UI: popup with progress bar and filename label
+		self._download_popup_content = BoxLayout(orientation='vertical', spacing=10, padding=10)
+		self._download_label = Label(text='Preparing downloads...')
+		self._download_bar = ProgressBar(max=100, value=0)
+		self._download_popup_content.add_widget(self._download_label)
+		self._download_popup_content.add_widget(self._download_bar)
+		self._download_popup = Popup(title='Downloading updates', content=self._download_popup_content, size_hint=(0.6, 0.3))
+		self._download_popup.open()
+
+		# Run downloads in background thread
+		thread = threading.Thread(target=self._download_files_thread, args=(items_to_download,))
+		thread.daemon = True
+		thread.start()
+
+		# When downloads complete, the thread will switch to main menu
+
+
+	def _fetch_manifest(self):
+		# Try to fetch JSON from manifest_path; fallback to local manifest.json
+		try:
+			with urllib.request.urlopen(self.manifest_path, timeout=10) as resp:
+				data = resp.read().decode('utf-8')
+				# First try strict JSON parsing, then try to sanitize common errors
+				try:
+					return json.loads(data)
+				except json.JSONDecodeError:
+					print('WARNING: Remote manifest JSON failed strict parsing; attempting sanitize')
+					sanitized = self._sanitize_json_text(data)
+					try:
+						return json.loads(sanitized)
+					except Exception as e:
+						print('WARNING: Sanitized remote manifest JSON still failed parsing:', e)
+						raise
+		except Exception:
+			# Fallback to local file in project root
+			local_path = app_root / 'manifest.json'
+			try:
+				with open(local_path, 'r', encoding='utf-8') as f:
+					local_text = f.read()
+					try:
+						return json.loads(local_text)
+					except json.JSONDecodeError:
+						print('WARNING: Local manifest JSON failed strict parsing; attempting sanitize')
+						sanitized = self._sanitize_json_text(local_text)
+						try:
+							return json.loads(sanitized)
+						except Exception as e:
+							print('WARNING: Sanitized local manifest JSON still failed parsing:', e)
+							return None
+			except Exception:
+				return None
+
+
+	def _sanitize_json_text(self, text):
+		"""Return a least-effort sanitized JSON string.
+
+		This attempts to fix common formatting mistakes in manually-edited
+		JSON files such as trailing commas before closing array/object tokens
+		(e.g. [1,2,] or {"a": 1,}). This is carefully scoped: it does not try
+		to implement a full tolerant parser, but it helps with the manifest's
+		most-common issue (trailing commas).
+		"""
+		if not isinstance(text, str):
+			return text
+
+		# Remove byte order mark if present
+		if text.startswith('\ufeff'):
+			text = text.lstrip('\ufeff')
+
+		# Remove trailing commas before a closing bracket or curly brace
+		# e.g. { "a": 1, } -> { "a": 1 }
+		sanitized = re.sub(r',\s*(?=[}\]])', '', text)
+		return sanitized
+
+
+	def _ensure_destination(self, destination_path):
+		# Ensure bin folder exists
+		bin_path = app_root / 'bin'
+		if not bin_path.exists():
+			bin_path.mkdir(parents=True, exist_ok=True)
+		return bin_path
+
+
+	def _download_files_thread(self, file_list):
+		total = len(file_list)
+		completed = 0
+		bin_path = app_root / 'bin'
+
+		for entry in file_list:
+			name = entry.get('filename')
+			server_path = entry.get('server_path', '')
+			
+			# Update label to current file
+			Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Downloading: {n}'))
+
+			local_file = bin_path / name
+
+			# Attempt download with progress
+			try:
+				if server_path:
+					with urllib.request.urlopen(server_path, timeout=30) as resp:
+						length = resp.getheader('Content-Length')
+						if length:
+							total_size = int(length)
+							bytes_so_far = 0
+							with open(local_file, 'wb') as out:
+								while True:
+									chunk = resp.read(8192)
+									if not chunk:
+										break
+									out.write(chunk)
+									bytes_so_far += len(chunk)
+									pct = int(((completed + bytes_so_far / total_size) / total) * 100)
+									Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+						else:
+							# Unknown total size: stream to file without progress
+							with open(local_file, 'wb') as out:
+								out.write(resp.read())
+					
+					# Extract
+					Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Extracting: {n}'))
+					try:
+						with zipfile.ZipFile(local_file, 'r') as zip_ref:
+							zip_ref.extractall(app_root)
+					except Exception as e:
+						print(f"Failed to extract {name}: {e}")
+
+			except Exception as e:
+				print(f"Failed to download {name}: {e}")
+				# On failure, ensure file doesn't exist
+				try:
+					if local_file.exists():
+						local_file.unlink()
+				except Exception:
+					pass
+			# Mark completed
+			completed += 1
+			pct = int((completed / total) * 100)
+			Clock.schedule_once(lambda dt, v=pct: setattr(self._download_bar, 'value', v))
+
+		# Close popup and proceed to main menu
+		Clock.schedule_once(lambda dt: self._download_popup.dismiss())
+		Clock.schedule_once(lambda dt: self._open_main_menu())
+
+
+	def _open_main_menu(self, *args):
+		self.app.language = self.config['language']['language']
+		self.main_menu = MainMenu()
+		self.manager.add_widget(self.main_menu)
+		self.manager.current = 'mainmenu'
+
+
+class MainMenu(Screen):
+	
+	def __init__(self, **kwargs):
 		
 		super(MainMenu, self).__init__(**kwargs)
-		
 		self.name = 'mainmenu'
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
 		self.Menu_Layout = FloatLayout()
 		self.protocol_window = ''
+		self.language = self.app.language
 		self.add_widget(self.Menu_Layout)
-		launch_button = Button(text='Start Session')
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(app_root / 'Language' / self.language / 'mainmenu.ini')
+		launch_button = Button(text=self.menu_config['Text']['launch_button'])
 		launch_button.size_hint = (0.3, 0.2)
 		launch_button.pos_hint = {'x': 0.35, 'y': 0.6}
 		launch_button.bind(on_press=self.load_protocol_menu)
 		self.Menu_Layout.add_widget(launch_button)
-		
-		exit_button = Button(text='Close Program')
+		battery_button = Button(text=self.menu_config['Text']['battery_button'])
+		battery_button.size_hint = (0.3, 0.2)
+		battery_button.pos_hint = {'x': 0.35, 'y': 0.4}
+		battery_button.bind(on_press=self.load_battery_menu)
+		self.Menu_Layout.add_widget(battery_button)
+		exit_button = Button(text=self.menu_config['Text']['exit_button'])
 		exit_button.size_hint = (0.3, 0.2)
 		exit_button.pos_hint = {'x': 0.35, 'y': 0.2}
 		exit_button.bind(on_press=self.exit_program)
 		self.Menu_Layout.add_widget(exit_button)
 	
 	
+
 	def load_protocol_menu(self, *args):
 		
-		
 		if isinstance(self.protocol_window, ProtocolMenu):
-			
-			
 			self.manager.current = 'protocolmenu'
 		
-		
 		else:
-			
-			
 			self.protocol_window = ProtocolMenu()
 			self.manager.add_widget(self.protocol_window)
 			self.manager.current = 'protocolmenu'
 	
-	
+	def load_battery_menu(self, *args):
+		
+		if isinstance(self.protocol_window, BatteryMenu):
+			self.manager.current = 'batterymenu'
+		if isinstance(self.protocol_window, BatteryMenu):
+			self.manager.current = 'batterymenu'
+		
+		else:
+			self.protocol_window = BatteryMenu()
+			self.protocol_window = BatteryMenu()
+			self.manager.add_widget(self.protocol_window)
+			self.manager.current = 'batterymenu'
+			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
-		
 		
 		App.get_running_app().stop()
 		Window.close()
@@ -258,27 +684,26 @@ class MainMenu(Screen):
 # Class Protocol Selection #
 
 class ProtocolMenu(Screen):
-	
-	
-	
+
 	def __init__(self, **kwargs):
-		
-		
+
 		super(ProtocolMenu, self).__init__(**kwargs)
 		
 		self.Protocol_Layout = FloatLayout()
 		self.Protocol_Configure_Screen = ''
 		self.name = 'protocolmenu'
-		
-		self.Protocol_Configure_Screen = MenuBase()
-		
-		protocol_list = self.search_protocols()
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
+		self.language = self.app.language
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(app_root / 'Language' / self.language / 'protocolmenu.ini')
+		self.Protocol_Configure_Screen = None
+		protocol_list = search_protocols()
 		self.Protocol_List = GridLayout(rows=len(protocol_list), cols=1)
 		protocol_index = 0
 		
 		for protocol in protocol_list:
-			
-			
 			button_func = partial(self.set_protocol, protocol)
 			self.Protocol_List.add_widget(Button(text=protocol, on_press=button_func))
 			protocol_index += 1
@@ -287,8 +712,8 @@ class ProtocolMenu(Screen):
 		self.Protocol_List.size_hint = (0.8, 0.7)
 		self.Protocol_List.pos_hint = {'x': 0.1, 'y': 0.3}
 		self.Protocol_Layout.add_widget(self.Protocol_List)
-		
-		cancel_button = Button(text='Cancel')
+
+		cancel_button = Button(text=self.menu_config['Text']['cancel_button'])
 		cancel_button.size_hint = (0.2, 0.1)
 		cancel_button.pos_hint = {'x': 0.4, 'y': 0.1}
 		cancel_button.bind(on_press=self.cancel_protocol)
@@ -300,98 +725,577 @@ class ProtocolMenu(Screen):
 	
 	def set_protocol(self, label, *args):
 		
-		
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
-			
-			
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
-		
-		
-		self.protocol_constructor(label)
+		elif isinstance(self.Protocol_Configure_Screen, SurveyBase):
+			self.manager.remove_widget(self.Protocol_Configure_Screen)
+
+		if (app_root / 'Protocol' / label / 'Task' / 'Menu.py').is_file():
+			task_module = protocol_constructor(label, 'Menu')
+			self.Protocol_Configure_Screen = task_module.ConfigureScreen()
+		else:
+			task_module = protocol_constructor(label, 'Protocol')
+			self.Protocol_Configure_Screen = task_module.SurveyProtocol()
+
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
-		self.manager.current = 'menuscreen'
+		self.app.active_screen = self.Protocol_Configure_Screen.name
+		self.manager.current = self.Protocol_Configure_Screen.name
 	
 	
 	
 	def cancel_protocol(self, *args):
 		
-		
 		self.manager.current = 'mainmenu'
-	
-	
-	
-	def search_protocols(self):
-		
-		
-# 		folder = pathlib.Path('Protocol')
-		
-# 		cwd = os.getcwd()
-# 		mod = os_folder_modifier()
-# 		folder = cwd + mod + 'Protocol'
-# 		task_list = os.listdir(folder)
-		
-# 		task_list = list(folder.glob('*'))
-		
-		task_list = list(pathlib.Path().glob('Protocol/*'))
-		output_list = list()
-		
-		for task in task_list:
-			
-			
-# 			if '.py' in task:
-				
-				
-# 				task_list.remove(task)
-		
-		
-			if not task.is_dir():
-				
-				
-				continue
-			
-			
-			output_list.append(task.stem)
-		
-		
-		return output_list
-	
-	
-	
-	def protocol_constructor(self, protocol):
-		
-		
-		#cwd = os.getcwd()
-		#mod = os_folder_modifier()
-		#prot_path = cwd + mod + 'Protocol' + mod + protocol
-		#sys.path.append(prot_path)
-		#from Task.Menu import ConfigureScreen
-		#self.Protocol_Configure_Screen = ConfigureScreen()
-		#sys.path.remove(prot_path)
-		
-		def lazy_import(protocol):
-			
-			
-			working = pathlib.Path('Protocol', protocol, 'Task', 'Menu.py')
-			
-# 			cwd = os.getcwd()
-# 			working = cwd + '\\Protocol\\' + protocol + '\\Task\\Menu.py'
-			
-			mod_name = 'Menu'
-			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
-			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
-			mod_spec.loader = mod_loader
-			module = importlib.util.module_from_spec(mod_spec)
-			sys.modules[mod_name] = module
-			mod_loader.exec_module(module)
-			
-			return module
-		
-		
-		task_module = lazy_import(protocol)
-		
-		self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 
+class BatteryMenu(Screen):
+	def __init__(self, **kwargs):
+		super(BatteryMenu, self).__init__(**kwargs)
+		self.name = 'batterymenu'
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
+		self.language = self.app.language
+		
+		# Load language config
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(app_root / 'Language' / self.language / 'batterymenu.ini')
+		
+		self.Battery_Layout = FloatLayout()
+		
+		# Load available batteries from Battery/ directory
+		self.batteries = self._load_batteries()
+		self.selected_battery = None
+		self.battery_buttons = {}
+		
+		# Title
+		title = Label(text='Select Battery', size_hint=(1, 0.1), pos_hint={'x': 0, 'y': 0.9}, font_size='24sp', bold=True)
+		self.Battery_Layout.add_widget(title)
+		
+		# Create bordered container for battery list
+		battery_container = FloatLayout(size_hint=(0.6, 0.6), pos_hint={'x': 0.2, 'y': 0.25})
+		with battery_container.canvas.before:
+			Color(1, 1, 1, 1)  # White border
+			self.battery_border = Line(rectangle=(0, 0, 1, 1), width=3)
+		battery_container.bind(pos=self.update_battery_border, size=self.update_battery_border)
+		
+		# ScrollView for battery list
+		battery_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x': 0, 'y': 0})
+		self.battery_grid = GridLayout(cols=1, spacing=5, padding=[10, 10, 10, 10], size_hint_y=None)
+		self.battery_grid.bind(minimum_height=self.battery_grid.setter('height'))
+		battery_scroll.add_widget(self.battery_grid)
+		battery_container.add_widget(battery_scroll)
+		self.Battery_Layout.add_widget(battery_container)
+		
+		# Populate battery list
+		self.refresh_battery_list()
+		
+		# Start button
+		start_button = Button(text='Start Selected Battery', size_hint=(0.25, 0.1), pos_hint={'x': 0.1, 'y': 0.05})
+		start_button.bind(on_press=self.start_battery)
+		self.Battery_Layout.add_widget(start_button)
+		
+		# Manual battery button
+		manual_button = Button(text='Manual Battery', size_hint=(0.25, 0.1), pos_hint={'x': 0.4, 'y': 0.05})
+		manual_button.bind(on_press=self.load_protocol_battery)
+		self.Battery_Layout.add_widget(manual_button)
+		
+		# Cancel button
+		cancel_button = Button(text=self.menu_config['Text']['cancel_button'], size_hint=(0.25, 0.1), pos_hint={'x': 0.65, 'y': 0.05})
+		cancel_button.bind(on_press=self.cancel_battery)
+		self.Battery_Layout.add_widget(cancel_button)
+		
+		self.add_widget(self.Battery_Layout)
+	
+	def update_battery_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.battery_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+	
+	def _load_batteries(self):
+		"""Load all battery JSON files from Battery/ directory"""
+		batteries = []
+		battery_path = app_root / 'Battery'
+		
+		if not battery_path.exists():
+			return batteries
+		
+		try:
+			for json_file in battery_path.glob('*.json'):
+				try:
+					with open(json_file, 'r', encoding='utf-8') as f:
+						battery_data = json.load(f)
+						batteries.append({
+							'name': battery_data.get('name', json_file.stem),
+							'path': json_file,
+							'data': battery_data
+						})
+				except Exception as e:
+					print(f"Error loading battery file {json_file}: {e}")
+		except Exception as e:
+			print(f"Error accessing Battery directory: {e}")
+		
+		return batteries
+	
+	def refresh_battery_list(self):
+		"""Refresh the battery list display"""
+		self.battery_grid.clear_widgets()
+		self.battery_buttons.clear()
+		
+		if not self.batteries:
+			no_label = Label(text='No batteries found', size_hint_y=None, height=50)
+			self.battery_grid.add_widget(no_label)
+			return
+		
+		for battery in self.batteries:
+			btn = Button(text=battery['name'], size_hint_y=None, height=60, font_size='16sp')
+			btn.bind(on_press=partial(self.select_battery, battery['name']))
+			self.battery_buttons[battery['name']] = btn
+			self.battery_grid.add_widget(btn)
+	
+	def select_battery(self, battery_name, *args):
+		"""Toggle selection of a battery from the list"""
+		# If clicking the same battery, deselect it
+		if self.selected_battery == battery_name:
+			self.battery_buttons[battery_name].background_color = (1, 1, 1, 1)
+			self.selected_battery = None
+		else:
+			# Deselect previous selection
+			if self.selected_battery and self.selected_battery in self.battery_buttons:
+				self.battery_buttons[self.selected_battery].background_color = (1, 1, 1, 1)
+			
+			# Select new battery
+			self.selected_battery = battery_name
+			if battery_name in self.battery_buttons:
+				self.battery_buttons[battery_name].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+	
+	def start_battery(self, *args):
+		"""Start the selected battery"""
+		if not self.selected_battery:
+			print("No battery selected")
+			return
+		
+		# Find the selected battery data
+		battery_data = None
+		for battery in self.batteries:
+			if battery['name'] == self.selected_battery:
+				battery_data = battery['data']
+				break
+		
+		if not battery_data:
+			return
+		
+		# Prompt for participant ID first, then build configurations and start tasks
+		content = FloatLayout()
+		input_box = TextInput(hint_text='Participant ID', size_hint=(0.8, 0.2), pos_hint={'x':0.1, 'y':0.45}, multiline=False)
+		content.add_widget(input_box)
+		msg_label = Label(text='Enter Participant ID to start battery', size_hint=(0.8, 0.2), pos_hint={'x':0.1,'y':0.7})
+		content.add_widget(msg_label)
+
+		def on_confirm(instance):
+			participant_id = input_box.text.strip()
+			if participant_id == '':
+				# keep popup open if empty
+				return
+
+			# store participant id at app level
+			self.app.participant_id = participant_id
+
+			# Build protocol list and fully-populated configuration dicts
+			protocols = [task.get('task') for task in battery_data.get('tasks', [])]
+			self.app.battery_protocols = protocols
+			self.app.battery_active = len(protocols) > 0
+			self.app.battery_index = 0
+			battery_configs = {}
+			# track types (task vs survey) so we know whether to pass configs
+			self.app.battery_task_types = {}
+
+			for task in battery_data.get('tasks', []):
+				pname = task.get('task')
+				ttype = task.get('type', 'task')
+				self.app.battery_task_types[pname] = ttype
+				
+				# Extract required fields if they exist (for filtering in battery mode)
+				required_fields = task.get('required')
+				if required_fields and isinstance(required_fields, dict):
+					# required is a dict like {'image_set': 'Image Set', 'dspal_image_set': 'dsPAL Image Set', ...}
+					# Extract just the keys (parameter names to show)
+					self.app.battery_required_fields[pname] = list(required_fields.keys())
+				elif required_fields is not None and isinstance(required_fields, dict):
+					# Empty dict '{}' means preloaded battery with no filtering (use all fields)
+					# Set to empty list to signal "skip configure screen"
+					self.app.battery_required_fields[pname] = []
+				else:
+					# 'required' key not present at all - shouldn't happen in valid JSON
+					# Treat as None (will be set by manual battery code if needed)
+					self.app.battery_required_fields[pname] = None
+				
+				# Only build a configuration dict for actual 'task' types; surveys get no config
+				if ttype == 'task':
+					overrides = task.get('overrides', {}) or {}
+					# Build a flat parameter dict (like MenuBase.start_protocol produces)
+					parameter_dict = {}
+					conf_path = app_root / 'Protocol' / pname / 'Configuration.ini'
+					if conf_path.is_file():
+						cfg = configparser.ConfigParser()
+						cfg.read(conf_path, encoding='utf-8')
+						# choose which section to use for UI parameters
+						use_section = 'TaskParameters'
+						if 'DebugParameters' in cfg and cfg.getboolean('DebugParameters', 'debug_mode', fallback=False):
+							use_section = 'DebugParameters'
+						if use_section in cfg:
+							for opt in cfg[use_section]:
+								val = cfg.get(use_section, opt)
+								# try to coerce numeric/bool types
+								try:
+									if isinstance(val, str) and val.lower() in ('true', 'false'):
+										parsed = cfg.getboolean(use_section, opt)
+									else:
+										parsed = val
+								except Exception:
+									parsed = val
+								# normalize key the same way MenuBase.start_protocol does
+								key_norm = opt.lower().replace(' ', '_')
+								parameter_dict[key_norm] = parsed
+					else:
+						# no config file: start with empty dict and allow overrides + participant id
+						parameter_dict = {}
+
+					# Apply overrides: support 'section.option' or match to normalized parameter names
+					for k, v in overrides.items():
+						if isinstance(k, str) and '.' in k:
+							sec, opt = k.split('.', 1)
+							# try to map section.option to parameter name if possible
+							if conf_path.is_file():
+								cfg_try = configparser.ConfigParser()
+								cfg_try.read(conf_path, encoding='utf-8')
+								if sec in cfg_try and opt in cfg_try[sec]:
+									key_norm = opt.lower().replace(' ', '_')
+									parameter_dict[key_norm] = v
+								else:
+									# fallback: store under normalized combined key
+									parameter_dict[k.lower().replace(' ', '_')] = v
+						else:
+							# try to match plain override key to existing normalized keys
+							norm = k.lower().replace(' ', '_')
+							if norm in parameter_dict:
+								parameter_dict[norm] = v
+							else:
+								# fallback: store override as-is (normalized)
+								parameter_dict[norm] = v
+
+					# Only add participant_id if this task doesn't have required_fields filtering
+					# (when required_fields are present, participant_id should be collected separately)
+					if not self.app.battery_required_fields.get(pname):
+						parameter_dict['participant_id'] = participant_id
+
+					battery_configs[pname] = parameter_dict
+				else:
+					# survey: do not build/present a configuration to the survey task
+					battery_configs.pop(pname, None)
+
+			self.app.battery_configs = battery_configs
+			popup.dismiss()
+
+			# Start configuration for first protocol (handles required fields)
+			if self.app.battery_active:
+				self.app.start_next_battery_config()
+
+		def on_cancel(instance):
+			popup.dismiss()
+
+		confirm_button = Button(text='Confirm', size_hint=(0.4, 0.15), pos_hint={'x':0.05,'y':0.05})
+		confirm_button.bind(on_press=on_confirm)
+		content.add_widget(confirm_button)
+		cancel_button = Button(text='Cancel', size_hint=(0.4, 0.15), pos_hint={'x':0.55,'y':0.05})
+		cancel_button.bind(on_press=on_cancel)
+		content.add_widget(cancel_button)
+
+		popup = Popup(title='Participant ID', content=content, size_hint=(0.6, 0.4))
+		popup.open()
+	
+	def load_protocol_battery(self, *args):
+		"""Load the manual ProtocolBattery screen"""
+		self.protocol_battery_screen = ProtocolBattery()
+		self.manager.add_widget(self.protocol_battery_screen)
+		self.manager.current = 'protocolbattery'
+	
+	def cancel_battery(self, *args):
+		"""Cancel and return to main menu"""
+		self.manager.current = 'mainmenu'
+
+class ProtocolBattery(Screen):
+
+	def __init__(self, **kwargs):
+		super(ProtocolBattery, self).__init__(**kwargs)
+
+		self.app = App.get_running_app()
+
+		self.protocol_battery_layout = FloatLayout()
+		self.protocol_configure_screen = MenuBase()
+		self.name = 'protocolbattery'
+		self.app.active_screen = self.name
+		
+		self.language = self.app.language
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_path = app_root / 'Language' / self.language / 'batterymenu.ini'
+		self.menu_config.read(self.menu_path)
+
+		self.protocol_list = search_protocols()
+		self.available_protocols = self.protocol_list.copy()
+		self.selected_protocols = []
+
+		if len(self.protocol_list) == 0:
+			no_label = Label(text=self.menu_config['Text']['no_label'], size_hint=(0.8, 0.1), pos_hint={'x':0.1,'y':0.45})
+			self.protocol_battery_layout.add_widget(no_label)
+		else:
+			# Title labels
+			available_title = Label(text=self.menu_config['Text']['available_title'], size_hint=(0.35, 0.05), pos_hint={'x':0.05, 'y':0.85}, font_size='20sp', bold=True)
+			self.protocol_battery_layout.add_widget(available_title)
+
+			selected_title = Label(text=self.menu_config['Text']['selected_title'], size_hint=(0.35, 0.05), pos_hint={'x':0.6, 'y':0.85}, font_size='20sp', bold=True)
+			self.protocol_battery_layout.add_widget(selected_title)
+
+			# Create bordered containers for the lists
+			# Left box container with border
+			available_container = FloatLayout(size_hint=(0.35, 0.6), pos_hint={'x':0.05, 'y':0.2})
+			with available_container.canvas.before:
+				Color(0.5, 0.5, 0.5, 1)  # Gray border
+				self.available_border = Line(rectangle=(0, 0, 1, 1), width=2)
+			available_container.bind(pos=self.update_available_border, size=self.update_available_border)
+			
+			# ScrollView for available protocols
+			available_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x':0, 'y':0})
+			self.available_grid = GridLayout(cols=1, spacing=5, padding=[5,5,5,5], size_hint_y=None)
+			self.available_grid.bind(minimum_height=self.available_grid.setter('height'))
+			available_scroll.add_widget(self.available_grid)
+			available_container.add_widget(available_scroll)
+			self.protocol_battery_layout.add_widget(available_container)
+			
+			# Right box container with border
+			selected_container = FloatLayout(size_hint=(0.35, 0.6), pos_hint={'x':0.6, 'y':0.2})
+			with selected_container.canvas.before:
+				Color(0.5, 0.5, 0.5, 1)  # Gray border
+				self.selected_border = Line(rectangle=(0, 0, 1, 1), width=2)
+			selected_container.bind(pos=self.update_selected_border, size=self.update_selected_border)
+			
+			# ScrollView for selected protocols
+			selected_scroll = ScrollView(size_hint=(1, 1), pos_hint={'x':0, 'y':0})
+			self.selected_grid = GridLayout(cols=1, spacing=5, padding=[5,5,5,5], size_hint_y=None)
+			self.selected_grid.bind(minimum_height=self.selected_grid.setter('height'))
+			selected_scroll.add_widget(self.selected_grid)
+			selected_container.add_widget(selected_scroll)
+			self.protocol_battery_layout.add_widget(selected_container)
+
+			# Control buttons in the middle
+			move_right_button = Button(text=self.menu_config['Text']['move_right_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.6}, font_size='18sp')
+			move_right_button.bind(on_press=self.move_to_selected)
+			self.protocol_battery_layout.add_widget(move_right_button)
+
+			move_left_button = Button(text=self.menu_config['Text']['move_left_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.5}, font_size='18sp')
+			move_left_button.bind(on_press=self.move_to_available)
+			self.protocol_battery_layout.add_widget(move_left_button)
+
+			move_up_button = Button(text=self.menu_config['Text']['move_up_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.4}, font_size='18sp')
+			move_up_button.bind(on_press=self.move_up)
+			self.protocol_battery_layout.add_widget(move_up_button)
+
+			move_down_button = Button(text=self.menu_config['Text']['move_down_button'], size_hint=(0.15, 0.08), pos_hint={'x':0.425, 'y':0.3}, font_size='18sp')
+			move_down_button.bind(on_press=self.move_down)
+			self.protocol_battery_layout.add_widget(move_down_button)
+
+			# Bottom buttons
+			battery_start_button = Button(text=self.menu_config['Text']['battery_start_button'])
+			battery_start_button.size_hint = (0.2, 0.1)
+			battery_start_button.pos_hint = {'x': 0.25, 'y': 0.05}
+			battery_start_button.bind(on_press=self.start_battery)
+			self.protocol_battery_layout.add_widget(battery_start_button)
+
+			cancel_button = Button(text=self.menu_config['Text']['cancel_button'])
+			cancel_button.size_hint = (0.2, 0.1)
+			cancel_button.pos_hint = {'x': 0.55, 'y': 0.05}
+			cancel_button.bind(on_press=self.cancel_battery)
+			self.protocol_battery_layout.add_widget(cancel_button)
+
+			# Track selected items (now using sets for multi-select)
+			self.selected_available_items = set()
+			self.selected_selected_items = set()
+		
+			# Keep track of button widgets for color management
+			self.available_buttons = {}
+			self.selected_buttons = {}
+
+			# Populate available protocols
+			self.refresh_lists()
+
+		self.add_widget(self.protocol_battery_layout)
+
+	def update_available_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.available_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+	
+	def update_selected_border(self, instance, value):
+		"""Update the border when the container is resized or moved"""
+		self.selected_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
+
+	def refresh_lists(self):
+		"""Refresh both protocol lists"""
+		self.available_grid.clear_widgets()
+		self.selected_grid.clear_widgets()
+		self.available_buttons.clear()
+		self.selected_buttons.clear()
+		
+		# Populate available protocols list
+		for protocol in self.available_protocols:
+			btn = Button(text=protocol, size_hint_y=None, height=50, font_size='18sp')
+			btn.bind(on_press=partial(self.toggle_available_item, protocol))
+			self.available_buttons[protocol] = btn
+			
+			# Restore highlighting if previously selected
+			if protocol in self.selected_available_items:
+				btn.background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+			
+			self.available_grid.add_widget(btn)
+		
+		# Populate selected protocols list
+		for protocol in self.selected_protocols:
+			btn = Button(text=protocol, size_hint_y=None, height=50, font_size='18sp')
+			btn.bind(on_press=partial(self.toggle_selected_item, protocol))
+			self.selected_buttons[protocol] = btn
+			
+			# Restore highlighting if previously selected
+			if protocol in self.selected_selected_items:
+				btn.background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+			
+			self.selected_grid.add_widget(btn)
+
+	def toggle_available_item(self, protocol, *args):
+		"""Toggle selection of an item in the available list"""
+		if protocol in self.selected_available_items:
+			self.selected_available_items.remove(protocol)
+			if protocol in self.available_buttons:
+				self.available_buttons[protocol].background_color = (1, 1, 1, 1)  # Default color
+		else:
+			self.selected_available_items.add(protocol)
+			if protocol in self.available_buttons:
+				self.available_buttons[protocol].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+		
+		# Clear selections in the other list
+		self.selected_selected_items.clear()
+		for btn in self.selected_buttons.values():
+			btn.background_color = (1, 1, 1, 1)
+
+	def toggle_selected_item(self, protocol, *args):
+		"""Toggle selection of an item in the selected list"""
+		if protocol in self.selected_selected_items:
+			self.selected_selected_items.remove(protocol)
+			if protocol in self.selected_buttons:
+				self.selected_buttons[protocol].background_color = (1, 1, 1, 1)  # Default color
+		else:
+			self.selected_selected_items.add(protocol)
+			if protocol in self.selected_buttons:
+				self.selected_buttons[protocol].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
+		
+		# Clear selections in the other list
+		self.selected_available_items.clear()
+		for btn in self.available_buttons.values():
+			btn.background_color = (1, 1, 1, 1)
+
+	def move_to_selected(self, *args):
+		"""Move selected protocols from available to selected list"""
+		if self.selected_available_items:
+			# Convert to list and sort to maintain consistent order
+			items_to_move = sorted(list(self.selected_available_items))
+			for protocol in items_to_move:
+				if protocol in self.available_protocols:
+					self.available_protocols.remove(protocol)
+					self.selected_protocols.append(protocol)
+			
+			self.selected_available_items.clear()
+			self.refresh_lists()
+
+	def move_to_available(self, *args):
+		"""Move selected protocols from selected to available list"""
+		if self.selected_selected_items:
+			# Convert to list to process
+			items_to_move = list(self.selected_selected_items)
+			for protocol in items_to_move:
+				if protocol in self.selected_protocols:
+					self.selected_protocols.remove(protocol)
+					self.available_protocols.append(protocol)
+			
+			self.selected_selected_items.clear()
+			self.refresh_lists()
+
+	def move_up(self, *args):
+		"""Move selected protocols up in the selected list"""
+		if not self.selected_selected_items:
+			return
+		
+		# Get indices of selected items, sorted
+		indices = sorted([self.selected_protocols.index(p) for p in self.selected_selected_items if p in self.selected_protocols])
+		
+		# Move each selected item up, starting from the top
+		for idx in indices:
+			if idx > 0 and self.selected_protocols[idx-1] not in self.selected_selected_items:
+				# Swap with the item above
+				self.selected_protocols[idx], self.selected_protocols[idx-1] = \
+					self.selected_protocols[idx-1], self.selected_protocols[idx]
+		
+		self.refresh_lists()
+
+	def move_down(self, *args):
+		"""Move selected protocols down in the selected list"""
+		if not self.selected_selected_items:
+			return
+		
+		# Get indices of selected items, sorted in reverse
+		indices = sorted([self.selected_protocols.index(p) for p in self.selected_selected_items if p in self.selected_protocols], reverse=True)
+		
+		# Move each selected item down, starting from the bottom
+		for idx in indices:
+			if idx < len(self.selected_protocols) - 1 and self.selected_protocols[idx+1] not in self.selected_selected_items:
+				# Swap with the item below
+				self.selected_protocols[idx], self.selected_protocols[idx+1] = \
+					self.selected_protocols[idx+1], self.selected_protocols[idx]
+		
+		self.refresh_lists()
+
+	def cancel_battery(self, *args):
+		self.manager.current = 'mainmenu'
+
+	def start_battery(self, *args):
+		"""Start battery with protocols in the order they appear in selected list"""
+		# Use the selected_protocols list which maintains order
+		self.app.battery_protocols = self.selected_protocols.copy()
+		self.app.battery_active = len(self.selected_protocols) > 0
+		self.app.battery_index = 0
+		self.app.battery_configs = {}
+		self.app.battery_task_types = {}
+		self.app.battery_required_fields = {}
+
+		if self.app.battery_active:
+			# For manual batteries we must detect whether each selected protocol is
+			# a 'task' (has a Menu.py configure screen) or a 'survey' (no Menu.py).
+			# Presence of Protocol/<name>/Task/Menu.py indicates a task.
+			for protocol in self.app.battery_protocols:
+				menu_path = app_root / 'Protocol' / protocol / 'Task' / 'Menu.py'
+				if menu_path.is_file():
+					# task: will present configure screen
+					self.app.battery_task_types[protocol] = 'task'
+					self.app.battery_required_fields[protocol] = None
+				else:
+					# survey: no configure screen and no parameter dict
+					self.app.battery_task_types[protocol] = 'survey'
+					self.app.battery_required_fields[protocol] = None
+			
+			# Start the configuration process for the first protocol
+			self.app.start_next_battery_config()
+		else:
+			# No protocols selected, return to main menu
+			self.manager.current = 'mainmenu'
+
+	def start_battery_task(self, *args):
+		return
 
 
 
@@ -399,42 +1303,164 @@ class ProtocolMenu(Screen):
 
 class MenuApp(App):
 	
-	
-	
 	def build(self):
-		
-		
+		self.app_root = app_root
+
 		self.session_event_data = pd.DataFrame()
 		self.session_event_path = ''
 		self.summary_event_data = pd.DataFrame()
 		self.summary_event_path = ''
+		self.trial_summary_data = list()
+		self.trial_summary_cols = list()
+		self.survey_data = pd.DataFrame()
+		self.survey_data_path = ''
+		self.survey_data_list = list()
+		self.event_queue = queue.Queue()
+		self.event_list = list()
+		self.event_columns = list()
+
+		self.battery_active = False
+		self.battery_protocols = list()
+		self.battery_index = 0
+		self.battery_configs = {}
+		self.battery_required_fields = {}  # Maps protocol name to list of required fields
+
 		self.s_manager = ScreenManager()
-		self.main_menu = MainMenu()
-		self.s_manager.add_widget(self.main_menu)
+		self.active_screen = ''
+		self.config = configparser.ConfigParser()
+		# Load Config.ini from user's home; fallback to app_root if needed
+		try:
+			self.config.read(str(user_config_path), encoding='utf-8')
+		except Exception:
+			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
+		self.language = self.config.get('language', 'language', fallback='English')
+		self.language_menu = LanguageMenu()
+		self.s_manager.add_widget(self.language_menu)
+		self.active_screen = self.language_menu.name
 		
 		return self.s_manager
 	
+	def start_next_battery_config(self):
+		if self.battery_index < len(self.battery_protocols):
+			protocol_name = self.battery_protocols[self.battery_index]
+			# Skip surveys - they don't have configuration screens in battery mode
+			task_type = self.battery_task_types.get(protocol_name, 'task')
+			if task_type == 'survey':
+				# For surveys, skip configuration and move to next
+				self.battery_index += 1
+				self.start_next_battery_config()
+				return
+			
+			# Check if this protocol has required fields
+			required_fields = self.battery_required_fields.get(protocol_name)
+			
+			# Show configure screen if:
+			# 1. required_fields is None (manual battery - always show menu)
+			# 2. required_fields is a non-empty list (preloaded battery with filtering)
+			# Skip configure screen if required_fields is an empty list (preloaded battery with all fields pre-configured)
+			if required_fields is not None and len(required_fields) == 0:
+				# No required fields in preloaded battery: use pre-loaded config and skip configure screen
+				self.battery_index += 1
+				self.start_next_battery_config()
+				return
+			
+			# Show configure screen (either manual battery or preloaded with required fields)
+			protocol_module = protocol_constructor(protocol_name, 'Menu')
+			config_screen = protocol_module.ConfigureScreen()
+			config_screen.update_battery_mode(True, required_fields)
+			config_screen.size = Window.size
+			self.s_manager.add_widget(config_screen)
+			self.s_manager.current = config_screen.name
+		else:
+			self.battery_index = 0
+			self.start_battery_tasks()
 	
+	def start_battery_tasks(self):
+		# Start the task at the current battery_index (do not reset here)
+		if not self.battery_protocols:
+			self.s_manager.current = 'mainmenu'
+			self.battery_active = False
+			return
+
+		if self.battery_index < len(self.battery_protocols):
+			protocol_name = self.battery_protocols[self.battery_index]
+			parameter_dict = self.battery_configs[protocol_name] if protocol_name in self.battery_configs else {}
+			if (app_root / 'Protocol' / protocol_name / 'Task' / 'Menu.py').is_file():
+				task_module = protocol_constructor(protocol_name, 'Protocol')
+				protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
+			else:
+				task_module = protocol_constructor(protocol_name, 'Protocol')
+				protocol_task_screen = task_module.SurveyProtocol()
+			self.s_manager.add_widget(protocol_task_screen)
+			# Provide parameters to the task only for 'task' types (not surveys)
+			try:
+				task_type = self.battery_task_types.get(protocol_name, 'task') if hasattr(self, 'battery_task_types') else 'task'
+				if task_type == 'task' and hasattr(protocol_task_screen, 'load_parameters'):
+					protocol_task_screen.load_parameters(parameter_dict)
+			except Exception:
+				# Some protocols may expect different parameter shapes; still continue
+				pass
+			if self.battery_index > 0:
+				# Remove previous task screen to free memory
+				prev_protocol_name = self.battery_protocols[self.battery_index - 1]
+				prev_screen_name = f"{prev_protocol_name}_protocolscreen"
+				if self.s_manager.has_screen(prev_screen_name):
+					prev_screen = self.s_manager.get_screen(prev_screen_name)
+					self.s_manager.remove_widget(prev_screen)
+			self.s_manager.current = protocol_task_screen.name
+		else:
+			# No more tasks in battery
+			self.battery_active = False
+			self.s_manager.current = 'mainmenu'
+
+	def battery_task_finished(self):
+		"""Called by a protocol when it returns to the main menu during a battery run.
+		This advances the battery index and starts the next task if available.
+		"""
+		# Only advance if a battery run is active
+		if not getattr(self, 'battery_active', False):
+			return
+
+		self.battery_index = int(self.battery_index) + 1
+		if self.battery_index < len(self.battery_protocols):
+			# Start the next battery task
+			self.start_battery_tasks()
+		else:
+			# Finished all battery tasks
+			self.battery_active = False
+			self.s_manager.current = 'mainmenu'
 	
 	def add_screen(self, screen):
-		
 		
 		self.s_manager.add_widget(screen)
 	
 	
 	
 	def on_stop(self):
-		
-		
-		self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-		self.session_event_data.to_csv(self.session_event_path, index=False)
-		self.summary_event_data.to_csv(self.summary_event_path, index=False)
-
-
+		self.event_queue.put(None)
+		try:
+			self.s_manager.current_screen.clear_video_cache()
+		except Exception:
+			pass
+		if len(self.event_list) > 0:
+			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
+			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+			try:
+				self.session_event_data.to_csv(self.session_event_path, index=False)
+			except FileNotFoundError:
+				pass
+			try:
+				self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
+				self.summary_event_data.to_csv(self.summary_event_path, index=False)
+			except FileNotFoundError:
+				pass
+			try:
+				self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
+				self.survey_data.to_csv(self.survey_data_path, index=False)
+			except FileNotFoundError:
+				pass
 
 
 if __name__ == '__main__':
-	
-	
 	MenuApp().run()
 

@@ -1,0 +1,1 @@
+Great job!\n\nYou were able to correctly respond to stimuli\nwithin {str(round((self.outcome_value * self.frame_duration), 3))} seconds.

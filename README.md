@@ -22,6 +22,24 @@ Window Launcher is used to set the screen resolution as well as choose to run in
 
 Kivy Menu Interface will launch the system and allow for the selection of a behavioural task.
 
+### Linux/Chromebook Setup
+If the device is going to be running on a Chromebook or installation of Linux, the following command must be run prior to running the Python Code
+
+sudo apt install -y \
+  build-essential python3 python3-dev python3-pip python3-venv \
+  libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+  libgles2-mesa-dev libgl1-mesa-dev libglew-dev \
+  libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+  libjpeg-dev libpng-dev libpulse-dev libudev-dev libx11-dev \
+  libxrandr-dev libxcursor-dev libxinerama-dev pkg-config \
+  ffmpeg git
+
+
+### Python Requirements
+The project directory contains a requirements.txt file with the necessary Python packages (including Kivy). The requirements can be installed via:
+
+pip install -r requirements.txt
+
 ## Current Tasks
 
 ### Image Continuous Performance Task (iCPT2GStim1 and iCPT2GStim2)

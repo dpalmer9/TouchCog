@@ -1,0 +1,1 @@
+Great job!\n\nYou were able to correctly identify stimuli with \n {str(100 - self.outcome_value)}% of the image visible.

@@ -1,0 +1,1 @@
+Great job!\n\nYou responded to {str(round(self.hit_accuracy, 2) * 100)}% of the target images!\n\nYou responded to {str(sum(self.total_false_alarm_tracking))} of the non-target images.
