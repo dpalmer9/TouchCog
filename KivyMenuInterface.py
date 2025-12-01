@@ -324,10 +324,33 @@ class LanguageMenu(Screen):
 		self.manifest_path = 'https://touchscreencognition.org/uploads/manifest.json'
 
 		self.language_list = list()
-		with os.scandir(app_root / 'Language') as entries:
-			for entry in entries:
-				if entry.is_dir():
-					self.language_list.append(entry.name)
+
+		# Prefer to load the available language names from the manifest first
+		# (manifest format contains a list of dicts under key 'languages').
+		# Fall back to scanning the local Language/ directory when the
+		# manifest is unavailable or doesn't supply any languages.
+		try:
+			manifest = self._fetch_manifest()
+			if isinstance(manifest, dict):
+				for lang_block in manifest.get('languages', []):
+					if isinstance(lang_block, dict):
+						# Each block maps a language name to its entries, e.g.
+						# { "English": [{...}] }
+						for lang_name in lang_block.keys():
+							# guard against accidental duplicates
+							if lang_name not in self.language_list:
+								self.language_list.append(lang_name)
+		except Exception:
+			# Any failure while reading manifest should simply fall through
+			# to the filesystem-scanning fallback below.
+			pass
+
+		# Fallback: scan the Language/ directory for available languages
+		if not self.language_list:
+			with os.scandir(app_root / 'Language') as entries:
+				for entry in entries:
+					if entry.is_dir():
+						self.language_list.append(entry.name)
 		self.language_dropdown = DropDown()
 		self.language_drop_button = Button(text='Select Language')
 		# Position dropdown near top middle
