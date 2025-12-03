@@ -189,7 +189,7 @@ if virtual_keyboard == 0:
 	Config.set('kivy', 'keyboard_mode', 'system')
 
 elif virtual_keyboard == 1:
-	Config.set('kivy', 'keyboard_mode', 'systemanddock')
+	Config.set('kivy', 'keyboard_mode', 'multi')
 
 
 if use_mouse == 0:
