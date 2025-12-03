@@ -43,7 +43,7 @@
         },
         {
             "index": 4,
-            "text" : "The Accessible Canada Act defines disability as 'any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment—or a \nfunctional limitation—whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person’s full and equal participation in society.' \nDo you identify as a person with a disability as described in the Act?",
+            "text" : "The Accessible Canada Act defines disability as 'any impairment, including a physical,\nmental, intellectual, cognitive, learning, communication, or sensory impairment or a \nfunctional limitation whether permanent, temporary, or episodic in nature, or evident or not,\n that, in interaction with a barrier, hinders a person's full and equal participation in society.' \nDo you identify as a person with a disability as described in the Act?",
             "type" : "multiple_choice",
             "visible": true,
             "inclusions" : [],
