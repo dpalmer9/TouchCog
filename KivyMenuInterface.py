@@ -213,6 +213,7 @@ from datetime import datetime
 
 from Classes.Menu import MenuBase
 from Classes.Survey import SurveyBase
+from Classes.Protocol import ProtocolBase
 
 from functools import partial
 
@@ -1438,10 +1439,6 @@ class MenuApp(App):
 	
 	def on_stop(self):
 		self.event_queue.put(None)
-		try:
-			self.s_manager.current_screen.clear_video_cache()
-		except Exception:
-			pass
 		if len(self.event_list) > 0:
 			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
 			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
@@ -1454,11 +1451,29 @@ class MenuApp(App):
 				self.summary_event_data.to_csv(self.summary_event_path, index=False)
 			except FileNotFoundError:
 				pass
+		if len(self.survey_data_list) > 0:
 			try:
 				self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
 				self.survey_data.to_csv(self.survey_data_path, index=False)
 			except FileNotFoundError:
 				pass
+		try:
+				# Only call clear_video_cache() if current_screen is a protocol-related
+				# screen. ProtocolScreen subclasses ProtocolBase in protocol modules,
+				# but some protocol task screens may not directly import ProtocolBase
+				# here; checking for the base class and the class name covers both
+				# cases.
+			current = getattr(self.s_manager, 'current_screen', None)
+			if current is None:
+				raise AttributeError('no current screen')
+
+			is_protocol = isinstance(current, ProtocolBase) or current.__class__.__name__ == 'ProtocolScreen'
+			if is_protocol and hasattr(current, 'clear_video_cache'):
+				current.clear_video_cache()
+
+		except Exception:
+			# Best-effort: ignore failures during shutdown
+			pass
 
 
 if __name__ == '__main__':

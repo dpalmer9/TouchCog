@@ -191,16 +191,10 @@ class SurveyBase(Screen):
         """
         try:
             # Coerce to string (empty string if None)
-            resp_str = "" if response is None else str(response)
-            self.survey_data.loc[len(self.survey_data)] = [question_text, resp_str]
+            new_row = [question_text, "" if response is None else str(response)]
+            self.app.survey_data_list.append(new_row)
         except Exception:
-            # Best-effort: if pandas append fails, try concat
-            try:
-                new_row = [[question_text, "" if response is None else str(response)]]
-                self.app.survey_data_list.append(new_row)
-            except Exception:
-                # give up silently (avoid crashing UI)
-                pass
+            pass
 
     def _should_question_be_visible(self, question_metadata):
         """
@@ -259,10 +253,10 @@ class SurveyBase(Screen):
                 question_text = question_metadata.get('text', '')
                 
                 # Find the response for this question in survey_data
-                matching_rows = self.survey_data[self.survey_data['question'] == question_text]
-                if not matching_rows.empty:
-                    recorded_response = matching_rows.iloc[-1]['response']  # Get last recorded response
-                    return recorded_response == expected_value
+                matching_row = self.app.survey_data_list[question_index - 1]
+                recorded_response = matching_row[1]  # Get last recorded response
+                
+                return recorded_response == expected_value
             
             return False
         except Exception:
@@ -639,7 +633,8 @@ class SurveyBase(Screen):
         self.end_survey()
 
     def run_survey(self, *args):
-        self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
+        if not self.app.battery_active:
+            self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
         folder_path = pathlib.Path(self.data_folder, self.participant_id)
         folder_path.mkdir(parents=True, exist_ok=True)
         self.app.survey_data_path = str(folder_path / f"{self.name}.csv")
@@ -673,6 +668,8 @@ class SurveyBase(Screen):
         self.main_layout.add_widget(self.survey_title_description)
         if not self.app.battery_active:
             self.main_layout.add_widget(self.participant_id_entry)
+        else:
+            self.participant_id = self.app.participant_id
         self.main_layout.add_widget(self.survey_button)
         self.survey_button.bind(on_press=self.run_survey)
 
