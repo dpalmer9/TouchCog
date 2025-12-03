@@ -1107,6 +1107,7 @@ class ProtocolBase(Screen):
 		self.app.trial_summary_cols = self.data_cols
 		self.app.summary_event_path = self.file_path
 		self.app.summary_event_data = self.session_data
+		self.app.data_written = False
 		return
 	
 	
@@ -1307,6 +1308,7 @@ class ProtocolBase(Screen):
 		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
+		self.app.data_written = True
 
 		return
 	
