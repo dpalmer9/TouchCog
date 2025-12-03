@@ -1319,6 +1319,7 @@ class MenuApp(App):
 		self.event_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
+		self.data_written = False
 
 		self.battery_active = False
 		self.battery_protocols = list()
@@ -1439,24 +1440,26 @@ class MenuApp(App):
 	
 	def on_stop(self):
 		self.event_queue.put(None)
-		if len(self.event_list) > 0:
-			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
-			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-			try:
-				self.session_event_data.to_csv(self.session_event_path, index=False)
-			except FileNotFoundError:
-				pass
-			try:
-				self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
-				self.summary_event_data.to_csv(self.summary_event_path, index=False)
-			except FileNotFoundError:
-				pass
-		if len(self.survey_data_list) > 0:
-			try:
-				self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
-				self.survey_data.to_csv(self.survey_data_path, index=False)
-			except FileNotFoundError:
-				pass
+		if not self.data_written:
+			if len(self.event_list) > 0:
+				self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
+				self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+				try:
+					self.session_event_data.to_csv(self.session_event_path, index=False)
+				except FileNotFoundError:
+					pass
+			if len(self.trial_summary_data) > 0:
+				try:
+					self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
+					self.summary_event_data.to_csv(self.summary_event_path, index=False)
+				except FileNotFoundError:
+					pass
+			if len(self.survey_data_list) > 0:
+				try:
+					self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
+					self.survey_data.to_csv(self.survey_data_path, index=False)
+				except FileNotFoundError:
+					pass
 		try:
 				# Only call clear_video_cache() if current_screen is a protocol-related
 				# screen. ProtocolScreen subclasses ProtocolBase in protocol modules,
