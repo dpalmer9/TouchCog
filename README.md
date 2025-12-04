@@ -32,7 +32,7 @@ sudo apt install -y \
   libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
   libjpeg-dev libpng-dev libpulse-dev libudev-dev libx11-dev \
   libxrandr-dev libxcursor-dev libxinerama-dev pkg-config \
-  ffmpeg git
+  ffmpeg git xclip
 
 
 ### Python Requirements
