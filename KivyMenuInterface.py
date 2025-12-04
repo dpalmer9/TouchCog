@@ -190,6 +190,7 @@ if virtual_keyboard == 0:
 
 elif virtual_keyboard == 1:
 	Config.set('kivy', 'keyboard_mode', 'multi')
+	Config.set('kivy', 'keyboard_layout', 'qwerty')
 
 
 if use_mouse == 0:
@@ -221,6 +222,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.window import Window
+from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -239,6 +241,32 @@ from kivy.uix.dropdown import DropDown
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
 
+class LargeVKeyboard(VKeyboard):
+    """Custom VKeyboard that forces itself to be 50% of the screen width."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+		# Identify the default height, width, and ratio of the keyboard
+        self.widget_ratio = self.width / self.height
+
+        # Disable the default size hint so Kivy doesn't shrink it
+        self.size_hint_y = None 
+        # Force the width to 40% of the Window
+        self.width = Window.width * 0.45
+
+		# Set height based on the width and the original ratio
+        self.height = self.width / self.widget_ratio
+        # Ensure it sits at the bottom
+        self.y = 0
+		# Change default font size
+        self.font_size = '32sp'
+
+    def on_width(self, instance, value):
+        # Prevent Kivy's internal layout from resetting the width later
+        target = Window.width * 0.45
+        if abs(value - target) > 5:
+            self.width = target
+
+
 
 
 
@@ -246,6 +274,7 @@ from kivy.uix.popup import Popup
 
 Window.size = (int(x_dim), int(y_dim))
 Window.borderless = '0'
+Window.set_vkeyboard_class(LargeVKeyboard)
 
 def search_protocols():
 		task_path = app_root / 'Protocol'
