@@ -75,6 +75,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'session_duration'
 			, 'block_multiplier'
 			, 'block_trials_base'
+			, 'block_trials_staricase'
 			, 'block_trials_per_flanker_type'
 			, 'training_block_max_correct'
 			, 'target_prob_base'
@@ -144,6 +145,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.block_multiplier = int(parameters_dict.get('block_multiplier', '1'))
 		self.block_trial_max_base = int(parameters_dict.get('block_trials_base', '120'))
+		self.block_trial_max_staircase = int(parameters_dict.get('block_trials_staircase', '180'))
 		self.block_trial_max_flanker = int(parameters_dict.get('block_trials_per_flanker_type', '60')) * 3
 		self.training_block_max_correct = int(parameters_dict.get('training_block_max_correct', '10'))
 
@@ -1655,29 +1657,25 @@ class ProtocolScreen(ProtocolBase):
 						# Check if stimulus duration staircasing stage
 						elif 'StimDur' in self.current_stage:
 
-							# If last trial was not a correct rejection or cancelled trial, check for block end criteria
-							if self.trial_outcome not in [4, 7]:
+							# If frame change at one frame or stimulus duration equal to or greater than limited hold, end block
+							if (self.stimdur_frame_change == 1) \
+								or (self.stimdur_seconds >= self.limhold_seconds):
 
-								# If frame change at one frame or stimulus duration equal to or greater than limited hold, end block
-								if (self.stimdur_frame_change == 1) \
-									or (self.stimdur_seconds >= self.limhold_seconds):
+								self.outcome_value = self.stimdur_frames
+								self.current_block += 1
 
-									self.outcome_value = self.stimdur_frames
-									self.current_block += 1
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Min', 'Frames')
+								self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Min', 'Seconds')
 
-									self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', self.outcome_value, 'Min', 'Frames')
-									self.protocol_floatlayout.add_variable_event('Outcome', 'Stimulus Duration', str(self.outcome_value * self.frame_duration), 'Min', 'Seconds')
+								self.protocol_floatlayout.add_stage_event('Block End')
 
-									self.protocol_floatlayout.add_stage_event('Block End')
-
-									self.start_stage_screen()
+								self.start_stage_screen()
 
 							# Else, stimulus duration staircasing uses binary search to determine minimum stimulus duration
 							# If staircase flag increasing, check block end criteria and increase staircase
 							# If last trial hit (with or without center touch), increase staircase level
 							# Else, do nothing
-							if (self.staircase_flag > 0) \
-								and (self.trial_outcome in [1, 5]):
+							if (self.staircase_flag > 0):
 
 								# If stimulus duration frames above min, set new stimulus duration halfway between current and min
 								if self.stimdur_frames > self.stimdur_frame_min:
@@ -1696,8 +1694,7 @@ class ProtocolScreen(ProtocolBase):
 
 							# Else, if staircase flag decreasing, check criteria and decrease staircase
 							# If last response miss or false alarm
-							elif (self.staircase_flag < 0) \
-								and (self.trial_outcome in [2, 3, 6]):
+							elif (self.staircase_flag < 0):
 						
 								# Set current stimulus duration as frame minimum
 								self.stimdur_frame_min = self.stimdur_frames
@@ -2214,9 +2211,11 @@ class ProtocolScreen(ProtocolBase):
 				# Create initial non-target image list
 				elif 'Similarity' in self.current_stage:
 					self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
+					self.block_trial_max = self.block_trial_max_staircase
 				
 				# Set starting stimulus duration to mean decision point time (i.e., finger lift from hold button)
 				elif 'StimDur' in self.current_stage:
+					self.block_trial_max = self.block_trial_max_staircase
 
 					if len(self.decision_point_tracking) > 0:
 						self.stimdur_seconds = statistics.mean(self.decision_point_tracking)
