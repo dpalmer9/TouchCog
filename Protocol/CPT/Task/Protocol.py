@@ -75,7 +75,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'session_duration'
 			, 'block_multiplier'
 			, 'block_trials_base'
-			, 'block_trials_staricase'
+			, 'block_trials_staircasing'
 			, 'block_trials_per_flanker_type'
 			, 'training_block_max_correct'
 			, 'target_prob_base'
@@ -145,7 +145,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.block_multiplier = int(parameters_dict.get('block_multiplier', '1'))
 		self.block_trial_max_base = int(parameters_dict.get('block_trials_base', '120'))
-		self.block_trial_max_staircase = int(parameters_dict.get('block_trials_staircase', '180'))
+		self.block_trial_max_staircase = int(parameters_dict.get('block_trials_staircasing', '180'))
 		self.block_trial_max_flanker = int(parameters_dict.get('block_trials_per_flanker_type', '60')) * 3
 		self.training_block_max_correct = int(parameters_dict.get('training_block_max_correct', '10'))
 

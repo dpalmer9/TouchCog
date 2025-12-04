@@ -1306,9 +1306,16 @@ class ProtocolBase(Screen):
 
 		self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
 		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
+		self.app.event_queue.put(None)
+		self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
+		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
+		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
+		self.app.event_list = list()
+		self.app.session_event_path = ''
+		self.app.summary_event_path = ''
 
 		return
 	
