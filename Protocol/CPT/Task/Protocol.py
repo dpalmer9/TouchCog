@@ -135,8 +135,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_import = parameters_dict.get('stimulus_duration', '1.5')
 		self.stimdur_import = self.stimdur_import.split(',')
 		
-		self.limhold_import = parameters_dict.get('limited_hold', '1.5')
-		self.limhold_import = self.limhold_import.split(',')
+		self.limhold_import = float(parameters_dict.get('limited_hold', '1.5'))
 
 		self.feedback_length = float(parameters_dict.get('feedback_length', '0.75'))
 		self.block_duration_max = int(parameters_dict.get('block_duration_max', '420'))
@@ -356,7 +355,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_base = self.stimdur_frames
 		self.stimdur_change = self.stimdur_frames / 2
 
-		self.limhold_seconds = self.stimdur_seconds
+		self.limhold_seconds = self.limhold_import
 		self.limhold_base = self.limhold_seconds
 		
 		if self.stimdur_seconds_max > self.limhold_seconds:
