@@ -1020,7 +1020,6 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_end()
 				return
 			elif (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and not self.skip_tutorial_video \
 					and (self.stage_list[self.stage_index] == 'Recall') \
 					and (not self.recall_video_presented):
 				self.protocol_floatlayout.clear_widgets()
@@ -1030,8 +1029,16 @@ class ProtocolScreen(ProtocolBase):
 				# self.tutorial_start_button.unbind(on_press=self.start_protocol_from_tutorial)
 				# self.tutorial_start_button.bind(on_press=self.block_contingency)
 				self.recall_video_presented = True
-				self.tutorial_video.source = self.tutorial_video_PA_path
-				self.tutorial_video.reload()
+				self.tutorial_video.state = 'stop'
+				self.tutorial_video.unload()
+				self.tutorial_video = None
+				self.tutorial_video = PreloadedVideo(
+				source_path = self.tutorial_video_PA_path
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
+				, loop=False
+				)
+		
 				self.present_tutorial_video()
 				return
 			else:
@@ -1099,7 +1106,8 @@ class ProtocolScreen(ProtocolBase):
 				if self.current_stage == 'Training':
 					self.block_max_length = self.training_block_max_correct
 
-				self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
+				#self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
+				self.section_instr_label.text = ''
 				self.instruction_button.text = self.instruction_section_button_str
 
 				if self.current_stage == 'Recall':
