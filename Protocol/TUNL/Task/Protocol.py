@@ -250,9 +250,12 @@ class ProtocolScreen(ProtocolBase):
 		self.cue_image = ImageButton(source=str(self.stimulus_image_path))
 		self.target_image = ImageButton(source=str(self.stimulus_image_path))
 		
+		# Calculate resolution scaling factor (baseline 1080p)
+		resolution_scale = self.screen_resolution[1] / 1080.0
+
 		self.stimulus_image_spacing = [
-			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale)
-			, ((self.cue_image.texture_size[1]/self.screen_resolution[1]) * self.stimulus_scale)
+			((self.cue_image.texture_size[0]/self.screen_resolution[0]) * self.stimulus_scale * resolution_scale)
+			, ((self.cue_image.texture_size[1]/self.screen_resolution[1]) * self.stimulus_scale * resolution_scale)
 			]
 		
 		self.stimulus_image_size = (np.array(self.stimulus_image_spacing) * (1 - self.stimulus_gap)).tolist()
