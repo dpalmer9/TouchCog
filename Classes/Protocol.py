@@ -979,7 +979,17 @@ class ProtocolBase(Screen):
 		end_path = self.lang_folder_path / 'End.txt'
 		with open(end_path, 'r', encoding='utf-8') as file:
 			end_label_str = file.read()
-		self.end_label.text = end_label_str
+
+		end_cont_path = self.lang_folder_path / 'End_Continue.txt'
+		with open(end_cont_path, 'r', encoding='utf-8') as file:
+			end_cont_label_str = file.read()
+		
+		if self.app.battery_index < (len(self.app.battery_protocols) - 1) and self.app.battery_active:
+			self.end_label.text = end_cont_label_str
+		elif self.app.battery_index == (len(self.app.battery_protocols) - 1) and self.app.battery_active:
+			self.end_label.text = end_label_str
+		else:
+			self.end_label.text = end_label_str
 		
 		button_lang_path = self.lang_folder_path / 'Button.ini'
 		button_lang_config = configparser.ConfigParser()
