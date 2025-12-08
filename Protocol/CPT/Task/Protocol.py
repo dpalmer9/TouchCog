@@ -248,6 +248,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_mask_on_screen = True
 		self.training_complete = False
 		self.premature_override = True
+		self.stage_screen_started = False
 		
 		# Define Variables - Count
 		
@@ -752,7 +753,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button = Button(font_size='60sp')
 		self.stage_continue_button.size_hint = self.text_button_size
 		self.stage_continue_button.pos_hint = self.text_button_pos_UC
-		self.stage_continue_button.bind(on_press=self.block_contingency)
+		self.stage_continue_button.bind(on_release=self.block_contingency)
 		
 		self.session_end_button = Button(font_size='60sp')
 		self.session_end_button.size_hint = self.text_button_size
@@ -967,6 +968,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
+			return None
+		if self.stage_screen_started:
 			return None
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
@@ -2142,7 +2145,6 @@ class ProtocolScreen(ProtocolBase):
 				self.target_probability = 1.0
 
 				self.block_start = time.perf_counter()
-				self.block_started = False
 				self.training_complete = True
 
 				self.hold_button.bind(on_press=self.iti_start)
@@ -2315,7 +2317,6 @@ class ProtocolScreen(ProtocolBase):
 					for iTrial in range(len(self.trial_list), self.trial_list_length_hilo):
 						self.trial_list.append('Nontarget')
 
-				self.block_started = False
 				self.protocol_floatlayout.add_widget(self.hold_button)
 
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage, 'Probability', self.target_probability)

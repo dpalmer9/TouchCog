@@ -1391,6 +1391,8 @@ class ProtocolBase(Screen):
 				self.feedback_on_screen = False
 
 		if not self.feedback_on_screen:
+			if self.block_started:
+				return
 			self.feedback_label.text = self.feedback_dict['return']
 			self.protocol_floatlayout.add_widget(self.feedback_label)
 
