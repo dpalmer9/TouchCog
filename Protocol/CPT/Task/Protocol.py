@@ -971,6 +971,8 @@ class ProtocolScreen(ProtocolBase):
 			return None
 		if self.stage_screen_started:
 			return None
+		if self.block_started:
+			return None
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
 		self.contingency = 3
@@ -2001,6 +2003,8 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 		self.hold_button_pressed = False
 		self.response_made = False
+		self.stage_screen_started = True
+		self.block_started = True
 		
 		self.protocol_floatlayout.clear_widgets()
 
@@ -2050,8 +2054,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
 		self.stage_screen_time = time.perf_counter()
-		self.stage_screen_started = True
-		self.block_started = True
 
 		if (self.stage_index < (len(self.stage_list) - 1)) \
 			or (self.current_block <= self.block_max_count):
@@ -2308,6 +2310,7 @@ class ProtocolScreen(ProtocolBase):
 					self.trial_list_max_run = self.trial_list_max_run_hilo
 					self.target_prob_hilo_index = self.current_block - 1
 					self.target_probability = self.target_prob_hilo[self.target_prob_hilo_index]
+					self.block_started = False
 
 					self.trial_list = list()
 

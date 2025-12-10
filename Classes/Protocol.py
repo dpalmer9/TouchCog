@@ -1376,6 +1376,11 @@ class ProtocolBase(Screen):
 
 
 	def hold_remind(self, *args):
+		# If a stage-specific screen is active or stimulus is on screen, do nothing
+		if hasattr(self, 'stage_screen_started') and getattr(self, 'stage_screen_started'):
+			return None
+		if hasattr(self, 'stimulus_on_screen') and getattr(self, 'stimulus_on_screen'):
+			return None
 		if self.feedback_on_screen:
 			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
