@@ -463,6 +463,7 @@ class ProtocolScreen(ProtocolBase):
 	def left_pressed(self, *args):
 
 		self.stimulus_press_time = time.perf_counter()
+		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 		self.side_chosen = 'Left'
 		self.protocol_floatlayout.add_stage_event('Left Stimulus Pressed')
 		self.trial_outcomes()
@@ -474,6 +475,7 @@ class ProtocolScreen(ProtocolBase):
 	def right_pressed(self, *args):
 
 		self.stimulus_press_time = time.perf_counter()
+		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 		self.side_chosen = 'Right'
 		self.protocol_floatlayout.add_stage_event('Right Stimulus Pressed')
 		self.trial_outcomes()
