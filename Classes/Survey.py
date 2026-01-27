@@ -424,18 +424,18 @@ class SurveyBase(Screen):
         for option in options:
             if option.lower() == "other":
                 # For "Other", replace label with text entry
-                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
-                option_checkbox = CheckBox(size_hint_x=None, width=50)
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75, spacing=5)
+                option_checkbox = CheckBox(size_hint_x=None, width=75, height=75)
                 option_row.add_widget(option_checkbox)
                 # Use the "Other" label as hint text in the entry field
-                other_text_input = TextInput(multiline=False, hint_text=option, size_hint_x=1.0, font_size='24sp')
+                other_text_input = TextInput(multiline=False, hint_text=option, size_hint_x=1.0, font_size='30sp')
                 option_row.add_widget(other_text_input)
                 options_container.add_widget(option_row)
             else:
-                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
-                option_checkbox = CheckBox(size_hint_x=None, width=50)
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75)
+                option_checkbox = CheckBox(size_hint_x=None, width=75, height=75)
                 option_row.add_widget(option_checkbox)
-                option_label = Label(text=option, halign='left',font_size='24sp')
+                option_label = Label(text=option, halign='center',font_size='30sp')
                 option_row.add_widget(option_label)
                 options_container.add_widget(option_row)
 
