@@ -16,14 +16,8 @@ class ConfigureScreen(MenuBase):
         self.name = self.protocol + '_configscreen'
 
         self.image_set_dspal = [{'label': 'Image Set 1',
-                                 'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/blocks.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/cookie.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/nineties.png'],
+                                 'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/zigzags.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/shapes.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ghost.png'],
                                  'value': 'set1'},
-                                {'label': 'Image Set 2',
-                                 'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/camera.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ghost.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ovals.png'],
-                                 'value': 'set2'},
-                                 {'label': 'Image Set 3',
-                                  'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/lines.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/shapes.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/zigzags.png'],
-                                  'value': 'set3'},
                                   {'label': 'Random',
                                    'images': [],
                                    'value': 'rand'}]
