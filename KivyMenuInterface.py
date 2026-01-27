@@ -242,7 +242,7 @@ from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
 
 class LargeVKeyboard(VKeyboard):
-    """Custom VKeyboard that forces itself to be 50% of the screen width."""
+    """Custom VKeyboard that forces itself to be 66% of the screen width."""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 		# Identify the default height, width, and ratio of the keyboard
@@ -250,19 +250,19 @@ class LargeVKeyboard(VKeyboard):
 
         # Disable the default size hint so Kivy doesn't shrink it
         self.size_hint_y = None 
-        # Force the width to 40% of the Window
-        self.width = Window.width * 0.45
+        # Force the width to 66% of the Window
+        self.width = Window.width * 0.66
 
 		# Set height based on the width and the original ratio
         self.height = self.width / self.widget_ratio
         # Ensure it sits at the bottom
         self.y = 0
 		# Change default font size
-        self.font_size = '32sp'
+        self.font_size = '40sp'
 
     def on_width(self, instance, value):
         # Prevent Kivy's internal layout from resetting the width later
-        target = Window.width * 0.45
+        target = Window.width * 0.66
         if abs(value - target) > 5:
             self.width = target
 
