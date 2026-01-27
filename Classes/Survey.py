@@ -292,8 +292,9 @@ class SurveyBase(Screen):
         Create a multiple choice question with given text and options.
         Handles "Other" option with text entry.
         """
-        question_label = Label(text=question_text, size_hint_y=None, height=60, font_size='32sp', halign='left', valign='top', text_size=(None, None))
-        question_label.bind(texture_size=question_label.setter('size'))
+        question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
+        question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
+        question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
         question_scroll = ScrollView(size_hint_y=0.3, scroll_y=1, effect_cls=ScrollEffect)
         question_scroll.add_widget(question_label)
         layout.add_widget(question_scroll)
@@ -377,8 +378,9 @@ class SurveyBase(Screen):
         """
         Create a text input question with given text.
         """
-        question_label = Label(text=question_text, size_hint_y=None, height=60, font_size='32sp', halign='left', valign='top', text_size=(None, None))
-        question_label.bind(texture_size=question_label.setter('size'))
+        question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
+        question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
+        question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
         question_scroll = ScrollView(size_hint_y=0.3, scroll_y=1, effect_cls=ScrollEffect)
         question_scroll.add_widget(question_label)
         layout.add_widget(question_scroll)
@@ -407,8 +409,9 @@ class SurveyBase(Screen):
         Create a multi-response question with checkboxes for given text and options.
         Handles "Other" option with text entry instead of label.
         """
-        question_label = Label(text=question_text, size_hint_y=None, height=60, font_size='32sp', halign='left', valign='top', text_size=(None, None))
-        question_label.bind(texture_size=question_label.setter('size'))
+        question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
+        question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
+        question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
         question_scroll = ScrollView(size_hint_y=0.3, scroll_y=1, effect_cls=ScrollEffect)
         question_scroll.add_widget(question_label)
         layout.add_widget(question_scroll)
@@ -478,8 +481,9 @@ class SurveyBase(Screen):
         Create a Likert scale question with a draggable horizontal indicator.
         Options can be either a dict {key: label, ...} or a tuple (min, max).
         """
-        question_label = Label(text=question_text, size_hint_y=None, height=60, font_size='32sp', halign='left', valign='top', text_size=(None, None))
-        question_label.bind(texture_size=question_label.setter('size'))
+        question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
+        question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
+        question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
         question_scroll = ScrollView(size_hint_y=0.3, scroll_y=1, effect_cls=ScrollEffect)
         question_scroll.add_widget(question_label)
         layout.add_widget(question_scroll)
