@@ -164,12 +164,12 @@ class SurveyBase(Screen):
         self.survey_description = "This is a survey."
         self.end_survey_button_text = "Continue"
         self.end_survey_text = "Thank you for completing the survey!"
-        self.survey_title_label = Label(text=self.survey_title, font_size='32sp', halign='center', valign='middle')
-        self.survey_title_description = Label(text=self.survey_description, font_size='24sp', halign='center', valign='middle')
+        self.survey_title_label = Label(text=self.survey_title, font_size='35sp', halign='center', valign='middle')
+        self.survey_title_description = Label(text=self.survey_description, font_size='30sp', halign='center', valign='middle')
         self.survey_button_text = "Next"
-        self.survey_button = Button(text=self.survey_button_text, size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5}, font_size='24sp')
+        self.survey_button = Button(text=self.survey_button_text, size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
-        self.participant_id_entry = TextInput(hint_text="Participant ID", multiline=False, size_hint=(0.6, None), height=40, pos_hint={'center_x': 0.5}, font_size='24sp')
+        self.participant_id_entry = TextInput(hint_text="Participant ID", multiline=False, size_hint=(0.6, None), height=75, pos_hint={'center_x': 0.5}, font_size='30sp')
         self.participant_id = 'Default'
 
         self.survey_data = pd.DataFrame(columns=['question', 'response'])
@@ -388,7 +388,7 @@ class SurveyBase(Screen):
         layout.add_widget(spacer)
 
         from kivy.uix.textinput import TextInput
-        text_input = TextInput(multiline=False, size_hint_y=None, height=50, font_size='24sp')
+        text_input = TextInput(multiline=False, size_hint_y=None, height=75, font_size='30sp')
         layout.add_widget(text_input)
 
         survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
