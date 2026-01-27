@@ -17,7 +17,9 @@ class SurveyProtocol(SurveyBase):
         self.name = 'Demographic'
         self.app = App.get_running_app()
         self.survey_name = "Demographic Survey"
+        self.survey_title_label.text = self.survey_name
         self.survey_description = "A survey to collect demographic information from participants."
+        self.survey_title_description.text = self.survey_description
         self.end_survey_text = "Thank you for completing the demographic survey."
 
 
