@@ -266,7 +266,7 @@ class SurveyBase(Screen):
     def _load_end_survey_text(self):
         self.end_survey_text = "Thank you for completing the survey!"
         self.end_survey_label = Label(text=self.end_survey_text, font_size='32sp', halign='center', valign='middle')
-        self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5}, font_size='24sp')
+        self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
     def _return_to_main_menu(self, instance):
         self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
@@ -338,7 +338,7 @@ class SurveyBase(Screen):
         scroll_view.add_widget(options_container)
         layout.add_widget(scroll_view)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=50)
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
         # custom handler: find the ToggleButton in the options_container that is down
         def _on_next(instance, qtext=question_text, _container=options_container, _other_input=other_text_input):
             selected_text = ""
@@ -391,7 +391,7 @@ class SurveyBase(Screen):
         text_input = TextInput(multiline=False, size_hint_y=None, height=50, font_size='24sp')
         layout.add_widget(text_input)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=50, font_size='24sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
         # custom handler: record the text value
         def _on_next_text(instance, qtext=question_text, _input=text_input):
             response = _input.text if _input is not None else ""
@@ -439,7 +439,7 @@ class SurveyBase(Screen):
         scroll_view.add_widget(options_container)
         layout.add_widget(scroll_view)
         
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=50, font_size='24sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
         # custom handler: iterate through rows and collect checked labels / text inputs
         def _on_next_multi(instance, qtext=question_text, _container=options_container):
             selected = []
@@ -521,7 +521,7 @@ class SurveyBase(Screen):
 
         layout.add_widget(scale_container)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=50, font_size='24sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
         # custom handler: read likert_scale value (label for dicts, numeric for ranges)
         def _on_next_scale(instance, qtext=question_text, _scale=likert_scale):
             try:
