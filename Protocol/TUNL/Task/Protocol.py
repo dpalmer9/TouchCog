@@ -640,7 +640,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# If training block, provide feedback
 		if (self.current_stage == 'Train'):
-			outcome_string = eval(f'f"""{self.outcome_dict.get("training", "")}"""')
+			outcome_string = self.outcome_dict.get("training", "").replace('\\n', '\n')
 			
 		# Else, if combo probe, provide maximum delay based on current separation
 		elif (self.current_stage == 'Combo') \
@@ -655,34 +655,44 @@ class ProtocolScreen(ProtocolBase):
 			else:
 				difficulty_string = 'Medium'
 
-			outcome_string = eval(f'f"""{self.outcome_dict.get("comboresult", "")}"""')
+			max_delay = str(self.combo_probe_delay_limit_dict[self.current_sep]['min'])
+			outcome_string = self.outcome_dict.get("comboresult", "").replace('\\n', '\n').format(
+				difficulty_string=difficulty_string,
+				max_delay=max_delay
+			)
 			
 		# Else, if delay probe, provide minimum distance based on current delay
 		elif self.current_stage == 'Delay' \
 				and (len(self.delay_probe_sep_tracking) > 0):
 
-			outcome_string = eval(f'f"""{self.outcome_dict.get("delayresult", "")}"""')
+			current_delay = str(self.current_delay)
+			sep_limit = str(self.delay_probe_sep_limit_dict['max'])
+			outcome_string = self.outcome_dict.get("delayresult", "").replace('\\n', '\n').format(
+				current_delay=current_delay,
+				sep_limit=sep_limit
+			)
 
 		# Else, provide generic accuracy results
 		elif (len(self.response_tracking) > 0):
 			self.hit_accuracy = sum(self.response_tracking) / len(self.response_tracking)
 
-			outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
+			accuracy = str(round(self.hit_accuracy * 100))
+			outcome_string = self.outcome_dict.get("result", "").replace('\\n', '\n').format(accuracy=accuracy)
 
 		# Else, provide generic feedback
 		else:
-			outcome_string = eval(f'f"""{self.outcome_dict.get("gj", "")}"""')
+			outcome_string = self.outcome_dict.get("gj", "").replace('\\n', '\n')
 		
 
 		if self.stage_index < (len(self.stage_list) - 1) \
 				or (self.current_block <= self.max_blocks):
-			staging_string = eval(self.staging_dict.get('continue'))
+			staging_string = self.staging_dict.get('continue')
 			self.instruction_button.unbind(on_press=self.section_start)
 			self.instruction_button.bind(on_press=self.block_contingency)
 			self.instruction_button.text = 'Continue'
 
 		else:
-			staging_string = eval(self.staging_dict.get('end'))
+			staging_string = self.staging_dict.get('end')
 			self.instruction_button.unbind(on_press=self.section_start)
 			self.instruction_button.unbind(on_press=self.block_contingency)
 			self.instruction_button.bind(on_press=self.protocol_end)

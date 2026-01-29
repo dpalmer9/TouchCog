@@ -1,1 +1,1 @@
-Great job! \n\nYour overall accuracy was {str(round(self.hit_accuracy * 100))}%! \n\n
+Great job! \n\nYour overall accuracy was {accuracy}%! \n\n

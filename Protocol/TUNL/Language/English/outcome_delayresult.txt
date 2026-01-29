@@ -1,1 +1,1 @@
-Great job! \n\nThe smallest distance you could distinguish locations \nat a {str(self.current_delay)} second delay was a diameter of {str(self.delay_probe_sep_limit_dict['max'])}! \n\n
+Great job! \n\nThe smallest distance you could distinguish locations \nat a {current_delay} second delay was a diameter of {sep_limit}! \n\n
