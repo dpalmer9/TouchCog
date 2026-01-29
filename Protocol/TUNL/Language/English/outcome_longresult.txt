@@ -1,1 +1,0 @@
-Great job!\n\nThe maximum time you could identify locations \non the {difficulty_string} difficulty was {str(self.combo_probe_delay_limit_dict[iElem]['min'])} seconds!\n\nPlease inform the researcher that you have finished this task.

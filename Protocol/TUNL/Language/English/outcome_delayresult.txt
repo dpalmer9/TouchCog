@@ -1,0 +1,1 @@
+Great job! \n\nThe smallest distance you could distinguish locations \nat a {current_delay} second delay was a diameter of {sep_limit}! \n\n
