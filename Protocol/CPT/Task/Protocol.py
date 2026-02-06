@@ -249,6 +249,9 @@ class ProtocolScreen(ProtocolBase):
 		self.training_complete = False
 		self.premature_override = True
 		self.stage_screen_started = False
+		self.stimdur_video_played = False
+
+
 		
 		# Define Variables - Count
 		
@@ -650,10 +653,11 @@ class ProtocolScreen(ProtocolBase):
 
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
+			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-Tutorial_Video-2025-09-22.mp4'
+			self.stimdur_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-StimDur-2025-09-18.mp4'
 
 			self.tutorial_video = PreloadedVideo(
-				source_path = self.tutorial_video_path
+				source_path = str(self.tutorial_video_path)
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
 				, fit_mode = 'contain',
 				loop=False
@@ -2131,6 +2135,27 @@ class ProtocolScreen(ProtocolBase):
 			
 				self.protocol_floatlayout.add_stage_event('Protocol End')
 				self.protocol_end()
+
+			if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (self.stage_list[self.stage_index] == 'StimDur_Staircase_Probe') \
+					and (not self.stimdur_video_played):
+				self.protocol_floatlayout.clear_widgets()
+				self.current_stage = self.stage_list[self.stage_index]
+				self.stage_index -= 1
+				self.current_block = 1
+				self.stimdur_video_played = True
+				self.tutorial_video.state = 'stop'
+				self.tutorial_video.unload()
+				self.tutorial_video = None
+				self.tutorial_video = PreloadedVideo(
+				source_path = str(self.stimdur_video_path)
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
+				, loop=False
+				)
+		
+				self.present_tutorial_video()
+				return
 			
 
 			# Set parameters for next block
