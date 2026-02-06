@@ -392,7 +392,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*.mp4'))[0])
+			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Tutorial_Video-2025-09-18.mp4'
 
 			self.tutorial_video = PreloadedVideo(
 				source_path=str(self.tutorial_video_path),
