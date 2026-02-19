@@ -240,6 +240,7 @@ from kivy.graphics import Color, Line
 from kivy.uix.dropdown import DropDown
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
+from kivy.utils import platform
 
 class LargeVKeyboard(VKeyboard):
     """Custom VKeyboard that forces itself to be 66% of the screen width."""
@@ -1465,7 +1466,48 @@ class MenuApp(App):
 		
 		self.s_manager.add_widget(screen)
 	
-	
+	def on_start(self):
+		from kivy.utils import platform
+		if platform == 'android':
+			try:
+				from android.permissions import request_permissions, Permission
+				request_permissions([
+					Permission.READ_EXTERNAL_STORAGE, 
+					Permission.WRITE_EXTERNAL_STORAGE,
+					Permission.INTERNET
+				])
+			except ImportError:
+				# android.permissions not available in development environment
+				pass
+			
+			# Handle Android storage path
+			from jnius import autoclass
+			PythonActivity = autoclass('org.kivy.android.PythonActivity')
+			# Get app-specific external storage which is writable
+			storage_path = PythonActivity.mActivity.getExternalFilesDir(None).getAbsolutePath()
+			
+			# Update user_config_path to point to android storage
+			global user_config_path
+			user_config_path = pathlib.Path(storage_path) / 'Config.ini'
+			
+			# Re-check if config needs to be copied to this new location
+			if not user_config_path.exists():
+				try:
+					import shutil
+					packaged_root = pathlib.Path(app_root)
+					packaged_config = packaged_root / 'Config.ini'
+					if packaged_config.exists():
+						shutil.copy2(str(packaged_config), str(user_config_path))
+				except Exception as e:
+					print(f"Error copying config on Android: {e}")
+			
+			# Reload config from new location
+			try:
+				self.config.read(str(user_config_path), encoding='utf-8')
+				# Update language if needed
+				self.language = self.config.get('language', 'language', fallback='English')
+			except Exception:
+				pass
 	
 	def on_stop(self):
 		self.event_queue.put(None)
