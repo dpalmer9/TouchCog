@@ -192,11 +192,11 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_reward_list = list()
 		self.trial_reward_list_index = -1
 
-		for iTrial in range(int(self.target_reward_probability * 60)):
+		for iTrial in range(int(self.target_reward_probability * self.block_trial_max)):
 			self.trial_reward_list.append('Target')
 		
 
-		for iTrial in range(int(self.nontarget_reward_probability * 60)):
+		for iTrial in range(int(self.nontarget_reward_probability * self.block_trial_max)):
 			self.trial_reward_list.append('NonTarget')
 		
 		self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list, max_run=5)
