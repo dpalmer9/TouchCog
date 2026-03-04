@@ -301,7 +301,7 @@ class SurveyBase(Screen):
 
         # Create scrollable container for options
         scroll_view = ScrollView(size_hint=(1, 0.7))
-        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=20, padding=20)
         options_container.bind(minimum_height=options_container.setter('height'))
 
         # Track if "Other" option exists
@@ -315,7 +315,7 @@ class SurveyBase(Screen):
         for option in options:
             if option.lower() == "other":
                 # Create horizontal layout for "Other" with a ToggleButton and text entry
-                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5)
+                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5, padding=[0,0,0,0])
                 other_toggle = ToggleButton(text=option, group=group_name, size_hint_x=0.3, font_size='24sp')
                 other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50, font_size='24sp')
                 other_text_input.hint_text = "Specify other"
@@ -435,10 +435,11 @@ class SurveyBase(Screen):
                 option_row.add_widget(other_text_input)
                 options_container.add_widget(option_row)
             else:
-                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75)
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75, spacing=50,
+                                       padding=[0,0,0,0])
                 option_checkbox = CheckBox(size_hint_x=None, width=75, height=75)
                 option_row.add_widget(option_checkbox)
-                option_label = Label(text=option, halign='center',font_size='30sp')
+                option_label = Label(text=option, halign='left',font_size='30sp', size_hint_x=None, width=200)
                 option_row.add_widget(option_label)
                 options_container.add_widget(option_row)
 
