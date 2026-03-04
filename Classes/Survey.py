@@ -390,8 +390,11 @@ class SurveyBase(Screen):
         layout.add_widget(spacer)
 
         from kivy.uix.textinput import TextInput
-        text_input = TextInput(multiline=False, size_hint_y=None, height=75, font_size='30sp')
+        text_input = TextInput(multiline=False, size_hint_y=None, height=100, font_size='30sp')
         layout.add_widget(text_input)
+
+        # Add small spacer between input and button
+        layout.add_widget(Widget(size_hint_y=None, height=20))
 
         survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
         # custom handler: record the text value
