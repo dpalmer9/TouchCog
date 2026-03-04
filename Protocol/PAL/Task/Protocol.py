@@ -1136,13 +1136,15 @@ class ProtocolScreen(ProtocolBase):
 					self.instruction_button.bind(on_press=self.start_recall_target_screen)
 					self.instruction_button.text = self.image_recall_button_str
 					
-				self.protocol_floatlayout.add_widget(self.section_instr_label)
-				self.protocol_floatlayout.add_widget(self.instruction_button)
+					self.protocol_floatlayout.add_widget(self.section_instr_label)
+					self.protocol_floatlayout.add_widget(self.instruction_button)
 					
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
-				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
+					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
+					self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
 
 			self.trial_contingency()
+			if self.current_stage != 'Recall':
+				self.section_start()
 		
 		except KeyboardInterrupt:
 			print('Program terminated by user.')
