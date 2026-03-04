@@ -191,6 +191,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.response_tracking = list()
 
+		self.spal_video_presented = False
 		self.recall_video_presented = False
 		self.recall_instruction_target_display_started = False
 
@@ -396,11 +397,12 @@ class ProtocolScreen(ProtocolBase):
 		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_PAL_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 1*'))[0])
-			self.tutorial_video_PA_path = str(list((self.lang_folder_path / 'Tutorial_Video').glob('*Part 2*'))[0])
+			self.tutorial_video_dPAL_path = self.lang_folder_path / 'Tutorial_Video' /'PAL-dPAL-2025-09-22.mp4'
+			self.tutorial_video_sPAL_path = self.lang_folder_path / 'Tutorial_Video' / 'PAL-sPAL-2025-09-22.mp4'
+			self.tutorial_video_PA_path = self.lang_folder_path / 'Tutorial_Video' / 'PAL-Recall-2025-11-19.mp4'
 
 			self.tutorial_video = PreloadedVideo(
-				source_path = self.tutorial_video_PAL_path
+				source_path = str(self.tutorial_video_dPAL_path)
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
 				, fit_mode = 'contain'
 				, loop=False
@@ -1020,20 +1022,38 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_end()
 				return
 			elif (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (self.stage_list[self.stage_index] == 'sPAL') \
+					and (not self.spal_video_presented):
+				self.protocol_floatlayout.clear_widgets()
+				self.current_stage = self.stage_list[self.stage_index]
+				self.stage_index -= 1
+				self.current_block = 1
+				self.spal_video_presented = True
+				self.tutorial_video.state = 'stop'
+				self.tutorial_video.unload()
+				self.tutorial_video = None
+				self.tutorial_video = PreloadedVideo(
+				source_path = str(self.tutorial_video_sPAL_path)
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
+				, loop=False
+				)
+		
+				self.present_tutorial_video()
+				return
+			elif (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
 					and (self.stage_list[self.stage_index] == 'Recall') \
 					and (not self.recall_video_presented):
 				self.protocol_floatlayout.clear_widgets()
 				self.current_stage = self.stage_list[self.stage_index]
 				self.stage_index -= 1
 				self.current_block = 1
-				# self.tutorial_start_button.unbind(on_press=self.start_protocol_from_tutorial)
-				# self.tutorial_start_button.bind(on_press=self.block_contingency)
 				self.recall_video_presented = True
 				self.tutorial_video.state = 'stop'
 				self.tutorial_video.unload()
 				self.tutorial_video = None
 				self.tutorial_video = PreloadedVideo(
-				source_path = self.tutorial_video_PA_path
+				source_path = str(self.tutorial_video_PA_path)
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
 				, fit_mode = 'contain'
 				, loop=False
@@ -1116,13 +1136,15 @@ class ProtocolScreen(ProtocolBase):
 					self.instruction_button.bind(on_press=self.start_recall_target_screen)
 					self.instruction_button.text = self.image_recall_button_str
 					
-				self.protocol_floatlayout.add_widget(self.section_instr_label)
-				self.protocol_floatlayout.add_widget(self.instruction_button)
+					self.protocol_floatlayout.add_widget(self.section_instr_label)
+					self.protocol_floatlayout.add_widget(self.instruction_button)
 					
-				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
-				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
+					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions')
+					self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
 
 			self.trial_contingency()
+			if self.current_stage != 'Recall':
+				self.section_start()
 		
 		except KeyboardInterrupt:
 			print('Program terminated by user.')
