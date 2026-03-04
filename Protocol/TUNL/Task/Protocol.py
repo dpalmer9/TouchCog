@@ -458,11 +458,6 @@ class ProtocolScreen(ProtocolBase):
 		for stage in self.stage_list:
 			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
 			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']		
-		
-		# Instruction - Button Widget
-		
-		self.instruction_button = Button()
-		self.instruction_button.bind(on_press=self.section_start)
 	
 	# Initialization Functions
 	
