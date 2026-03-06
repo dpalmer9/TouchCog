@@ -14,6 +14,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Line, Color, Ellipse
 from kivy.core.window import Window
+from kivy.metrics import dp
 import pandas as pd
 import json
 import configparser
@@ -44,10 +45,10 @@ class LikertScale(Widget):
             self.options = None
             self.option_keys = None
             self.current_value = self.scale_min
-        
-        self.indicator_size = 30
-        self.padding = 40
-        
+
+        self.indicator_size = dp(40)
+        self.padding = dp(40)
+
         self.bind(pos=self.update_canvas, size=self.update_canvas)
         self.update_canvas()
         
@@ -62,7 +63,7 @@ class LikertScale(Widget):
             line_y = self.center_y
             line_x_start = self.x + self.padding
             line_x_end = self.x + self.width - self.padding
-            Line(points=[line_x_start, line_y, line_x_end, line_y], width=2)
+            Line(points=[line_x_start, line_y, line_x_end, line_y], width=dp(2))
             
             # Draw tick marks
             num_points = self.scale_max - self.scale_min + 1
@@ -71,7 +72,7 @@ class LikertScale(Widget):
             for i in range(num_points):
                 tick_x = line_x_start + (i * tick_spacing)
                 # Draw tick mark
-                Line(points=[tick_x, line_y - 5, tick_x, line_y + 5], width=1)
+                Line(points=[tick_x, line_y - dp(10), tick_x, line_y + dp(10)], width=dp(2))
             
             # Draw indicator circle with white border
             indicator_x = self._get_indicator_x()
@@ -83,7 +84,7 @@ class LikertScale(Widget):
             
             # Draw white border around circle
             Color(1, 1, 1, 1)
-            Line(circle=(indicator_x, line_y, self.indicator_size/2), width=2)
+            Line(circle=(indicator_x, line_y, self.indicator_size/2), width=dp(2))
     
     def _get_indicator_x(self):
         """Calculate the x position of the indicator based on current value."""
@@ -154,9 +155,9 @@ class SurveyBase(Screen):
 
         self.app = App.get_running_app()
 
-        #self.question_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        #self.question_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
 
-        self.main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.main_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
         self.add_widget(self.main_layout)
 
         self.language = self.app.language
@@ -169,7 +170,7 @@ class SurveyBase(Screen):
         self.survey_button_text = "Next"
         self.survey_button = Button(text=self.survey_button_text, size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
-        self.participant_id_entry = TextInput(hint_text="Participant ID", multiline=False, size_hint=(0.6, None), height=75, pos_hint={'center_x': 0.5}, font_size='30sp')
+        self.participant_id_entry = TextInput(hint_text="Participant ID", multiline=False, size_hint=(0.6, None), height=dp(75), pos_hint={'center_x': 0.5}, font_size='30sp')
         self.participant_id = 'Default'
 
         self.survey_data = pd.DataFrame(columns=['question', 'response'])
@@ -301,7 +302,7 @@ class SurveyBase(Screen):
 
         # Create scrollable container for options
         scroll_view = ScrollView(size_hint=(1, 0.7))
-        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=20, padding=20)
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=dp(20), padding=dp(20))
         options_container.bind(minimum_height=options_container.setter('height'))
 
         # Track if "Other" option exists
@@ -315,9 +316,9 @@ class SurveyBase(Screen):
         for option in options:
             if option.lower() == "other":
                 # Create horizontal layout for "Other" with a ToggleButton and text entry
-                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=5, padding=[0,0,0,0])
+                other_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(5), padding=[0,0,0,0])
                 other_toggle = ToggleButton(text=option, group=group_name, size_hint_x=0.3, font_size='24sp')
-                other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=50, font_size='24sp')
+                other_text_input = TextInput(multiline=False, size_hint_x=0.7, height=dp(50), font_size='24sp')
                 other_text_input.hint_text = "Specify other"
                 # mark selection as 'Other' when toggle goes down
                 def _mark_other(toggle, state, _layout=layout):
@@ -328,7 +329,7 @@ class SurveyBase(Screen):
                 other_row.add_widget(other_text_input)
                 options_container.add_widget(other_row)
             else:
-                option_toggle = ToggleButton(text=option, group=group_name, size_hint_y=None, height=50, font_size='24sp')
+                option_toggle = ToggleButton(text=option, group=group_name, size_hint_y=None, height=dp(50), font_size='24sp')
                 # when toggled down, record this option label
                 def _mark_choice(toggle, state, opt=option, _layout=layout):
                     if state == 'down':
@@ -339,7 +340,7 @@ class SurveyBase(Screen):
         scroll_view.add_widget(options_container)
         layout.add_widget(scroll_view)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
         # custom handler: find the ToggleButton in the options_container that is down
         def _on_next(instance, qtext=question_text, _container=options_container, _other_input=other_text_input):
             selected_text = ""
@@ -390,13 +391,13 @@ class SurveyBase(Screen):
         layout.add_widget(spacer)
 
         from kivy.uix.textinput import TextInput
-        text_input = TextInput(multiline=False, size_hint_y=None, height=100, font_size='30sp')
+        text_input = TextInput(multiline=False, size_hint_y=None, height=dp(100), font_size='30sp')
         layout.add_widget(text_input)
 
         # Add small spacer between input and button
-        layout.add_widget(Widget(size_hint_y=None, height=20))
+        layout.add_widget(Widget(size_hint_y=None, height=dp(20)))
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
         # custom handler: record the text value
         def _on_next_text(instance, qtext=question_text, _input=text_input):
             response = _input.text if _input is not None else ""
@@ -421,32 +422,32 @@ class SurveyBase(Screen):
 
         # Create scrollable container for options
         scroll_view = ScrollView(size_hint=(1, 0.7))
-        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=10, padding=10)
+        options_container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=dp(10), padding=dp(10))
         options_container.bind(minimum_height=options_container.setter('height'))
 
         for option in options:
             if option.lower() == "other":
                 # For "Other", replace label with text entry
-                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75, spacing=5)
-                option_checkbox = CheckBox(size_hint_x=None, width=75, height=75)
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(75), spacing=dp(5))
+                option_checkbox = CheckBox(size_hint_x=None, width=dp(75), height=dp(75))
                 option_row.add_widget(option_checkbox)
                 # Use the "Other" label as hint text in the entry field
                 other_text_input = TextInput(multiline=False, hint_text=option, size_hint_x=1.0, font_size='30sp')
                 option_row.add_widget(other_text_input)
                 options_container.add_widget(option_row)
             else:
-                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=75, spacing=50,
+                option_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(75), spacing=dp(50),
                                        padding=[0,0,0,0])
-                option_checkbox = CheckBox(size_hint_x=None, width=75, height=75)
+                option_checkbox = CheckBox(size_hint_x=None, width=dp(75), height=dp(75))
                 option_row.add_widget(option_checkbox)
-                option_label = Label(text=option, halign='left',font_size='30sp', size_hint_x=None, width=200)
+                option_label = Label(text=option, halign='left',font_size='30sp', size_hint_x=None, width=dp(200))
                 option_row.add_widget(option_label)
                 options_container.add_widget(option_row)
 
         scroll_view.add_widget(options_container)
         layout.add_widget(scroll_view)
         
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
         # custom handler: iterate through rows and collect checked labels / text inputs
         def _on_next_multi(instance, qtext=question_text, _container=options_container):
             selected = []
@@ -493,7 +494,7 @@ class SurveyBase(Screen):
         layout.add_widget(question_scroll)
 
         # Create a container for the scale with labels
-        scale_container = BoxLayout(orientation='vertical', size_hint_y=None, height=150, spacing=5, padding=10)
+        scale_container = BoxLayout(orientation='vertical', size_hint_y=None, height=dp(150), spacing=dp(5), padding=dp(10))
         
         # Add the Likert scale widget
         if isinstance(options, dict):
@@ -502,7 +503,7 @@ class SurveyBase(Screen):
             scale_container.add_widget(likert_scale)
             
             # Add label row with option labels
-            label_row = BoxLayout(size_hint_y=0.5, spacing=5)
+            label_row = BoxLayout(size_hint_y=0.5, spacing=dp(5))
             option_values = list(options.values())
             num_options = len(option_values)
             
@@ -518,9 +519,9 @@ class SurveyBase(Screen):
             scale_container.add_widget(likert_scale)
             
             # Add label row with min and max labels
-            label_row = BoxLayout(size_hint_y=0.4, spacing=10)
-            min_label = Label(text=str(scale_min), size_hint_x=None, width=40, font_size='24sp')
-            max_label = Label(text=str(scale_max), size_hint_x=None, width=40, font_size='24sp')
+            label_row = BoxLayout(size_hint_y=0.4, spacing=dp(10))
+            min_label = Label(text=str(scale_min), size_hint_x=None, width=dp(40), font_size='24sp')
+            max_label = Label(text=str(scale_max), size_hint_x=None, width=dp(40), font_size='24sp')
             spacer = Widget()
             label_row.add_widget(min_label)
             label_row.add_widget(spacer)
@@ -529,7 +530,7 @@ class SurveyBase(Screen):
 
         layout.add_widget(scale_container)
 
-        survey_continue_button = Button(text="Next", size_hint_y=None, height=100, font_size='30sp')
+        survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
         # custom handler: read likert_scale value (label for dicts, numeric for ranges)
         def _on_next_scale(instance, qtext=question_text, _scale=likert_scale):
             try:
@@ -548,9 +549,9 @@ class SurveyBase(Screen):
         Create a survey question with given text and options.
         """
         # Create outer container with scroll view
-        outer_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        
-        question_layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint_y=None)
+        outer_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
+
+        question_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10), size_hint_y=None)
         question_layout.bind(minimum_height=question_layout.setter('height'))
         
         if question_type == "multiple_choice":
