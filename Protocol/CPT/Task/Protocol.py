@@ -231,6 +231,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_screen_started = False
 		self.stimdur_video_played = False
 		self.sim_scale_video_played = False
+		self.tar_probe_video_player = False
 
 
 		
@@ -637,6 +638,7 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-Tutorial_Video-2025-09-22.mp4'
 			self.sim_scale_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
 			self.stimdur_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-StimDur-2025-09-18.mp4'
+			self.tar_prob_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
 
 			self.tutorial_video = PreloadedVideo(
 				source_path = str(self.tutorial_video_path)
@@ -2135,6 +2137,28 @@ class ProtocolScreen(ProtocolBase):
 				self.tutorial_video = None
 				self.tutorial_video = PreloadedVideo(
 				source_path = str(self.stimdur_video_path)
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain'
+				, loop=False
+				)
+		
+				self.block_started = False
+				self.present_tutorial_video()
+				return
+			
+			if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (self.stage_list[self.stage_index] == 'TarProb_Fixed_Probe') \
+					and (not self.tar_probe_video_played):
+				self.protocol_floatlayout.clear_widgets()
+				self.current_stage = self.stage_list[self.stage_index]
+				self.stage_index -= 1
+				self.current_block = -1
+				self.tar_probe_video_played = True
+				self.tutorial_video.state = 'stop'
+				self.tutorial_video.unload()
+				self.tutorial_video = None
+				self.tutorial_video = PreloadedVideo(
+				source_path = str(self.tar_probe_video_path)
 				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
 				, fit_mode = 'contain'
 				, loop=False
