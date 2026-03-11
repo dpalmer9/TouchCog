@@ -1310,11 +1310,11 @@ class ProtocolScreen(ProtocolBase):
 							elif (self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min']) <= self.delay_probe_sep_resolution:
 					
 								# If minimum separation does not exist in separation tracking, set current separation to minimum
-								if self.delay_probe_sep_limit_dict['min'] not in self.delay_probe_sep_tracking:
+								if (self.delay_probe_sep_limit_dict['min'] not in self.delay_probe_sep_tracking) and (self.staircase_flag > 0):
 									self.current_sep = self.delay_probe_sep_limit_dict['min']
 					
 								# Else, if maximum separation does not exist in separation tracking, set current separation to maximum
-								elif self.delay_probe_sep_limit_dict['max'] not in self.delay_probe_sep_tracking:
+								elif (self.delay_probe_sep_limit_dict['max'] not in self.delay_probe_sep_tracking) and (self.staircase_flag < 0):
 									self.current_sep = self.delay_probe_sep_limit_dict['max']
 
 								# Else, if minimum and maximum separations exist, proceed
