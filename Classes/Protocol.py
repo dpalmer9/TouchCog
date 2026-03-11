@@ -723,6 +723,7 @@ class ProtocolBase(Screen):
 		# Define Variables - Boolean
 		
 		self.stimulus_on_screen = False
+		self.video_on_screen = False
 		self.iti_active = False
 		self.block_started = False
 		self.feedback_on_screen = False
@@ -1170,6 +1171,7 @@ class ProtocolBase(Screen):
 			self.tutorial_video_duration = self.tutorial_video.duration
 
 		self.tutorial_video_first_play = True
+		self.video_on_screen = True
 
 		return
 	
@@ -1381,12 +1383,14 @@ class ProtocolBase(Screen):
 			return None
 		if hasattr(self, 'stimulus_on_screen') and getattr(self, 'stimulus_on_screen'):
 			return None
+		if self.video_on_screen:
+			return None
+		if self.block_started:
+			return None
 		if self.feedback_on_screen:
 			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
 					# leave feedback as-is
 				Clock.unschedule(self.remove_feedback)
-				return
-			elif self.block_started:
 				return
 			else:
 					# remove any other feedback text
