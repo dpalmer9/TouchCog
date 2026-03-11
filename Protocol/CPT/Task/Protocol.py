@@ -12,6 +12,7 @@ from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
 from kivy.clock import Clock
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.uix.effectwidget import EffectWidget, HorizontalBlurEffect, VerticalBlurEffect
 
 
