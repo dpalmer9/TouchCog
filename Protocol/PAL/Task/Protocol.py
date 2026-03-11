@@ -89,7 +89,7 @@ class ProtocolScreen(ProtocolBase):
 			self.parameters_dict = self.config_file['TaskParameters']
 			self.debug_mode = False
 
-		self.image_set_dspal_list = [{'name': 'set1','images': ['blocks', 'cookie', 'nineties']},
+		self.image_set_dspal_list = [{'name': 'set1','images': ['zigzags', 'shapes', 'ghost']},
 								{'name': 'set2','images': ['camera', 'ghost', 'ovals']},
 								{'name': 'set3','images': ['lines', 'shapes', 'zigzags']},]
 
