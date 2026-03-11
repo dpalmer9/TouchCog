@@ -196,6 +196,10 @@ class ProtocolScreen(ProtocolBase):
 		self.limhold_started = False
 		self.delay_active = False
 		self.delay_ended = False
+		self.sep2_video_played = False
+		self.sep1_video_played = False
+		self.sep0_video_played = False
+		self.staircase_video_played = False
 
 		# Define Variables - Numeric
 		self.stage_index = -1
@@ -393,6 +397,10 @@ class ProtocolScreen(ProtocolBase):
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Tutorial_Video-2026-02-11.mp4'
+			self.sep_2_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Separation_2-2026-02-11.mp4'
+			self.sep_1_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Separation_1-2026-02-11.mp4'
+			self.sep_0_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Separation_0-2026-02-11.mp4'
+			self.staircase_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Separation_Staircasing-2026-02-11.mp4'
 
 			self.tutorial_video = PreloadedVideo(
 				source_path=str(self.tutorial_video_path),
@@ -1465,6 +1473,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.max_blocks = self.block_multiplier
 
+
 				# If training stage, set easy parameters
 				if self.current_stage == 'Train':
 					self.current_sep = 2
@@ -1486,6 +1495,61 @@ class ProtocolScreen(ProtocolBase):
 
 					self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
 					self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
+
+					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (not self.sep2_video_played) and self.current_sep == self.combo_probe_sep_list[0]:
+						self.protocol_floatlayout.clear_widgets()
+						self.tutorial_video.state = 'stop'
+						self.tutorial_video.unload()
+						self.tutorial_video = None
+						self.tutorial_video = PreloadedVideo(
+							source_path = str(self.sep_2_video_path)
+							, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+							, fit_mode = 'contain'
+							, loop=False
+							)
+		
+						self.block_started = False
+						self.sep2_video_played = True
+						self.present_tutorial_video()
+						return
+					
+					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (not self.sep1_video_played) and self.current_sep == self.combo_probe_sep_list[1]:
+						self.protocol_floatlayout.clear_widgets()
+						self.tutorial_video.state = 'stop'
+						self.tutorial_video.unload()
+						self.tutorial_video = None
+						self.tutorial_video = PreloadedVideo(
+							source_path = str(self.sep_1_video_path)
+							, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+							, fit_mode = 'contain'
+							, loop=False
+							)
+		
+						self.block_started = False
+						self.sep1_video_played = True
+						self.present_tutorial_video()
+						return
+					
+					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (not self.sep0_video_played) and self.current_sep == self.combo_probe_sep_list[2]:
+						self.protocol_floatlayout.clear_widgets()
+						self.tutorial_video.state = 'stop'
+						self.tutorial_video.unload()
+						self.tutorial_video = None
+						self.tutorial_video = PreloadedVideo(
+							source_path = str(self.sep_0_video_path)
+							, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+							, fit_mode = 'contain'
+							, loop=False
+							)
+		
+						self.block_started = False
+						self.sep0_video_played = True
+						self.present_tutorial_video()
+						return
+
 				
 					# Variable changes: Separation and Delay
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Separation', self.current_sep)
@@ -1497,9 +1561,27 @@ class ProtocolScreen(ProtocolBase):
 				# If delay probe, set separation and delay parameters
 				# Separation set by config file; delay set to mean value from combo probe delay range
 				elif self.current_stage == 'Delay':
+					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
+					and (not self.staircase_video_played):
+						self.protocol_floatlayout.clear_widgets()
+						self.tutorial_video.state = 'stop'
+						self.tutorial_video.unload()
+						self.tutorial_video = None
+						self.tutorial_video = PreloadedVideo(
+							source_path = str(self.staircase_video_path)
+							, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+							, fit_mode = 'contain'
+							, loop=False
+							)
+		
+						self.block_started = False
+						self.staircase_video_played = True
+						self.present_tutorial_video()
+						return
 					self.current_sep = self.delay_probe_sep
 					self.current_delay = round(statistics.mean([min(self.combo_probe_delay_limit_import), max(self.combo_probe_delay_limit_import)]), 1)
-				
+
+
 					# Variable changes: Separation and Delay
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Separation', self.current_sep)
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Delay', self.current_delay)
