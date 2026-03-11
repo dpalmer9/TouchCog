@@ -392,7 +392,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
-			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Tutorial_Video-2025-09-18.mp4'
+			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'TUNL-Tutorial_Video-2026-02-11.mp4'
 
 			self.tutorial_video = PreloadedVideo(
 				source_path=str(self.tutorial_video_path),
@@ -1319,7 +1319,7 @@ class ProtocolScreen(ProtocolBase):
 
 								# Else, if minimum and maximum separations exist, proceed
 								elif (self.delay_probe_sep_limit_dict['min'] in self.delay_probe_sep_tracking) \
-										and (self.delay_probe_sep_limit_dict['max'] in self.delay_probe_sep_tracking):
+										or (self.delay_probe_sep_limit_dict['max'] in self.delay_probe_sep_tracking):
 
 									# Move to results screen
 									self.current_block += 1
