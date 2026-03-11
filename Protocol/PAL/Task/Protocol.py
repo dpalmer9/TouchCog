@@ -194,6 +194,7 @@ class ProtocolScreen(ProtocolBase):
 		self.spal_video_presented = False
 		self.recall_video_presented = False
 		self.recall_instruction_target_display_started = False
+		self.recall_full_preview_started = False
 
 		self.target_loc = 0
 		self.nontarget_loc = 1
@@ -601,17 +602,31 @@ class ProtocolScreen(ProtocolBase):
 			self.present_recall_stimuli(0)
 
 	def present_recall_stimuli(self, *args):
-		if self.recall_img_index >= self.num_stimuli:
+		if (self.recall_img_index >= self.num_stimuli) and self.recall_full_preview_started:
 			self.end_recall_screen()
 			return
+		elif (self.recall_img_index >= self.num_stimuli) and not self.recall_full_preview_started:
+			# Show all images together for recall preview
+			for iLoc in list(range(0, self.num_stimuli)):
+				self.stimulus_grid_list[iLoc].texture = self.image_dict[self.target_image_list[iLoc]].image.texture
+				self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', iLoc)
+			self.recall_full_preview_started = True
+			Clock.schedule_once(self.remove_recall_stimuli, self.recall_target_present_duration)
+			return
+
 		else:
 			self.stimulus_grid_list[self.recall_img_index].texture = self.image_dict[self.target_image_list[self.recall_img_index]].image.texture
 			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Recall Target', self.recall_img_index)
 			Clock.schedule_once(self.remove_recall_stimuli, self.recall_target_present_duration)
 
 	def remove_recall_stimuli(self, *args):
-		self.stimulus_grid_list[self.recall_img_index].texture = self.image_dict[self.outline_image].image.texture
-		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', self.recall_img_index)
+		if self.recall_full_preview_started:
+			for iLoc in list(range(0, self.num_stimuli)):
+					self.stimulus_grid_list[iLoc].texture = self.image_dict[self.outline_image].image.texture
+					self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', iLoc)
+		else:
+			self.stimulus_grid_list[self.recall_img_index].texture = self.image_dict[self.outline_image].image.texture
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Recall Target', self.recall_img_index)
 		self.recall_img_index += 1
 		self.present_recall_stimuli()
 
