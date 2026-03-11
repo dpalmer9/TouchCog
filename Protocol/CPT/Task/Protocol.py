@@ -2118,9 +2118,11 @@ class ProtocolScreen(ProtocolBase):
 				, fit_mode = 'contain'
 				, loop=False
 				)
+				self.tutorial_video.state = 'stop'
 		
 				self.block_started = False
-				self.present_tutorial_video()
+				# Set present_tutorial_video to start once all touches released from layout to avoid accidental skipping of video
+				self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 				return
 
 
@@ -2143,7 +2145,8 @@ class ProtocolScreen(ProtocolBase):
 				)
 		
 				self.block_started = False
-				self.present_tutorial_video()
+				# Set present_tutorial_video to start once all touches released from layout to avoid accidental skipping of video
+				self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 				return
 			
 			if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
@@ -2165,7 +2168,9 @@ class ProtocolScreen(ProtocolBase):
 				)
 		
 				self.block_started = False
-				self.present_tutorial_video()
+
+				# Set present_tutorial_video to start once all touches released from layout to avoid accidental skipping of video
+				self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 				return
 			
 

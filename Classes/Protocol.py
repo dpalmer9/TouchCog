@@ -1150,6 +1150,8 @@ class ProtocolBase(Screen):
 	
 	def present_tutorial_video(self, *args):
 
+		self.protocol_floatlayout.unbind(on_touch_up=self.present_tutorial_video)
+
 		self.protocol_floatlayout.clear_widgets()
 
 		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
