@@ -1473,8 +1473,6 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.add_stage_event('Block Change')
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Current Block', self.current_block)
 
-				self.max_blocks = self.block_multiplier
-
 
 				# If training stage, set easy parameters
 				if self.current_stage == 'Train':
@@ -1587,6 +1585,8 @@ class ProtocolScreen(ProtocolBase):
 					# Variable changes: Separation and Delay
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Separation', self.current_sep)
 					self.protocol_floatlayout.add_variable_event('Parameter', 'Delay', self.current_delay)
+
+					self.max_blocks = self.block_multiplier
 
 
 			self.response_tracking = list()
