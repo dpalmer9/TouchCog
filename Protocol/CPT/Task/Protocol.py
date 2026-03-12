@@ -232,6 +232,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_video_played = False
 		self.sim_scale_video_played = False
 		self.tar_prob_video_played = False
+		self.data_file_generated = False
 
 
 		
@@ -820,8 +821,10 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.clear_widgets()
 
-		self.generate_output_files()
-		self.metadata_output_generation()
+		if not self.data_file_generated:
+			self.generate_output_files()
+			self.metadata_output_generation()
+			self.data_file_generated = True
 
 		self.block_contingency()
 		return

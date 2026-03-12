@@ -202,6 +202,7 @@ class ProtocolScreen(ProtocolBase):
 		self.sep1_video_played = False
 		self.sep0_video_played = False
 		self.staircase_video_played = False
+		self.data_file_generated = False
 
 		# Define Variables - Numeric
 		self.stage_index = -1
@@ -592,8 +593,10 @@ class ProtocolScreen(ProtocolBase):
 	
 	def start_protocol_from_tutorial(self, *args):
 		
-		self.generate_output_files()
-		self.metadata_output_generation()
+		if not self.data_file_generated:
+			self.generate_output_files()
+			self.metadata_output_generation()
+			self.data_file_generated = True
 
 		self.tutorial_video = PreloadedVideo(
 			source_path=str(self.delay_video_path),
