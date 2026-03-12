@@ -1511,7 +1511,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep2_video_played = True
-						self.present_tutorial_video()
+						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
@@ -1529,7 +1529,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep1_video_played = True
-						self.present_tutorial_video()
+						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
@@ -1547,7 +1547,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep0_video_played = True
-						self.present_tutorial_video()
+						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 						return
 
 				
@@ -1576,7 +1576,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.staircase_video_played = True
-						self.present_tutorial_video()
+						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 						return
 					self.current_sep = self.delay_probe_sep
 					self.current_delay = round(statistics.mean([min(self.combo_probe_delay_limit_import), max(self.combo_probe_delay_limit_import)]), 1)
