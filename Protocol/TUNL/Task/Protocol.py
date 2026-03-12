@@ -148,6 +148,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.delay_probe_sep_resolution = float(self.parameters_dict.get('delay_probe_separation_resolution', '0.2'))
 
+		self.delay_probe_fixed_delay = float(self.parameters_dict.get('delay_probe_fixed_delay', '8'))
+
 		self.hold_image = self.config_file['Hold']['hold_image']
 
 		# Create stage list
@@ -1579,7 +1581,7 @@ class ProtocolScreen(ProtocolBase):
 						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
 						return
 					self.current_sep = self.delay_probe_sep
-					self.current_delay = round(statistics.mean([min(self.combo_probe_delay_limit_import), max(self.combo_probe_delay_limit_import)]), 1)
+					self.current_delay = self.delay_probe_fixed_delay
 
 
 					# Variable changes: Separation and Delay
