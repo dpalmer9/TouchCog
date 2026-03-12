@@ -395,8 +395,9 @@ class MenuBase(Screen):
 		
 			try:
 			
-			
-				self.manager.remove_widget(self.manager.get_screen(protocol_task_screen.name))
+				# Check if screen already exists (e.g. from previous run) and remove it before adding new one
+				if self.manager.has_screen(protocol_task_screen.name):
+					self.manager.remove_widget(self.manager.get_screen(protocol_task_screen.name))
 				self.manager.add_widget(protocol_task_screen)
 		
 		
