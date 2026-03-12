@@ -237,7 +237,7 @@ class ProtocolScreen(ProtocolBase):
 		# self.combo_probe_delay_max = [max(self.combo_probe_delay_limit_import) for iElem in self.combo_probe_sep_list]
 
 		self.delay_probe_sep_tracking = list()
-		self.delay_probe_sep_limit_dict = {'min': min(self.combo_probe_sep_list), 'max': max(self.combo_probe_sep_list)}
+		self.delay_probe_sep_limit_dict = {'min': float(min(self.combo_probe_sep_list)), 'max': float(max(self.combo_probe_sep_list))}
 		
 
 		self.iti_range = [float(iNum) for iNum in self.iti_import]
@@ -1303,16 +1303,16 @@ class ProtocolScreen(ProtocolBase):
 							# If staircasing up, set current separation to maximum
 							# Max separation represents smallest tested separation where criteria met
 							if self.staircase_flag > 0:
-								self.delay_probe_sep_limit_dict['max'] = self.current_sep
+								self.delay_probe_sep_limit_dict['max'] = float(self.current_sep)
 
 							# Else, if staircasing down, set current separation to minimum
 							# Min separation represents largest tested separation where criteria failed
 							elif self.staircase_flag < 0:
-								self.delay_probe_sep_limit_dict['min'] = self.current_sep
+								self.delay_probe_sep_limit_dict['min'] = float(self.current_sep)
 
 							# If difference between min and max separations is greater than separation resolution, take next midpoint
 							if (self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min']) > self.delay_probe_sep_resolution:
-								self.current_sep = round(statistics.mean([self.delay_probe_sep_limit_dict['min'], self.delay_probe_sep_limit_dict['max']]), 1)
+								self.current_sep = round(statistics.mean([self.delay_probe_sep_limit_dict['min'], self.delay_probe_sep_limit_dict['max']]), 2)
 					
 							# Else, if difference between min and max separations is less than or equal to separation resolution, check whether min and max values have been tested
 							elif (self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min']) <= self.delay_probe_sep_resolution:
