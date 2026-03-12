@@ -791,11 +791,13 @@ class ProtocolScreen(ProtocolBase):
 
 				self.instruction_button.text = self.begin_section_button_str
 
-				self.protocol_floatlayout.add_widget(self.instruction_label)
-				self.protocol_floatlayout.add_widget(self.instruction_button)
+				#self.protocol_floatlayout.add_widget(self.instruction_label)
+				#self.protocol_floatlayout.add_widget(self.instruction_button)
 				
 				self.protocol_floatlayout.add_object_event('Display', 'Text', 'Block', 'Instructions', 'Task')
 				self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions', 'Continue')
+
+				self.section_start()
 			
 			else:
 				self.block_started = False
