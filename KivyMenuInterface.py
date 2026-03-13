@@ -214,9 +214,11 @@ from datetime import datetime
 
 from Classes.Menu import MenuBase
 from Classes.Survey import SurveyBase
-from Classes.Protocol import ProtocolBase
+from Classes.Protocol import ProtocolBase, PreloadedVideo
 
 from functools import partial
+
+from ffpyplayer.player import MediaPlayer
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -769,8 +771,16 @@ class ProtocolMenu(Screen):
 
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
-		self.app.active_screen = self.Protocol_Configure_Screen.name
-		self.manager.current = self.Protocol_Configure_Screen.name
+		if self.app.first_tutorial_played:
+			self.app.active_screen = self.Protocol_Configure_Screen.name
+			self.manager.current = self.Protocol_Configure_Screen.name
+		else:
+			self.tutorial_screen = VideoScreen()
+			self.tutorial_screen.size = Window.size
+			self.tutorial_screen.destination_screen = self.Protocol_Configure_Screen.name
+			self.manager.add_widget(self.tutorial_screen)
+			self.manager.current = self.tutorial_screen.name
+
 	
 	
 	
@@ -1326,6 +1336,77 @@ class ProtocolBattery(Screen):
 
 	def start_battery_task(self, *args):
 		return
+	
+
+class VideoScreen(Screen):
+
+	def __init__(self, **kwargs):
+
+		super(VideoScreen, self).__init__(**kwargs)
+		
+		self.video_Layout = FloatLayout()
+		self.name = 'videoscreen'
+		self.app = App.get_running_app()
+		self.app.active_screen = self.name
+		self.language = self.app.language
+
+		self.destination_screen = None
+
+		self.menu_config = configparser.ConfigParser()
+		self.menu_config.read(app_root / 'Language' / self.language / 'videoscreen.ini')
+		
+		self.add_widget(self.video_Layout)
+
+		self.tutorial_video_path = app_root / 'Language' / self.language / 'Tutorial_Video' / 'General-Tutorial_Video-2025-09-18.mp4'
+
+		
+		self.tutorial_continue_button = Button(text='Continue', font_size='48sp')
+		self.tutorial_continue_button.size_hint = [0.4, 0.15]
+		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
+		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
+		self.tutorial_start_button.size_hint = [0.4, 0.15]
+		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
+		self.tutorial_restart_button.size_hint = [0.4, 0.15]
+		self.tutorial_restart_button.pos_hint = {"center_x": 0.25, "y": 0.01}
+		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
+		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
+		self.tutorial_video_button.background_color = 'black'
+		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+		self.tutorial_video_button.size_hint = (1, 1)
+		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
+		self.tutorial_video = PreloadedVideo(
+				source_path = str(self.tutorial_video_path)
+				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
+				, fit_mode = 'contain',
+				loop=False
+				)
+		self.tutorial_video.state = 'stop'
+
+	def display_video_widgets(self):
+		self.video_Layout.clear_widgets()
+		self.video_Layout.add_widget(self.tutorial_video_button)
+
+	def start_tutorial_video(self, *args):
+		self.video_Layout.clear_widgets()
+		self.video_Layout.add_widget(self.tutorial_video)
+		self.tutorial_video.state = 'play'
+		Clock.schedule_once(lambda dt: self.display_video_widgets(), self.tutorial_video.duration)
+
+	def tutorial_video_end(self, *args):
+		self.video_Layout.add_widget(self.tutorial_continue_button)
+		self.video_Layout.add_widget(self.tutorial_restart_button)
+
+	def tutorial_restart(self, *args):
+		self.tutorial_video.state = 'stop'
+		self.start_tutorial_video()
+	
+	def exit_tutorial(self, *args):
+		if self.destination_screen:
+			self.manager.current = self.destination_screen
+		else:
+			self.manager.current = 'mainmenu'
 
 
 
@@ -1355,6 +1436,8 @@ class MenuApp(App):
 		self.battery_index = 0
 		self.battery_configs = {}
 		self.battery_required_fields = {}  # Maps protocol name to list of required fields
+
+		self.first_tutorial_played = True
 
 		self.s_manager = ScreenManager()
 		self.active_screen = ''

@@ -137,6 +137,7 @@ class FloatLayoutLog(FloatLayout):
 		super(FloatLayoutLog, self).__init__(**kwargs)
 		
 		self.app = App.get_running_app()
+		self.block_on_move_touch_down = False
 		self.touch_pos = [0, 0]
 		self.last_recorded_pos = [0, 0]
 		self.width = screen_resolution[0]
@@ -250,8 +251,9 @@ class FloatLayoutLog(FloatLayout):
 		
 		for child in self.children:
 			
-			if child.collide_point(*touch.pos):
-				child.dispatch('on_touch_down', touch)
+			if not self.block_on_move_touch_down:
+				if child.collide_point(*touch.pos):
+					child.dispatch('on_touch_down', touch)
 
 			if child.dispatch('on_touch_move', touch):
 				
@@ -733,6 +735,7 @@ class ProtocolBase(Screen):
 		self.hold_button_pressed = False
 		self.premature_override = False
 		self.skip_tutorial_video = False
+		self.display_video = True
 		
 		
 		# Define Variables - Counter
@@ -1149,12 +1152,19 @@ class ProtocolBase(Screen):
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
 		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
 		return
+
+	def trigger_tutorial_screen(self, *args):
+
+		# Clear the widgets from the float layout
+		self.protocol_floatlayout.clear_widgets()
+
+		# Block on_move events in float_layout to prevent accidental interactions during video presentation
+		self.protocol_floatlayout.block_on_move_touch_down = True
+
+		# Use Clock.schedule_once to ensure the UI updates before starting the video
+		Clock.schedule_once(self.present_tutorial_video, 0.1)
 	
 	def present_tutorial_video(self, *args):
-
-		self.protocol_floatlayout.unbind(on_touch_up=self.present_tutorial_video)
-
-		self.protocol_floatlayout.clear_widgets()
 
 		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
 		self.tutorial_restart_button.size_hint = [0.4, 0.15]
@@ -1183,6 +1193,9 @@ class ProtocolBase(Screen):
 	def start_tutorial_video(self, *args):
 
 		self.tutorial_video.state = 'play'
+
+		# Reset protocol_floatlayout block on_move flag to allow interactions during video
+		self.protocol_floatlayout.block_on_move_touch_down = False
 
 		if self.tutorial_video_first_play:
 			self.tutorial_video_first_play = False

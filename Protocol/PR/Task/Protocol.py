@@ -314,7 +314,7 @@ class ProtocolScreen(ProtocolBase):
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 
 			self.protocol_floatlayout.clear_widgets()
-			self.present_tutorial_video()
+			self.trigger_tutorial_screen()
 		
 		else:
 			self.present_instructions()

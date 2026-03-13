@@ -485,7 +485,7 @@ class ProtocolScreen(ProtocolBase):
 		if (self.lang_folder_path / 'Tutorial_Video').is_dir():
 
 			self.protocol_floatlayout.clear_widgets()
-			self.present_tutorial_video()
+			self.trigger_tutorial_screen()
 		
 		else:
 			self.present_tutorial_text()
@@ -1514,7 +1514,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep2_video_played = True
-						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
+						self.trigger_tutorial_screen()
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
@@ -1532,7 +1532,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep1_video_played = True
-						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
+						self.trigger_tutorial_screen()
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
@@ -1550,7 +1550,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.sep0_video_played = True
-						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
+						self.trigger_tutorial_screen()
 						return
 
 				
@@ -1579,7 +1579,7 @@ class ProtocolScreen(ProtocolBase):
 		
 						self.block_started = False
 						self.staircase_video_played = True
-						self.protocol_floatlayout.bind(on_touch_up=self.present_tutorial_video)
+						self.trigger_tutorial_screen()
 						return
 					self.current_sep = self.delay_probe_sep
 					self.current_delay = self.delay_probe_fixed_delay

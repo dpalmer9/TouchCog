@@ -450,7 +450,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.recall_stimulus)
 		
 		self.start_clock()
-		self.present_tutorial_video()
+		self.trigger_tutorial_screen()
 	
 
 
@@ -1054,7 +1054,7 @@ class ProtocolScreen(ProtocolBase):
 				, loop=False
 				)
 		
-				self.present_tutorial_video()
+				self.trigger_tutorial_screen()
 				return
 			elif (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
 					and (self.stage_list[self.stage_index] == 'Recall') \
@@ -1074,7 +1074,7 @@ class ProtocolScreen(ProtocolBase):
 				, loop=False
 				)
 		
-				self.present_tutorial_video()
+				self.trigger_tutorial_screen()
 				return
 			else:
 				self.current_stage = self.stage_list[self.stage_index]
