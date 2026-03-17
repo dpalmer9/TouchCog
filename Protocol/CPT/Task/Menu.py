@@ -12,6 +12,7 @@ class ConfigureScreen(MenuBase):
         self.protocol_name = 'Continuous Performance Task'
         self.protocol_title_label.text = self.protocol_name
         self.name = self.protocol + '_configscreen'
+        sim_config = False
 
         self.image_set_similarity_targets = [{'label': 'Target 1', 
                                               'images': [f'{self.app.app_root}/Protocol/CPT/Image/Fribbles/Fb/Fb2_1132.png'], 
@@ -65,18 +66,24 @@ class ConfigureScreen(MenuBase):
         # so we can inspect the dynamically created similarity_difficulty checkbox
         self.menu_constructor(self.protocol)
 
-        # Try to find the similarity_difficulty checkbox that was created by menu_constructor
-        sim_checkbox = None
-        children = list(self.setting_gridlayout.children)
-        for idx, w in enumerate(children):
-            if isinstance(w, Label) and w.text == 'similarity_difficulty':
-                # GridLayout.children is in reverse-add order so the control should be at idx-1
-                if idx > 0 and isinstance(children[idx-1], CheckBox):
-                    sim_checkbox = children[idx-1]
-                break
+        # Try to find the similarity_difficulty checkbox that was created by menu_constructor if not in battery mode
+        if not self.app.battery_active:
+            sim_checkbox = None
+            children = list(self.setting_gridlayout.children)
+            for idx, w in enumerate(children):
+                if isinstance(w, Label) and w.text == 'similarity_difficulty':
+                    # GridLayout.children is in reverse-add order so the control should be at idx-1
+                    if idx > 0 and isinstance(children[idx-1], CheckBox):
+                        sim_checkbox = children[idx-1]
+                    break
+        # Else check the configuration file default for the similarity option as other widgets wont exist
+        else:
+            sim_checkbox = None
+            sim_config = False
+            sim_config = self.parameters_config.getboolean('similarity_difficulty')
 
         # Choose initial options based on the checkbox (default True if not found)
-        if sim_checkbox is None or sim_checkbox.active:
+        if (sim_checkbox is None and sim_config) or (sim_checkbox.active):
             init_options = self.image_set_similarity_targets
         else:
             init_options = self.image_set_standard
@@ -109,3 +116,42 @@ class ConfigureScreen(MenuBase):
                 self.image_selector.button.text = 'Select...'
 
             sim_checkbox.bind(active=_on_similarity_toggle)
+
+    def update_image_widget(self):
+         # Try to find the similarity_difficulty checkbox that was created by menu_constructor if not in battery mode
+        if not self.app.battery_active:
+            sim_checkbox = None
+            children = list(self.setting_gridlayout.children)
+            for idx, w in enumerate(children):
+                if isinstance(w, Label) and w.text == 'similarity_difficulty':
+                    # GridLayout.children is in reverse-add order so the control should be at idx-1
+                    if idx > 0 and isinstance(children[idx-1], CheckBox):
+                        sim_checkbox = children[idx-1]
+                    break
+        # Else check the configuration file default for the similarity option as other widgets wont exist
+        else:
+            sim_checkbox = None
+            sim_config = False
+            sim_config = self.parameters_config.getboolean('similarity_difficulty')
+        
+        # Choose initial options based on the checkbox (default True if not found)
+        if (sim_checkbox is None and sim_config) or (sim_checkbox is not None and sim_checkbox.active):
+            init_options = self.image_set_similarity_targets
+        else:
+            init_options = self.image_set_standard
+        # Change the options and rebuild dropdown items
+        self.image_selector.options = init_options
+        try:
+            self.image_selector.dropdown.clear_widgets()
+        except Exception:
+            pass
+        for opt in self.image_selector.options:
+            label = opt.get('label', '')
+            images = opt.get('images', [])
+            val = opt.get('value', label)
+            item = ImageSetItem(label_text=label, image_paths=images, dropdown=self.image_selector.dropdown, value=val, thumb_size=self.image_selector.thumb_size, size_hint_y=None, height=self.image_selector.thumb_size + dp(12))
+            self.image_selector.dropdown.add_widget(item)
+        # reset selection/display
+        self.image_selector.selected_value = None
+        self.image_selector.button.text = 'Select...'
+

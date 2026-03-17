@@ -1483,6 +1483,9 @@ class MenuApp(App):
 			config_screen = protocol_module.ConfigureScreen()
 			config_screen.update_battery_mode(True, required_fields)
 			config_screen.size = Window.size
+			# Update the config_screen parameters based on self.battery_configs[protocol_name] if available
+			if protocol_name in self.battery_configs:
+				config_screen.update_parameters_external(self.battery_configs[protocol_name])
 			self.s_manager.add_widget(config_screen)
 			self.s_manager.current = config_screen.name
 		else:
