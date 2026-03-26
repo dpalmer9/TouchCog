@@ -1174,15 +1174,21 @@ class ProtocolBase(Screen):
 			
 		self.protocol_floatlayout.add_stage_event('Object Display')
 
-		self.protocol_floatlayout.add_widget(self.tutorial_video)
-		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
-
 		
 		self.tutorial_video.state = 'stop'
 		if self.skip_tutorial_video:
 			self.tutorial_video_duration = 0.0
 		else:
-			self.tutorial_video_duration = self.tutorial_video.duration
+			# Check if duration is already available (it should be, since we preloaded), otherwise wait briefly
+			if self.tutorial_video.duration is None:
+				# Wait briefly to allow the video to load and update its duration
+				Clock.schedule_once(self.present_tutorial_video, 0.1)
+				return
+			else:
+				self.tutorial_video_duration = self.tutorial_video.duration
+
+		self.protocol_floatlayout.add_widget(self.tutorial_video)
+		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
 
 		self.tutorial_video_first_play = True
 		self.video_on_screen = True
