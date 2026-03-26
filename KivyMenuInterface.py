@@ -1001,6 +1001,11 @@ class BatteryMenu(Screen):
 
 					# Apply overrides: support 'section.option' or match to normalized parameter names
 					for k, v in overrides.items():
+						if isinstance(v, str) and v.lower() in ('true', 'false'):
+							if v.strip().lower() == 'false':
+								v = False
+							else:
+								v = True
 						if isinstance(k, str) and '.' in k:
 							sec, opt = k.split('.', 1)
 							# try to map section.option to parameter name if possible
