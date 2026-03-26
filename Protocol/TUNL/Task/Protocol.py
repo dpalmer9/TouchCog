@@ -784,6 +784,7 @@ class ProtocolScreen(ProtocolBase):
 		self.tutorial_video.reload()
 
 		self.protocol_floatlayout.clear_widgets()
+		self.video_on_screen = False
 
 		self.video_end_time = time.perf_counter()
 		self.video_time = self.video_end_time - self.video_start_time
@@ -1157,9 +1158,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.trial_contingency()
 		
-		if self.hold_active == True:
-			self.hold_active = False
+		if self.hold_button_pressed:
 			self.iti_start()
+		else:
+			self.feedback_label.text = self.feedback_dict['abort']
+			self.hold_remind()
 
 		return
 	
@@ -1605,6 +1608,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.protocol_floatlayout.add_widget(self.hold_button)
 			
+			self.block_started = False
 			self.trial_contingency()
 		
 		
