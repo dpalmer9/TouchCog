@@ -111,6 +111,11 @@ class ProtocolScreen(ProtocolBase):
 		self.image_set_list = [{'name': 'set1','target': 'FA2-1', 'nontargets': ['FA3-2', 'FB1-1', 'FB2-2', 'FC1-1', 'FC3-2']},
 					 {'name': 'set2','target': 'FB2-3', 'nontargets': ['FB3-1', 'FA2-2', 'FA4-1', 'FC1-1', 'FC2-2']},
 					 {'name': 'set3','target': 'FC1-3', 'nontargets': ['FC4-1', 'FA1-2', 'FA3-3', 'FB2-2', 'FB4-3']},]
+		
+		self.cjb_image_set_list = [{'name': 'cjb_set1', 
+							  		'target': 'left 45', 
+									'nontargets': ['right 45'], 
+									'neutrals': ['left 22.5', 'vert', 'right 22.5']}]
 	
 	def _load_config_parameters(self, parameters_dict):
 		
@@ -121,7 +126,18 @@ class ProtocolScreen(ProtocolBase):
 		self.block_change_on_duration = parameters_dict.get('block_change_on_duration_only', 'True')
 		
 		self.iti_fixed_or_range = parameters_dict.get('iti_fixed_or_range', 'range')
-		
+
+		self.cjb_iti_length = parameters_dict.get('cjb_iti_length', '1.0,1.5')
+		self.cjb_iti_length = self.cjb_iti_length.split(',')
+
+		self.cjb_stimulus_duration = float(parameters_dict.get('cjb_stimulus_duration', '1.0'))
+		self.cjb_target_prob = float(parameters_dict.get('cjb_target_prob', '0.33'))
+		self.cjb_train_trials = int(parameters_dict.get('cjb_train_trials', '10'))
+		self.cjb_discrimination_trials = int(parameters_dict.get('cjb_discrimination_trials', '20'))
+		self.cjb_probe_var1_trials = int(parameters_dict.get('cjb_probe_var1_trials', '20'))
+		self.cjb_probe_var2_trials = int(parameters_dict.get('cjb_probe_var2_trials', '20'))
+		self.cjb_probe_tar_nontar_prob = float(parameters_dict.get('cjb_probe_tar_nontar_prob', '0.33'))
+		self.cjb_probe_neutral_prob = float(parameters_dict.get('cjb_probe_neut_prob', '0.34'))
 		
 		self.iti_temp = parameters_dict.get('iti_length', '0.75,1.25')
 		self.iti_temp = self.iti_temp.split(',')
@@ -166,6 +182,14 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_frame_min = float(parameters_dict.get('stimdur_min_frames', '2'))
 		self.stimdur_seconds_max = float(parameters_dict.get('stimdur_max_seconds', '2.00'))
+
+		self.image_set = parameters_dict.get('image_set', 'rand')
+		if self.image_set == None:
+			self.image_set = 'rand'
+
+		self.cjb_image_set = parameters_dict.get('cjb_image_set', 'cjb_set1')
+		if self.cjb_image_set == None:
+			self.cjb_image_set = 'cjb_set1'
 		
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -174,6 +198,18 @@ class ProtocolScreen(ProtocolBase):
 		# Create stage list and import stage parameters
 		
 		self.stage_list = list()
+
+		if parameters_dict.get('cjb_training_task', 'False'):
+			self.stage_list.append('CJB_Training')
+		
+		if parameters_dict.get('cjb_discrimination_task', 'False'):
+			self.stage_list.append('CJB_Discrimination')
+		
+		if parameters_dict.get('cjb_probe_var1_task', 'False'):
+			self.stage_list.append('CJB_Probe_Var1')
+		
+		if parameters_dict.get('cjb_probe_var2_task', 'False'):
+			self.stage_list.append('CJB_Probe_Var2')
 		
 		if parameters_dict.get('training_task', 'True'):
 			self.stage_list.append('Training')
@@ -214,6 +250,12 @@ class ProtocolScreen(ProtocolBase):
 		self.target_image = ''
 		self.target_image_path = ''
 
+		self.cjb_target_image = ''
+		self.cjb_nontarget_image = ''
+		self.cjb_neutral_target_image = ''
+		self.cjb_neutral_nontarget_image = ''
+		self.cjb_neutral_true_image = ''
+
 		self.similarity_index = 0
 		
 		
@@ -235,6 +277,7 @@ class ProtocolScreen(ProtocolBase):
 		self.sim_scale_video_played = False
 		self.tar_prob_video_played = False
 		self.data_file_generated = False
+		self.cjb_task = False
 
 
 		
@@ -366,6 +409,38 @@ class ProtocolScreen(ProtocolBase):
 		
 		for iTrial in range(self.staircase_min_nontarget_trials):
 			self.trial_list_base.append('Nontarget')
+
+		# CJB discrimination trial list
+		cjb_discrim_min_target_trials = round((self.cjb_discrimination_trials * self.cjb_target_prob))
+		cjb_discrim_min_nontarget_trials = self.cjb_discrimination_trials - cjb_discrim_min_target_trials
+		self.trial_list_cjb_discrimination = list()
+
+		for iTrial in range(cjb_discrim_min_target_trials):
+			self.trial_list_cjb_discrimination.append('Target')
+
+		for iTrial in range(cjb_discrim_min_nontarget_trials):
+			self.trial_list_cjb_discrimination.append('Nontarget')
+
+		# CJB Probe Trial List - requires a third group of "Neutral" trials. Each of the three neutral images will be presented in equal proportion, and the target and nontarget will be presented in equal proportion to each other and to the neutrals.
+		cjb_probe_min_target_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_tar_nontar_prob / 2)))
+		cjb_probe_min_nontarget_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_tar_nontar_prob / 2)))
+		cjb_probe_min_neutral_tar_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
+		cjb_probe_min_neutral_nontar_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
+		cjb_probe_min_neutral_true_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
+		self.trial_list_cjb_probe = list()
+		for iTrial in range(cjb_probe_min_target_trials):
+			self.trial_list_cjb_probe.append('Target')
+		for iTrial in range(cjb_probe_min_nontarget_trials):
+			self.trial_list_cjb_probe.append('Nontarget')
+		for iTrial in range(cjb_probe_min_neutral_tar_trials):
+			self.trial_list_cjb_probe.append('Neutral-Target')
+		for iTrial in range(cjb_probe_min_neutral_nontar_trials):
+			self.trial_list_cjb_probe.append('Neutral-Nontarget')
+		for iTrial in range(cjb_probe_min_neutral_true_trials):
+			self.trial_list_cjb_probe.append('Neutral-True')
+
+
+
 		
 		self.trial_list_max_run = self.trial_list_max_run_base
 		self.trial_list = self.constrained_shuffle(self.trial_list_base, max_run=self.trial_list_max_run)
@@ -483,6 +558,19 @@ class ProtocolScreen(ProtocolBase):
 	
 
 		total_image_list = self.stimulus_image_path_list
+
+		# CJB Image Preparation
+		if 'CJB_Training' in self.stage_list or 'CJB_Discrimination' in self.stage_list or 'CJB_Probe_Var1' in self.stage_list or 'CJB_Probe_Var2' in self.stage_list:
+			self.cjb_current_image_set = next((item for item in self.cjb_image_set_list if item["name"] == self.cjb_image_set), None)
+			self.cjb_target_image = self.cjb_current_image_set['target']
+			self.cjb_nontarget_image = self.cjb_current_image_set['nontargets'][0]
+			self.cjb_neutral_target_image = self.cjb_current_image_set['neutrals'][0]
+			self.cjb_neutral_nontarget_image = self.cjb_current_image_set['neutrals'][1]
+			self.cjb_neutral_true_image = self.cjb_current_image_set['neutrals'][2]
+
+			cjb_total_images = [self.cjb_target_image,self.cjb_nontarget_image,self.cjb_neutral_target_image, self.cjb_neutral_nontarget_image, self.cjb_neutral_true_image]
+			cjb_total_image_paths = [self.image_folder / 'CJB' / (str(image_name) + '.png') for image_name in cjb_total_images]
+			total_image_list += cjb_total_image_paths
 
 		# Staircasing - Noise Masks
 
@@ -660,22 +748,22 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
 		
 		self.instruction_dict = {}
-		self.instruction_dict['Training'] = {}
-		self.instruction_dict['LimHold_Staircase_Difficulty'] = {}
-		self.instruction_dict['Similarity_Staircase_Difficulty'] = {}
-		self.instruction_dict['Noise_Staircase_Difficulty'] = {}
-		self.instruction_dict['Blur_Staircase_Difficulty'] = {}
-		self.instruction_dict['Noise_Staircase_Probe'] = {}
-		self.instruction_dict['Blur_Staircase_Probe'] = {}
-		self.instruction_dict['StimDur_Staircase_Probe'] = {}
-		self.instruction_dict['TarProb_Fixed_Probe'] = {}
-		self.instruction_dict['Flanker_Fixed_Probe'] = {}
-		self.instruction_dict['SART_Fixed_Probe'] = {}
+		# self.instruction_dict['Training'] = {}
+		# self.instruction_dict['LimHold_Staircase_Difficulty'] = {}
+		# self.instruction_dict['Similarity_Staircase_Difficulty'] = {}
+		# self.instruction_dict['Noise_Staircase_Difficulty'] = {}
+		# self.instruction_dict['Blur_Staircase_Difficulty'] = {}
+		# self.instruction_dict['Noise_Staircase_Probe'] = {}
+		# self.instruction_dict['Blur_Staircase_Probe'] = {}
+		# self.instruction_dict['StimDur_Staircase_Probe'] = {}
+		# self.instruction_dict['TarProb_Fixed_Probe'] = {}
+		# self.instruction_dict['Flanker_Fixed_Probe'] = {}
+		# self.instruction_dict['SART_Fixed_Probe'] = {}
 		
 		for stage in self.stage_list:
-			
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']
+			self.instruction_dict[stage] = {}
+			self.instruction_dict[stage]['train'] = self.instruction_config.get(stage, 'train', fallback='')
+			self.instruction_dict[stage]['task'] = self.instruction_config.get(stage, 'task', fallback='')
 
 
 		feedback_lang_path = str(self.lang_folder_path / 'Feedback.ini')
@@ -1129,7 +1217,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.feedback_label.text = ''
 		
-		if (self.current_stage == 'SART_Fixed_Probe'):
+		if (self.current_stage == 'SART_Fixed_Probe') and not self.cjb_task:
 
 			if (self.center_image in self.current_nontarget_image_list):
 				self.contingency = 1
@@ -1144,6 +1232,22 @@ class ProtocolScreen(ProtocolBase):
 				
 				if self.current_block == 0:
 					self.feedback_label.text = self.feedback_dict['incorrect']
+
+		elif self.cjb_task:
+			if (self.center_image == self.cjb_target_image):
+				self.contingency = 1
+				self.trial_outcome = 1
+				self.feedback_label.text = self.feedback_dict['correct']
+			elif (self.center_image in self.cjb_nontarget_image):
+				self.contingency = 0
+				self.trial_outcome = 3
+				self.feedback_label.text = self.feedback_dict['incorrect']
+			elif (self.center_image in [self.cjb_neutral_target_image, self.cjb_neutral_nontarget_image, self.cjb_neutral_true_image]):
+				self.contingency = 0
+				self.trial_outcome = 8
+				self.feedback_label.text = ''
+
+			
 		
 		else:
 
@@ -1250,7 +1354,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.feedback_label.text = ''
 			
-			if (self.current_stage == 'SART_Fixed_Probe'):
+			if (self.current_stage == 'SART_Fixed_Probe') and not self.cjb_task:
 
 				if (self.center_image == self.target_image):
 					self.contingency = 1
@@ -1261,6 +1365,20 @@ class ProtocolScreen(ProtocolBase):
 				else:
 					self.contingency = 0
 					self.trial_outcome = 2
+			
+			elif self.cjb_task:
+				if (self.center_image == self.cjb_target_image):
+					self.contingency = 0
+					self.trial_outcome = 2
+					self.feedback_label.text = self.feedback_dict['miss']
+				elif (self.center_image in self.cjb_nontarget_image):
+					self.contingency = 1
+					self.trial_outcome = 4
+					self.feedback_label.text = ''
+				elif (self.center_image in [self.cjb_neutral_target_image, self.cjb_neutral_nontarget_image, self.cjb_neutral_true_image]):
+					self.contingency = 0
+					self.trial_outcome = 8
+					self.feedback_label.text = ''
 			
 			else:
 
@@ -1448,12 +1566,18 @@ class ProtocolScreen(ProtocolBase):
 			self.total_hit_tracking.append(0)
 
 		elif self.trial_outcome == 3:
-			self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
+			if self.cjb_task:
+				self.staircase_index_tracking.append(len(self.nontarget_images) + 1)
+			else:
+				self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
 			self.false_alarm_tracking.append(1)
 			self.total_false_alarm_tracking.append(1)
 
 		elif self.trial_outcome == 4:
-			self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
+			if self.cjb_task:
+				self.staircase_index_tracking.append(len(self.nontarget_images) + 1)
+			else:
+				self.staircase_index_tracking.append(int(self.nontarget_images.index(self.center_image)))
 			self.false_alarm_tracking.append(0)
 			self.total_false_alarm_tracking.append(0)
 
@@ -1724,11 +1848,24 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Parameter', 'Trial Index', self.trial_index)
 		self.protocol_floatlayout.add_variable_event('Parameter', 'Trial Type', self.trial_list[self.trial_index])
 
-		if self.trial_list[self.trial_index] == 'Target':
-			self.center_image = self.target_image
-			self.current_similarity = 1.00
+		if not self.cjb_task:
+			if self.trial_list[self.trial_index] == 'Target':
+				self.center_image = self.target_image
+				self.current_similarity = 1.00
+			else:
+				self._select_nontarget_image()
 		else:
-			self._select_nontarget_image()
+			if self.trial_list[self.trial_index] == 'Target':
+				self.center_image = self.cjb_target_image
+				self.current_similarity = 1.00
+			elif self.trial_list[self.trial_index] == 'Nontarget':
+				self.center_image = self.cjb_nontarget_image
+			elif self.trial_list[self.trial_index] == 'Neutral_Target':
+				self.center_image = self.cjb_neutral_target_image
+			elif self.trial_list[self.trial_index] == 'Neutral_Nontarget':
+				self.center_image = self.cjb_neutral_nontarget_image
+			elif self.trial_list[self.trial_index] == 'Neutral_True':
+				self.center_image = self.cjb_neutral_true_image
 
 		self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
 		self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus', self.center_image, 'Novel')
@@ -2087,10 +2224,13 @@ class ProtocolScreen(ProtocolBase):
 			self._block_setup_subsequent_block()
 
 	def _block_setup_training_preblock(self):
-		"""Set parameters for the initial Training stage (tutorial video not yet complete)."""
+		"""Set parameters for the initial Training stage."""
 		self.block_max_count = 1
 		self.trial_list = ['Target']
-		self.block_trial_max = 2*(self.training_block_max_correct)
+		if self.cjb_task:
+			self.block_trial_max = self.cjb_train_trials
+		else:
+			self.block_trial_max = self.training_block_max_correct
 		self.block_duration = 3*(self.block_trial_max)
 		self.target_probability = 1.0
 
@@ -2104,7 +2244,10 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 
 		self.block_max_count = 1
-		self.block_trial_max = 2*(self.training_block_max_correct)
+		if self.cjb_task:
+			self.block_trial_max = self.cjb_train_trials
+		else:
+			self.block_trial_max = self.training_block_max_correct
 		self.block_duration = 3*(self.block_trial_max)
 		self.instruction_button.text = self.training_block_button_str
 		self.protocol_floatlayout.add_widget(self.instruction_button)
@@ -2147,16 +2290,48 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_max_run = self.trial_list_max_run_base
 		self.target_probability = self.target_prob_base
 
-		if self.current_stage == 'Training':
+		#CJB Training Stage
+		if self.current_stage == 'CJB_Training':
 			self.trial_list = ['Target']
-			self.block_trial_max = 2*(self.training_block_max_correct)
+			self.block_trial_max = self.cjb_train_trials
 			self.block_duration = 3*(self.block_trial_max)
 			self.target_probability = 1.0
+			self.cjb_task = True
+
+		elif self.current_stage == 'CJB_Discrimination':
+			self.block_trial_max = self.cjb_discrimination_trials
+			self.target_probability = self.cjb_target_prob
+			self.trial_list = self.trial_list_cjb_discrimination
+			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.cjb_task = True
+		
+
+		elif self.current_stage == 'CJB_Probe_Var1':
+			self.block_trial_max = self.cjb_probe_var1_trials
+			self.target_probability = self.cjb_target_prob
+			self.trial_list = self.trial_list_cjb_probe
+			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.cjb_task = True
+
+		elif self.current_stage == 'CJB_Probe_Var2':
+			self.block_trial_max = self.cjb_probe_var2_trials
+			self.target_probability = self.cjb_target_prob
+			self.trial_list = self.trial_list_cjb_probe
+			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.cjb_task = True
+
+		elif self.current_stage == 'Training':
+			self.trial_list = ['Target']
+			self.block_trial_max = self.training_block_max_correct
+			self.block_duration = 3*(self.block_trial_max)
+			self.target_probability = 1.0
+			self.cjb_task = False
 
 		# Create initial non-target image list
 		elif 'Similarity' in self.current_stage:
 			self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 			self.block_trial_max = self.block_trial_max_staircase
+			self.cjb_task = False
 
 		# Set starting stimulus duration to mean decision point time (i.e., finger lift from hold button)
 		elif 'StimDur' in self.current_stage:
@@ -2173,6 +2348,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_frames), 'Frames')
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_seconds), 'Seconds')
+			self.cjb_task = False
 
 		# Set maximum trial number for flanker probe
 		elif self.current_stage == 'Flanker_Fixed_Probe':
@@ -2185,6 +2361,7 @@ class ProtocolScreen(ProtocolBase):
 				}
 
 			self.trial_list_flanker_index_dict = {'non': 0, 'con': 0, 'inc': 0}
+			self.cjb_task = False
 
 		# Set parameters for first target probability probe
 		elif self.current_stage == 'TarProb_Fixed_Probe':
@@ -2200,6 +2377,7 @@ class ProtocolScreen(ProtocolBase):
 
 			for iTrial in range(len(self.trial_list), self.trial_list_length_hilo):
 				self.trial_list.append('Nontarget')
+			self.cjb_task = False
 
 		# Set parameters for SART probe
 		elif self.current_stage == 'SART_Fixed_Probe':
@@ -2213,6 +2391,7 @@ class ProtocolScreen(ProtocolBase):
 
 			for iTrial in range(len(self.trial_list_hilo), self.trial_list_length_hilo):
 				self.trial_list.append('Target')
+			self.cjb_task = False
 
 		self.instruction_button.text = 'Press Here to Start'
 		self.center_instr_image.texture = self.image_dict[self.target_image].image.texture
