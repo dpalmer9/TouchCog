@@ -1006,6 +1006,8 @@ class ProtocolScreen(ProtocolBase):
 		Clock.unschedule(self.remove_feedback)
 		self.remove_feedback()
 		self.hold_button_pressed = True
+		self.hold_button.unbind(on_press=self.premature_resolved)
+		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 		self.iti_start()
 		return
