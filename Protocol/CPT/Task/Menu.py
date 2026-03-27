@@ -62,6 +62,14 @@ class ConfigureScreen(MenuBase):
                                     }
         ]
 
+        self.cjb_image_set = [{'label': 'CJB Set 1',
+                                    'images': [f'{self.app.app_root}/Protocol/CPT/Image/CJB/left 45.png', f'{self.app.app_root}/Protocol/CPT/Image/CJB/left 22.5.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/CJB/vert.png', f'{self.app.app_root}/Protocol/CPT/Image/CJB/right 22.5.png',
+                                               f'{self.app.app_root}/Protocol/CPT/Image/CJB/right 45.png'],
+                                    'value': 'cjb_set1'
+                                    }
+        ]
+
         # Defer creating the image selector until after the menu constructor
         # so we can inspect the dynamically created similarity_difficulty checkbox
         self.menu_constructor(self.protocol)
@@ -90,10 +98,14 @@ class ConfigureScreen(MenuBase):
 
         self.image_select_label = Label(text='Image Set')
         self.image_selector = ImageSetDropdown(init_options)
+        self.cjb_select_label = Label(text='CJB Image Set')
+        self.cjb_image_selector = ImageSetDropdown(self.cjb_image_set)
 
-        self.setting_gridlayout.rows += 1
+        self.setting_gridlayout.rows += 2
         self.setting_gridlayout.add_widget(self.image_select_label)
         self.setting_gridlayout.add_widget(self.image_selector)
+        self.setting_gridlayout.add_widget(self.cjb_select_label)
+        self.setting_gridlayout.add_widget(self.cjb_image_selector)
 
         # If the similarity checkbox exists, bind to changes to update the dropdown options
         if sim_checkbox is not None:
@@ -116,6 +128,39 @@ class ConfigureScreen(MenuBase):
                 self.image_selector.button.text = 'Select...'
 
             sim_checkbox.bind(active=_on_similarity_toggle)
+        # If the cjb_training_task, cjb_discrimination_task, cjb_probe_var1_task, or cjb_probe_var2_task parameters are toggled on, add the CJB image set as an option
+        # Conduct initial check to see if cjb task values are true and set the default state for the dropdown
+        cjb_task_list = ['cjb_training_task', 'cjb_discrimination_task', 'cjb_probe_var1_task', 'cjb_probe_var2_task']
+        cjb_bool_values = [self.parameters_config.getboolean(param) for param in cjb_task_list]
+        if not any(cjb_bool_values):
+            # Disable the cjb image selector if no CJB tasks are active
+            self.cjb_image_selector.disabled = True
+            
+        def _on_cjb_task_toggle(instance, value):
+            if value:
+                # Make cjb image selector active if any CJB task is active
+                self.cjb_image_selector.disabled = False
+            else:
+                # check if any other CJB tasks are still active by walking through the checkboxes again
+                any_cjb_active = False
+                for idx, w in enumerate(children):
+                    if isinstance(w, Label) and w.text in cjb_task_list:
+                        if idx > 0 and isinstance(children[idx-1], CheckBox):
+                            if children[idx-1].active:
+                                any_cjb_active = True
+                                break
+                if not any_cjb_active:
+                    self.cjb_image_selector.disabled = True
+
+        # Search through the layout for any checkboxes related to CJB tasks and bind them to update the image selector options when toggled
+        if not self.app.battery_active:
+            for idx, w in enumerate(children):
+                    if isinstance(w, Label) and w.text in cjb_task_list:
+                        # GridLayout.children is in reverse-add order so the control should be at idx-1
+                        if idx > 0 and isinstance(children[idx-1], CheckBox):
+                            cjb_checkbox = children[idx-1]
+                            cjb_checkbox.bind(active=_on_cjb_task_toggle)
+
 
     def update_image_widget(self):
          # Try to find the similarity_difficulty checkbox that was created by menu_constructor if not in battery mode
