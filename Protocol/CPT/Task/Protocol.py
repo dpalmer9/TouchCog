@@ -559,8 +559,8 @@ class ProtocolScreen(ProtocolBase):
 			self.cjb_target_image = self.cjb_current_image_set['target']
 			self.cjb_nontarget_image = self.cjb_current_image_set['nontargets'][0]
 			self.cjb_neutral_target_image = self.cjb_current_image_set['neutrals'][0]
-			self.cjb_neutral_nontarget_image = self.cjb_current_image_set['neutrals'][1]
-			self.cjb_neutral_true_image = self.cjb_current_image_set['neutrals'][2]
+			self.cjb_neutral_nontarget_image = self.cjb_current_image_set['neutrals'][2]
+			self.cjb_neutral_true_image = self.cjb_current_image_set['neutrals'][1]
 
 			cjb_total_images = [self.cjb_target_image,self.cjb_nontarget_image,self.cjb_neutral_target_image, self.cjb_neutral_nontarget_image, self.cjb_neutral_true_image]
 			cjb_total_image_paths = [self.image_folder / 'CJB' / (str(image_name) + '.png') for image_name in cjb_total_images]
@@ -835,8 +835,30 @@ class ProtocolScreen(ProtocolBase):
 		
 		
 		self.protocol_floatlayout.clear_widgets()
-		
-		
+
+	def _constrained_shuffle_cjb(self, trial_list, max_run=3):
+		# Create copy of trial list only containing target and nontarget trials
+		target_nontarget_trials = [trial for trial in trial_list if trial in ['Target', 'Nontarget']]
+		other_trials = [trial for trial in trial_list if trial not in ['Target', 'Nontarget']]
+
+		# Use the constrained shuffle function to shuffle the target and nontarget trials
+		shuffled_target_nontarget_trials = self.constrained_shuffle(target_nontarget_trials, max_run=max_run)
+		# Use random to create a list of index positions to insert the other trials back into the shuffled list
+		insert_positions = sorted(random.sample(range(len(shuffled_target_nontarget_trials) + len(other_trials)), len(other_trials)))
+		# Create new list to hold the final shuffled trials
+		final_shuffled_trials = []
+		# Copy target_nontarget_trials into final list, then insert other trials at the randomly generated index positions
+		target_nontarget_index = 0
+		other_trials_index = 0
+		for i in range(len(shuffled_target_nontarget_trials) + len(other_trials)):
+			if i in insert_positions:
+				final_shuffled_trials.append(other_trials[other_trials_index])
+				other_trials_index += 1
+			else:
+				final_shuffled_trials.append(shuffled_target_nontarget_trials[target_nontarget_index])
+				target_nontarget_index += 1
+		return final_shuffled_trials
+
 	def load_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
 		self._load_config_parameters(self.parameters_dict)
@@ -1834,7 +1856,10 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_index += 1
 
 		if self.trial_index >= len(self.trial_list):
-			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			if self.cjb_task:
+				self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
+			else:
+				self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
 			self.trial_index = 0
 
 		self.protocol_floatlayout.add_variable_event('Parameter', 'Trial Index', self.trial_index)
@@ -2294,7 +2319,7 @@ class ProtocolScreen(ProtocolBase):
 			self.block_trial_max = self.cjb_discrimination_trials
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_discrimination
-			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			self.cjb_task = True
 		
 
@@ -2302,14 +2327,14 @@ class ProtocolScreen(ProtocolBase):
 			self.block_trial_max = self.cjb_probe_var1_trials
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_probe
-			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			self.cjb_task = True
 
 		elif self.current_stage == 'CJB_Probe_Var2':
 			self.block_trial_max = self.cjb_probe_var2_trials
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_probe
-			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			self.cjb_task = True
 
 		elif self.current_stage == 'Training':
