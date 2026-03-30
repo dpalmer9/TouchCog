@@ -1852,7 +1852,7 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_index += 1
 
 		if self.trial_index >= len(self.trial_list):
-			if self.cjb_task:
+			if self.stage_list[self.current_stage_index] == 'CJB_Probe':
 				self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			else:
 				self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
@@ -1874,13 +1874,13 @@ class ProtocolScreen(ProtocolBase):
 			elif self.trial_list[self.trial_index] == 'Nontarget':
 				self.center_image = self.cjb_nontarget_image
 				self.current_similarity = 0.00
-			elif self.trial_list[self.trial_index] == 'Neutral_Target':
+			elif self.trial_list[self.trial_index] == 'Neutral-Target':
 				self.center_image = self.cjb_neutral_target_image
 				self.current_similarity = 0.75
-			elif self.trial_list[self.trial_index] == 'Neutral_Nontarget':
+			elif self.trial_list[self.trial_index] == 'Neutral-Nontarget':
 				self.center_image = self.cjb_neutral_nontarget_image
 				self.current_similarity = 0.25
-			elif self.trial_list[self.trial_index] == 'Neutral_True':
+			elif self.trial_list[self.trial_index] == 'Neutral-True':
 				self.center_image = self.cjb_neutral_true_image
 				self.current_similarity = 0.50
 
@@ -2323,7 +2323,7 @@ class ProtocolScreen(ProtocolBase):
 			self.cjb_task = True
 		
 
-		elif self.current_stage == 'CJB_Probe_':
+		elif self.current_stage == 'CJB_Probe':
 			self.block_trial_max = self.cjb_probe_trials
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_probe
