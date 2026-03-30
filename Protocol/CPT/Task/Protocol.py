@@ -1828,10 +1828,15 @@ class ProtocolScreen(ProtocolBase):
 
 					if 'Similarity_Staircase_Difficulty' in self.stage_list:
 
-						self.current_similarity = float(self.similarity_data.loc[
-								self.similarity_data['Nontarget'] == self.center_image
-								, self.target_image
-								].to_numpy())
+						match = self.similarity_data[
+							self.similarity_data['Nontarget'].str.strip().str.lower() == self.center_image.lower()][self.target_image]
+
+						if not match.empty:
+							self.current_similarity = float(match.iloc[0])
+						else:
+							# Handle the error gracefully or set a default
+							self.current_similarity = 0.0 
+							print(f"Warning: No similarity data found for {self.center_image}")
 
 				self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
 
