@@ -1295,32 +1295,28 @@ class ProtocolBase(Screen):
 	# End Staging #
 
 	def clear_video_cache(self):
-		video_file_names = ['delay_video','tutorial_video']
-
-		for video_name in video_file_names:
-			if not hasattr(self, video_name):
-				continue
-			video_attr = getattr(self, video_name, None)
-			if not video_attr:
-				continue
-
-			try:
-				video_attr.state = 'stop'
-			except Exception:
-				pass
-
-			try:
-				video_attr.unload()
-				video_attr = None
-			except Exception:	
-				pass
-
-			
+		if not hasattr(self, 'tutorial_video') or not self.tutorial_video:
+			return
+		
+		self.tutorial_video.state = 'stop'
+		self.tutorial_video.unload()
+		self.tutorial_video = None
 		gc.collect()
+
+		return
 	
 	def protocol_end(self, *args):
 		# Check Video Removal
 		self.clear_video_cache()
+		# Check if self.tutorial_video still exists and unload if so
+		if hasattr(self, 'tutorial_video') and self.tutorial_video:
+			try:
+				self.tutorial_video.unload()
+				self.tutorial_video = None
+			except Exception:
+				pass
+
+			gc.collect()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
 		
