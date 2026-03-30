@@ -134,8 +134,7 @@ class ProtocolScreen(ProtocolBase):
 		self.cjb_target_prob = float(parameters_dict.get('cjb_target_prob', '0.33'))
 		self.cjb_train_trials = int(parameters_dict.get('cjb_train_trials', '10'))
 		self.cjb_discrimination_trials = int(parameters_dict.get('cjb_discrimination_trials', '20'))
-		self.cjb_probe_var1_trials = int(parameters_dict.get('cjb_probe_var1_trials', '20'))
-		self.cjb_probe_var2_trials = int(parameters_dict.get('cjb_probe_var2_trials', '20'))
+		self.cjb_probe_trials = int(parameters_dict.get('cjb_probe_trials', '20'))
 		self.cjb_probe_tar_nontar_prob = float(parameters_dict.get('cjb_probe_tar_nontar_prob', '0.33'))
 		self.cjb_probe_neutral_prob = float(parameters_dict.get('cjb_probe_neut_prob', '0.34'))
 		
@@ -205,11 +204,8 @@ class ProtocolScreen(ProtocolBase):
 		if parameters_dict.get('cjb_discrimination_task', 'False'):
 			self.stage_list.append('CJB_Discrimination')
 		
-		if parameters_dict.get('cjb_probe_var1_task', 'False'):
-			self.stage_list.append('CJB_Probe_Var1')
-		
-		if parameters_dict.get('cjb_probe_var2_task', 'False'):
-			self.stage_list.append('CJB_Probe_Var2')
+		if parameters_dict.get('cjb_probe_task', 'False'):
+			self.stage_list.append('CJB_Probe')
 		
 		if parameters_dict.get('training_task', 'True'):
 			self.stage_list.append('Training')
@@ -422,11 +418,11 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_list_cjb_discrimination.append('Nontarget')
 
 		# CJB Probe Trial List - requires a third group of "Neutral" trials. Each of the three neutral images will be presented in equal proportion, and the target and nontarget will be presented in equal proportion to each other and to the neutrals.
-		cjb_probe_min_target_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_tar_nontar_prob / 2)))
-		cjb_probe_min_nontarget_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_tar_nontar_prob / 2)))
-		cjb_probe_min_neutral_tar_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
-		cjb_probe_min_neutral_nontar_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
-		cjb_probe_min_neutral_true_trials = round((self.cjb_probe_var1_trials * (self.cjb_probe_neutral_prob / 3)))
+		cjb_probe_min_target_trials = round((self.cjb_probe_trials * (self.cjb_probe_tar_nontar_prob / 2)))
+		cjb_probe_min_nontarget_trials = round((self.cjb_probe_trials * (self.cjb_probe_tar_nontar_prob / 2)))
+		cjb_probe_min_neutral_tar_trials = round((self.cjb_probe_trials * (self.cjb_probe_neutral_prob / 3)))
+		cjb_probe_min_neutral_nontar_trials = round((self.cjb_probe_trials * (self.cjb_probe_neutral_prob / 3)))
+		cjb_probe_min_neutral_true_trials = round((self.cjb_probe_trials * (self.cjb_probe_neutral_prob / 3)))
 		self.trial_list_cjb_probe = list()
 		for iTrial in range(cjb_probe_min_target_trials):
 			self.trial_list_cjb_probe.append('Target')
@@ -438,8 +434,6 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_list_cjb_probe.append('Neutral-Nontarget')
 		for iTrial in range(cjb_probe_min_neutral_true_trials):
 			self.trial_list_cjb_probe.append('Neutral-True')
-
-
 
 		
 		self.trial_list_max_run = self.trial_list_max_run_base
@@ -560,7 +554,7 @@ class ProtocolScreen(ProtocolBase):
 		total_image_list = self.stimulus_image_path_list
 
 		# CJB Image Preparation
-		if 'CJB_Training' in self.stage_list or 'CJB_Discrimination' in self.stage_list or 'CJB_Probe_Var1' in self.stage_list or 'CJB_Probe_Var2' in self.stage_list:
+		if 'CJB_Training' in self.stage_list or 'CJB_Discrimination' in self.stage_list or 'CJB_Probe' in self.stage_list:
 			self.cjb_current_image_set = next((item for item in self.cjb_image_set_list if item["name"] == self.cjb_image_set), None)
 			self.cjb_target_image = self.cjb_current_image_set['target']
 			self.cjb_nontarget_image = self.cjb_current_image_set['nontargets'][0]
@@ -1260,7 +1254,7 @@ class ProtocolScreen(ProtocolBase):
 				self.contingency = 1
 				self.trial_outcome = 1
 				self.feedback_label.text = self.feedback_dict['correct']
-			elif (self.center_image in self.cjb_nontarget_image):
+			elif (self.center_image == self.cjb_nontarget_image):
 				self.contingency = 0
 				self.trial_outcome = 3
 				self.feedback_label.text = self.feedback_dict['incorrect']
@@ -1393,7 +1387,7 @@ class ProtocolScreen(ProtocolBase):
 					self.contingency = 0
 					self.trial_outcome = 2
 					self.feedback_label.text = self.feedback_dict['miss']
-				elif (self.center_image in self.cjb_nontarget_image):
+				elif (self.center_image == self.cjb_nontarget_image):
 					self.contingency = 1
 					self.trial_outcome = 4
 					self.feedback_label.text = ''
@@ -1885,12 +1879,16 @@ class ProtocolScreen(ProtocolBase):
 				self.current_similarity = 1.00
 			elif self.trial_list[self.trial_index] == 'Nontarget':
 				self.center_image = self.cjb_nontarget_image
+				self.current_similarity = 0.00
 			elif self.trial_list[self.trial_index] == 'Neutral_Target':
 				self.center_image = self.cjb_neutral_target_image
+				self.current_similarity = 0.75
 			elif self.trial_list[self.trial_index] == 'Neutral_Nontarget':
 				self.center_image = self.cjb_neutral_nontarget_image
+				self.current_similarity = 0.25
 			elif self.trial_list[self.trial_index] == 'Neutral_True':
 				self.center_image = self.cjb_neutral_true_image
+				self.current_similarity = 0.50
 
 		self.img_stimulus_C.texture = self.image_dict[self.center_image].image.texture
 		self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus', self.center_image, 'Novel')
@@ -2331,15 +2329,8 @@ class ProtocolScreen(ProtocolBase):
 			self.cjb_task = True
 		
 
-		elif self.current_stage == 'CJB_Probe_Var1':
-			self.block_trial_max = self.cjb_probe_var1_trials
-			self.target_probability = self.cjb_target_prob
-			self.trial_list = self.trial_list_cjb_probe
-			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
-			self.cjb_task = True
-
-		elif self.current_stage == 'CJB_Probe_Var2':
-			self.block_trial_max = self.cjb_probe_var2_trials
+		elif self.current_stage == 'CJB_Probe_':
+			self.block_trial_max = self.cjb_probe_trials
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_probe
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)

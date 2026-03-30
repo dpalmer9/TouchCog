@@ -128,9 +128,9 @@ class ConfigureScreen(MenuBase):
                 self.image_selector.button.text = 'Select...'
 
             sim_checkbox.bind(active=_on_similarity_toggle)
-        # If the cjb_training_task, cjb_discrimination_task, cjb_probe_var1_task, or cjb_probe_var2_task parameters are toggled on, add the CJB image set as an option
+        # If the cjb_training_task, cjb_discrimination_task, cjb_probe_task parameters are toggled on, add the CJB image set as an option
         # Conduct initial check to see if cjb task values are true and set the default state for the dropdown
-        cjb_task_list = ['cjb_training_task', 'cjb_discrimination_task', 'cjb_probe_var1_task', 'cjb_probe_var2_task']
+        cjb_task_list = ['cjb_training_task', 'cjb_discrimination_task', 'cjb_probe_task']
         cjb_bool_values = [self.parameters_config.getboolean(param) for param in cjb_task_list]
         if not any(cjb_bool_values):
             # Disable the cjb image selector if no CJB tasks are active
