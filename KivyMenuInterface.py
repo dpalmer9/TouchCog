@@ -1542,11 +1542,27 @@ class MenuApp(App):
 		# Only advance if a battery run is active
 		if not getattr(self, 'battery_active', False):
 			return
+		
+		Clock.schedule_once(self._perform_battery_transition, 0.2)
+
+	def _perform_battery_transition(self, dt):
+		if self.battery_index < len(self.battery_protocols):
+			prev_protocol_name = self.battery_protocols[self.battery_index]
+			prev_screen_name = f"{prev_protocol_name}_protocolscreen"
+
+			if self.s_manager.has_screen(prev_screen_name):
+				prev_screen = self.s_manager.get_screen(prev_screen_name)
+				
+				if hasattr(prev_screen, 'clear_video_cache'):
+					prev_screen.clear_video_cache()
+
+				self.s_manager.remove_widget(prev_screen)
+		
 
 		self.battery_index = int(self.battery_index) + 1
 		if self.battery_index < len(self.battery_protocols):
-			# Start the next battery task
-			self.start_battery_tasks()
+			# Use a Kivy Clock to ensure the next screen starts after the current one has fully transitioned out
+			Clock.schedule_once(lambda dt: self.start_battery_tasks(), 0.1)
 		else:
 			# Finished all battery tasks
 			self.battery_active = False
@@ -1555,8 +1571,6 @@ class MenuApp(App):
 	def add_screen(self, screen):
 		
 		self.s_manager.add_widget(screen)
-	
-	
 	
 	def on_stop(self):
 		self.event_queue.put(None)
