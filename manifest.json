@@ -6,7 +6,7 @@
 		"English" : [
 		{
 			"version" : "2.0.0",
-			"date" : "2026-03-17",
+			"date" : "2026-03-30",
 			"filename" : "English.zip",
 			"server_path" : "https://touchscreencognition.org/uploads/English.zip"
 		}
@@ -17,7 +17,7 @@
 	{
 		"name" : "Delay Video",
 		"version" : "2.0.0",
-		"date" : "2026-03-17",
+		"date" : "2026-03-30",
 		"filename" : "Delay_Video.zip",
 		"server_path" : "https://touchscreencognition.org/uploads/Delay_Video.zip"
 			}
@@ -25,7 +25,7 @@
 	"Battery" : [
 		{
 			"version" : "2.0.0",
-			"date" : "2026-03-17",
+			"date" : "2026-03-30",
 			"filename" : "Battery.zip",
 			"server_path" : "https://touchscreencognition.org/uploads/Battery.zip"
 		}
