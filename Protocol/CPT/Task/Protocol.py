@@ -166,10 +166,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_frame_min = float(parameters_dict.get('stimdur_min_frames', '2'))
 		self.stimdur_seconds_max = float(parameters_dict.get('stimdur_max_seconds', '2.00'))
-
-		self.image_set = parameters_dict.get('image_set', 'rand')
-		if self.image_set == None:
-			self.image_set = 'rand'
 		
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -203,6 +199,12 @@ class ProtocolScreen(ProtocolBase):
 
 		if parameters_dict.get('sart_probe', 'False'):
 			self.stage_list.append('SART_Fixed_Probe')
+
+		self.image_set = parameters_dict.get('image_set', 'rand')
+		if self.image_set == None and 'Similarity_Staircase_Difficulty' not in self.stage_list:
+			self.image_set = 'set1'
+		else:
+			self.image_set = 'Fb2_1132'
 	
 	def _load_task_variables(self):
 		# Set images
