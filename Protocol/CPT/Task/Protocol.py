@@ -1858,7 +1858,7 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_index += 1
 
 		if self.trial_index >= len(self.trial_list):
-			if self.stage_list[self.current_stage_index] == 'CJB_Probe':
+			if self.stage_list[self.stage_index] == 'CJB_Probe':
 				self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			else:
 				self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
