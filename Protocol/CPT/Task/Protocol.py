@@ -206,6 +206,9 @@ class ProtocolScreen(ProtocolBase):
 		
 		if parameters_dict.get('cjb_probe_task', 'False'):
 			self.stage_list.append('CJB_Probe')
+
+		# Check if one of the CJB tasks was appended to stage list. If so, set self.cjb_task to True
+		self.cjb_task = any(stage in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe'] for stage in self.stage_list)
 		
 		if parameters_dict.get('training_task', 'True'):
 			self.stage_list.append('Training')
@@ -273,7 +276,8 @@ class ProtocolScreen(ProtocolBase):
 		self.sim_scale_video_played = False
 		self.tar_prob_video_played = False
 		self.data_file_generated = False
-		self.cjb_task = False
+		# Re-check if a CJB task is the first stage in self.stage_list. If so, set self.cjb_task to True
+		self.cjb_task = self.stage_list[0] in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe']
 
 
 		
@@ -916,6 +920,11 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_widget(self.tutorial_checkmark)
+		# Update the tutorial stimulus image to the target image depending on whether it is a CJB task
+		if self.cjb_task:
+			self.tutorial_stimulus_image.source = str(self.image_folder / 'CJB' / (str(self.cjb_target_image) + '.png'))
+		else:
+			self.tutorial_stimulus_image.source = str(self.image_folder / self.fribble_folder / (self.target_image + '.png'))
 		self.protocol_floatlayout.add_widget(self.tutorial_stimulus_image)
 		self.protocol_floatlayout.add_widget(self.tutorial_outline)
 		self.protocol_floatlayout.add_widget(self.tutorial_start_button)
