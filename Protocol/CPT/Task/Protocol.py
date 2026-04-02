@@ -2047,7 +2047,7 @@ class ProtocolScreen(ProtocolBase):
 				elif self.stage_screen_started:
 					return
 				else:
-					Clock.schedule_once(self.hold_remind, 2.0)
+					self.schedule_hold_remind(2.0)
 		except KeyboardInterrupt:
 			
 			print('Program terminated by user.')
@@ -2070,18 +2070,21 @@ class ProtocolScreen(ProtocolBase):
 		self.response_made = False
 		self.stage_screen_started = True
 		self.block_started = True
+		self.protocol_floatlayout.block_on_move_touch_down = True
+		self.hold_button.disabled = True
+		self.hold_button.state = 'normal'
 
 		# Unbind hold button events to prevent accidental presses during stage screen
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
 		# Unbind hold_remind and hold_remind_trial from hold_button
-		self.hold_button.unbind(on_press=self.hold_remind)
+		self.hold_button.unbind(on_release=self.hold_remind)
 
 		# Cancel any scheduled timers that could present stimuli or noise on screen
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
-		Clock.unschedule(self.hold_remind)
+		self.cancel_hold_remind()
 		Clock.unschedule(self.remove_feedback)
 		Clock.unschedule(self.stage_screen_end)
 		
@@ -2145,6 +2148,8 @@ class ProtocolScreen(ProtocolBase):
 	def stage_screen_end(self, *args):
 
 		self.protocol_floatlayout.add_widget(self.stage_continue_button)
+		self.protocol_floatlayout.block_on_move_touch_down = False
+		self.hold_button.disabled = False
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 

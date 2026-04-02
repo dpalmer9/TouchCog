@@ -760,6 +760,7 @@ class ProtocolBase(Screen):
 		# hold_remind is managed manually with Clock.schedule_once; use a stage flag
 		# stage: 0 = initial (will schedule delayed), 1 = delayed (perform check)
 		self.hold_remind_stage = 0
+		self.hold_remind_event = None
 
 		self.session_clock = Clock
 		self.session_clock.interupt_next_only = False
@@ -1289,6 +1290,23 @@ class ProtocolBase(Screen):
 		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 
 		return
+
+	def cancel_hold_remind(self):
+		if self.hold_remind_event is not None:
+			try:
+				self.hold_remind_event.cancel()
+			except Exception:
+				pass
+			self.hold_remind_event = None
+		Clock.unschedule(self.hold_remind)
+		return
+
+	def schedule_hold_remind(self, delay=None):
+		self.cancel_hold_remind()
+		if delay is None:
+			delay = self.hold_remind_delay
+		self.hold_remind_event = Clock.schedule_once(self.hold_remind, delay)
+		return self.hold_remind_event
 	
 	
 	
@@ -1321,7 +1339,7 @@ class ProtocolBase(Screen):
 		self.hold_remind_stage = 0
 		
 		self.protocol_floatlayout.clear_widgets()
-		Clock.unschedule(self.hold_remind)
+		self.cancel_hold_remind()
 		Clock.unschedule(self.iti_end)
 		self.protocol_floatlayout.add_widget(self.end_label)
 		
@@ -1397,6 +1415,7 @@ class ProtocolBase(Screen):
 
 
 	def hold_remind(self, *args):
+		self.hold_remind_event = None
 		# If a stage-specific screen is active or stimulus is on screen, do nothing
 		if hasattr(self, 'stage_screen_started') and getattr(self, 'stage_screen_started'):
 			return None
@@ -1435,7 +1454,7 @@ class ProtocolBase(Screen):
 	
 	def iti_start(self, *args):	
 		if not self.iti_active:
-			Clock.unschedule(self.hold_remind)
+			self.cancel_hold_remind()
 			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
