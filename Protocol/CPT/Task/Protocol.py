@@ -295,7 +295,8 @@ class ProtocolScreen(ProtocolBase):
 		self.block_trial_max = self.block_trial_max_base
 		self.block_duration = self.block_duration_max
 
-		self.trial_outcome = 0 # 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Correct, no center tap,6-Incorrect, no center tap,7-Trial abort (lift and press hold button during stimulus display)
+		# 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Correct, no center tap,6-Incorrect, no center tap,7-Trial abort (lift and press hold button during stimulus display), 8-CJB Neutral	
+		self.trial_outcome = 0
 		self.contingency = 0
 		self.response = 0
 
@@ -2040,8 +2041,11 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_end_time = time.perf_counter()
 
 			if not self.block_started:
+				
 				if self.hold_button_pressed:
 					self.iti_start()
+				elif self.stage_screen_started:
+					return
 				else:
 					Clock.schedule_once(self.hold_remind, 2.0)
 		except KeyboardInterrupt:
@@ -2057,15 +2061,7 @@ class ProtocolScreen(ProtocolBase):
 	def start_stage_screen(self, *args):
 		self.protocol_floatlayout.add_stage_event('Stage End')
 
-		# Cancel any scheduled timers that could present stimuli or noise on screen
-		Clock.unschedule(self.iti_end)
-		Clock.unschedule(self.stimulus_end)
-		Clock.unschedule(self.center_notpressed)
-		Clock.unschedule(self.hold_remind)
-		Clock.unschedule(self.remove_feedback)
-		Clock.unschedule(self.stage_screen_end)
-
-    	# Reset 'in-progress' flags to avoid triggering any trial actions
+		# Reset 'in-progress' flags to avoid triggering any trial actions
 		self.iti_active = False
 		self.stimulus_on_screen = False
 		self.limhold_started = False
@@ -2074,6 +2070,20 @@ class ProtocolScreen(ProtocolBase):
 		self.response_made = False
 		self.stage_screen_started = True
 		self.block_started = True
+
+		# Unbind hold button events to prevent accidental presses during stage screen
+		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_release=self.premature_response)
+		# Unbind hold_remind and hold_remind_trial from hold_button
+		self.hold_button.unbind(on_press=self.hold_remind)
+
+		# Cancel any scheduled timers that could present stimuli or noise on screen
+		Clock.unschedule(self.iti_end)
+		Clock.unschedule(self.stimulus_end)
+		Clock.unschedule(self.center_notpressed)
+		Clock.unschedule(self.hold_remind)
+		Clock.unschedule(self.remove_feedback)
+		Clock.unschedule(self.stage_screen_end)
 		
 		self.protocol_floatlayout.clear_widgets()
 
@@ -2137,6 +2147,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.stage_continue_button)
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
+
 		self.stage_screen_started = False
 		
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
