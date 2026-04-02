@@ -375,6 +375,7 @@ class ProtocolScreen(ProtocolBase):
 		self.generate_output_files()
 		self.metadata_output_generation()
 
+		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
 		self.block_contingency()
 
 
