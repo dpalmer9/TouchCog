@@ -135,10 +135,10 @@ class ProtocolScreen(ProtocolBase):
 
 		self.training_image = self.parameters_dict.get('training_image', 'snowflake')
 
-		self.image_set_dspal = self.parameters_dict.get('dspal_image_set', 'rand')
+		self.image_set_dspal = self.parameters_dict.get('dspal_image_set', 'set1')
 		if self.image_set_dspal == None:
 			self.image_set_dspal = 'set1'
-		self.image_set_recall = self.parameters_dict.get('recall_image_set', 'rand')
+		self.image_set_recall = self.parameters_dict.get('recall_image_set', 'set1')
 		if self.image_set_recall == None:
 			self.image_set_recall = 'set1'
 
