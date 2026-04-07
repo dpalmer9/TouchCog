@@ -1374,10 +1374,8 @@ class ProtocolBase(Screen):
 
 		# If a battery run is active, notify the app so it can advance to next task
 		try:
-			bat_active = getattr(self.app, 'battery_active', False)
-			if bat_active:
-				if hasattr(self.app, 'battery_task_finished'):
-					self.app.battery_task_finished()
+			if hasattr(self.app, 'handle_task_completion'):
+				self.app.handle_task_completion(self.name)
 			else:
 				self.manager.current = 'mainmenu'
 				self.current_widget = self.manager.get_screen(self.name)

@@ -409,7 +409,10 @@ class MenuBase(Screen):
 			protocol_task_screen.load_parameters(parameter_dict)
 		
 			self.app.active_screen = protocol_task_screen.name
-			self.manager.current = protocol_task_screen.name
+			if hasattr(self.app, 'present_task_screen'):
+				self.app.present_task_screen(protocol_task_screen.name)
+			else:
+				self.manager.current = protocol_task_screen.name
 		
 		else:
 			protocol_name = self.app.battery_protocols[self.app.battery_index]

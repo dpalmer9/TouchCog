@@ -273,11 +273,9 @@ class SurveyBase(Screen):
         self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
         self.app.survey_data.to_csv(self.app.survey_data_path, index=False)
         try:
-            if getattr(self.app, 'battery_active', False):
-				# delegate to MenuApp to advance and start next battery task
-                if hasattr(self.app, 'battery_task_finished'):
-                    self.app.battery_task_finished()
-                    return
+            if hasattr(self.app, 'handle_task_completion'):
+                self.app.handle_task_completion(self.name)
+                return
         except Exception:
 			# best-effort: ignore failures here
             pass
