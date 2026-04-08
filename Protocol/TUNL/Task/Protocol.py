@@ -309,11 +309,9 @@ class ProtocolScreen(ProtocolBase):
 		self.target_image.size_hint = self.stimulus_image_size
 
 		self.cue_image_button.size_hint = self.stimulus_button_size
-		self.cue_image_button.bind(on_press=self.cue_pressed)
 		self.cue_image_button.name = 'Cue Image'
 
 		self.target_image_button.size_hint = self.stimulus_button_size
-		self.target_image_button.bind(on_press=self.target_pressed)
 		self.target_image_button.name = 'Target Image'
 
 		self.text_button_size = [0.4, 0.15]
@@ -971,6 +969,10 @@ class ProtocolScreen(ProtocolBase):
 	# Cue Stimuli Pressed during Target
 	
 	def cue_pressed(self, *args): # Trial outcome: 3-False alarm (non-target response)
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.remove_widget(self.cue_image_button)
+		self.protocol_floatlayout.remove_widget(self.target_image_button)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
 		self.contingency = 0 # 0-Incorrect
@@ -979,11 +981,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.target_touch_time = time.perf_counter()
 		self.response_latency = self.target_touch_time - self.target_start_time
-		
-		self.protocol_floatlayout.remove_widget(self.cue_image)
-		self.protocol_floatlayout.remove_widget(self.target_image)
-		self.protocol_floatlayout.remove_widget(self.cue_image_button)
-		self.protocol_floatlayout.remove_widget(self.target_image_button)
 
 		self.protocol_floatlayout.add_stage_event('Cue Pressed')
 
@@ -1038,6 +1035,10 @@ class ProtocolScreen(ProtocolBase):
 	# Target Stimuli Pressed during Target
 	
 	def target_pressed(self, *args): # Trial outcome: 1-Hit (target response)
+		self.protocol_floatlayout.remove_widget(self.cue_image)
+		self.protocol_floatlayout.remove_widget(self.target_image)
+		self.protocol_floatlayout.remove_widget(self.cue_image_button)
+		self.protocol_floatlayout.remove_widget(self.target_image_button)
 		Clock.unschedule(self.stimulus_presentation_end)
 		Clock.unschedule(self.no_response)
 		self.contingency = 1 # 1-Correct
@@ -1046,11 +1047,6 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.target_touch_time = time.perf_counter()
 		self.response_latency = self.target_touch_time - self.target_start_time
-		
-		self.protocol_floatlayout.remove_widget(self.cue_image)
-		self.protocol_floatlayout.remove_widget(self.target_image)
-		self.protocol_floatlayout.remove_widget(self.cue_image_button)
-		self.protocol_floatlayout.remove_widget(self.target_image_button)
 
 		self.protocol_floatlayout.add_stage_event('Target Pressed')
 
@@ -1504,7 +1500,7 @@ class ProtocolScreen(ProtocolBase):
 					self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep2_video_played) and self.current_sep == self.combo_probe_sep_list[0]:
+					and (not self.sep2_video_played) and (self.current_sep == self.combo_probe_sep_list[0] and len(self.combo_probe_sep_list) > 0):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
@@ -1522,7 +1518,7 @@ class ProtocolScreen(ProtocolBase):
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep1_video_played) and self.current_sep == self.combo_probe_sep_list[1]:
+					and (not self.sep1_video_played) and (self.current_sep == self.combo_probe_sep_list[1] and len(self.combo_probe_sep_list) > 1):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
@@ -1540,7 +1536,7 @@ class ProtocolScreen(ProtocolBase):
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep0_video_played) and self.current_sep == self.combo_probe_sep_list[2]:
+					and (not self.sep0_video_played) and (self.current_sep == self.combo_probe_sep_list[2] and len(self.combo_probe_sep_list) > 2):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
