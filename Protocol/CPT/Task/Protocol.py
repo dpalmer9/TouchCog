@@ -326,6 +326,7 @@ class ProtocolScreen(ProtocolBase):
 		self.total_hit_tracking = list()
 		self.false_alarm_tracking = list()
 		self.total_false_alarm_tracking = list()
+		self.cjb_discrimination_history = list()
 		self.staircase_index_tracking = list()
 
 		self.staircase_flag = 0
@@ -1619,6 +1620,75 @@ class ProtocolScreen(ProtocolBase):
 			self.false_alarm_tracking.append(0)
 			self.total_false_alarm_tracking.append(0)
 
+		if self.current_stage == 'CJB_Discrimination':
+			self._update_cjb_discrimination_history()
+
+
+	def _update_cjb_discrimination_history(self):
+		"""Keep a rolling window of the most recent CJB discrimination trials."""
+
+		if (self.trial_index < 0) or (self.trial_index >= len(self.trial_list)):
+			return
+
+		trial_type = self.trial_list[self.trial_index]
+
+		if trial_type == 'Target':
+			trial_record = ('Target', 1 if self.trial_outcome in [1, 5] else 0)
+		elif trial_type == 'Nontarget':
+			trial_record = ('Nontarget', 1 if self.trial_outcome in [3, 6] else 0)
+		else:
+			return
+
+		self.cjb_discrimination_history.append(trial_record)
+
+		if len(self.cjb_discrimination_history) > self.cjb_discrimination_trials:
+			self.cjb_discrimination_history.pop(0)
+
+
+	def _run_cjb_discrimination_staircase(self):
+		"""Advance CJB discrimination once the rolling trial window meets criterion."""
+
+		if len(self.cjb_discrimination_history) < self.cjb_discrimination_trials:
+			return False
+
+		recent_trials = self.cjb_discrimination_history[-self.cjb_discrimination_trials:]
+		target_trials = [value for trial_type, value in recent_trials if trial_type == 'Target']
+		nontarget_trials = [value for trial_type, value in recent_trials if trial_type == 'Nontarget']
+
+		if (len(target_trials) == 0) or (len(nontarget_trials) == 0):
+			return False
+
+		hr = statistics.mean(target_trials)
+		far = statistics.mean(nontarget_trials)
+
+		self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination Window', len(recent_trials), 'Trials')
+		self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination Hit Rate', hr)
+		self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination False Alarm Rate', far)
+
+		if (hr >= self.staircase_hr_criterion) and (far < self.staircase_far_criterion):
+			self.staircase_flag = 1
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Increase')
+			self.protocol_floatlayout.add_stage_event('Block End')
+			self.hold_button.unbind(on_press=self.iti_start)
+			self.hold_button.unbind(on_release=self.premature_response)
+			self.hold_button.unbind(on_release=self.stimulus_response)
+			self.hold_button_pressed = False
+			self.hold_button.disabled = True
+			self.hold_button.state = 'normal'
+			self.contingency = 0
+			self.trial_outcome = 0
+			self.last_response = 0
+			self.protocol_floatlayout.remove_widget(self.hold_button)
+			self.current_block += 1
+			self.start_stage_screen()
+			return True
+
+		if (hr < self.staircase_hr_criterion) and (far >= self.staircase_far_criterion):
+			self.staircase_flag = -1
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
+
+		return False
+
 
 	def _build_similarity_baseline(self):
 		"""Compute outcome_value and derive the baseline nontarget image list for similarity stages."""
@@ -1759,8 +1829,11 @@ class ProtocolScreen(ProtocolBase):
 	def _run_staircase(self):
 		"""Evaluate staircasing criteria and adjust parameters if thresholds are met."""
 
+		if self.current_stage == 'CJB_Discrimination':
+			return self._run_cjb_discrimination_staircase()
+
 		if 'Staircase' not in self.current_stage:
-			return
+			return False
 
 		self.staircase_flag = 0
 
@@ -1791,6 +1864,8 @@ class ProtocolScreen(ProtocolBase):
 				self._run_similarity_staircase()
 			elif 'StimDur' in self.current_stage:
 				self._run_stimdur_staircase()
+
+		return False
 
 
 	def _advance_trial_counters_and_iti(self):
@@ -2039,7 +2114,8 @@ class ProtocolScreen(ProtocolBase):
 			if self.current_block_trial != 0:
 				self._encode_last_response()
 				self._update_hit_false_alarm_tracking()
-				self._run_staircase()
+				if self._run_staircase():
+					return
 
 			self._advance_trial_counters_and_iti()
 			self._select_next_stimulus()
@@ -2359,7 +2435,7 @@ class ProtocolScreen(ProtocolBase):
 			self.cjb_task = True
 
 		elif self.current_stage == 'CJB_Discrimination':
-			self.block_trial_max = self.cjb_discrimination_trials
+			self.block_trial_max = self.block_trial_max_staircase
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_discrimination
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
@@ -2506,6 +2582,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.hit_tracking = list()
 		self.false_alarm_tracking = list()
+		self.cjb_discrimination_history = list()
 		self.similarity_tracking = list()
 		self.decision_point_tracking = list()
 		self.stimdur_frame_tracking = [(self.limhold_seconds // self.frame_duration)]
