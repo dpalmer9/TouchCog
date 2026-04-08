@@ -1337,6 +1337,10 @@ class ProtocolBase(Screen):
 			gc.collect()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
+
+		# Check if the self.session_event is scheduled and unschedule if so
+		if self.session_event.is_triggered:
+			self.session_event.cancel()
 		
 		self.protocol_floatlayout.clear_widgets()
 		self.cancel_hold_remind()
