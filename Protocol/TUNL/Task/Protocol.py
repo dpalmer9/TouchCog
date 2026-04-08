@@ -115,6 +115,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_duration = float(self.parameters_dict.get('block_duration_max', '1800'))
 		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '2'))
 		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
+		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_duration, interval=False)
 		
 		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
 

@@ -150,6 +150,8 @@ class ProtocolScreen(ProtocolBase):
 		self.block_duration_max = int(parameters_dict.get('block_duration_max', '420'))
 		self.block_min_rest_duration = float(parameters_dict.get('block_min_rest_duration', '2'))
 		self.session_duration = float(parameters_dict.get('session_duration', '3600'))
+		# Update self.session_event to reflect session_duration
+		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_duration, interval=False)
 		
 		self.block_multiplier = int(parameters_dict.get('block_multiplier', '1'))
 		self.block_trial_max_base = int(parameters_dict.get('block_trials_base', '120'))
