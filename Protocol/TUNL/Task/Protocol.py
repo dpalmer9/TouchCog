@@ -1500,7 +1500,7 @@ class ProtocolScreen(ProtocolBase):
 					self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
 
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep2_video_played) and (self.current_sep == self.combo_probe_sep_list[0] and len(self.combo_probe_sep_list) > 0):
+					and (not self.sep2_video_played) and ((len(self.combo_probe_sep_list) > 0) and (self.current_sep == self.combo_probe_sep_list[0])):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
@@ -1518,7 +1518,7 @@ class ProtocolScreen(ProtocolBase):
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep1_video_played) and (self.current_sep == self.combo_probe_sep_list[1] and len(self.combo_probe_sep_list) > 1):
+					and (not self.sep1_video_played) and (len(self.combo_probe_sep_list) > 1) and (self.current_sep == self.combo_probe_sep_list[1]):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
@@ -1536,7 +1536,7 @@ class ProtocolScreen(ProtocolBase):
 						return
 					
 					if (self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Tutorial_Video').is_dir() \
-					and (not self.sep0_video_played) and (self.current_sep == self.combo_probe_sep_list[2] and len(self.combo_probe_sep_list) > 2):
+					and (not self.sep0_video_played) and (len(self.combo_probe_sep_list) > 2) and (self.current_sep == self.combo_probe_sep_list[2]):
 						self.protocol_floatlayout.clear_widgets()
 						self.tutorial_video.state = 'stop'
 						self.tutorial_video.unload()
