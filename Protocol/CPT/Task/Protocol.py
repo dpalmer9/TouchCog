@@ -278,8 +278,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_video_played = False
 		self.sim_scale_video_played = False
 		self.tar_prob_video_played = False
-		self.cjb_discrim_video_played = False
-		self.cjb_probe_video_played = False
 		self.data_file_generated = False
 		# Re-check if a CJB task is the first stage in self.stage_list. If so, set self.cjb_task to True
 		self.cjb_task = self.stage_list[0] in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe']
@@ -736,8 +734,6 @@ class ProtocolScreen(ProtocolBase):
 			self.stimdur_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-StimDur-2025-09-18.mp4'
 			self.tar_prob_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
 			self.cjb_train_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CJB-Main-26-04-27.mp4'
-			self.cjb_discrim_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
-			self.cjb_probe_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
 
 			if self.cjb_task:
 				start_tutorial_path = self.cjb_train_video_path
@@ -2632,14 +2628,6 @@ class ProtocolScreen(ProtocolBase):
 
 			if self._block_load_stage_video(
 					'TarProb_Fixed_Probe', 'tar_prob_video_path', 'tar_prob_video_played'):
-				return
-			
-			if self._block_load_stage_video(
-					'CJB_Discrimination', 'cjb_discrim_video_path', 'cjb_discrim_video_played'):
-				return
-			
-			if self._block_load_stage_video(
-					'CJB_Probe', 'cjb_probe_video_path', 'cjb_probe_video_played'):
 				return
 			
 			if self.cjb_task:
