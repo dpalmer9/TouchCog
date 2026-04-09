@@ -437,20 +437,9 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 		
 		self.iti_active = False
-		self.feedback_label.text = self.feedback_dict['wait']
 
 		if self.feedback_on_screen is False:	
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.perf_counter()
-
-			self.protocol_floatlayout.add_event([
-				(self.feedback_start_time - self.start_time)
-				, 'Object Display'
-				, 'Text'
-				, 'Feedback'
-				, self.feedback_label.text
-				])
+			self.assign_feedback(feedback_key='wait')
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.iti_start)
@@ -513,17 +502,17 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_stage_event('Choice Rewarded')
 
 			if self.current_stage == 'Training':
-				self.feedback_label.text = self.feedback_dict['correct']
+				outcome_label = self.feedback_dict['correct']
 
 			else:
-				self.feedback_label.text = self.feedback_dict['points_awarded']
+				outcome_label = self.feedback_dict['points_awarded']
 				self.point_counter += 10
 
 				self.protocol_floatlayout.add_stage_event('Points Collected')
 				self.protocol_floatlayout.add_variable_event('Outcome', 'Points', self.response_latency)
 		
 		else:
-			self.feedback_label.text = ''
+			outcome_label = ''
 			self.protocol_floatlayout.add_stage_event('Choice Not Rewarded')
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Side Chosen', self.side_chosen)
@@ -542,8 +531,7 @@ class ProtocolScreen(ProtocolBase):
 
 		if self.feedback_label.text != '' \
 			and not self.feedback_on_screen:
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
+			self.assign_feedback(feedback_key=outcome_label)
 			Clock.schedule_once(self.remove_feedback, self.feedback_length)
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		

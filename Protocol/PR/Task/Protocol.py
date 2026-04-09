@@ -393,7 +393,7 @@ class ProtocolScreen(ProtocolBase):
 			self.quit_button.bind(on_press=self.protocol_end)
 			self.quit_button.pos_hint = {'center_x': 0.5, 'center_y': 0.07}
 
-			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.assign_feedback(override_text=self.outcome_string)
 			self.protocol_floatlayout.add_widget(self.quit_button)
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
@@ -442,11 +442,7 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label.text = self.feedback_dict['wait']
 
 		if self.feedback_on_screen is False:	
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.time()
-
-			self.protocol_floatlayout.add_text_event('Display', self.feedback_label.text)
+			self.assign_feedback(feedback_key='wait')
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.start_block)
@@ -633,21 +629,19 @@ class ProtocolScreen(ProtocolBase):
 			else:
 
 				if self.current_block == 1:
-					self.feedback_label.text = self.feedback_dict['start_block']
 					self.hold_button.bind(on_press=self.start_block)
 					
 					self.protocol_floatlayout.add_widget(self.quit_button)
-					self.protocol_floatlayout.add_widget(self.feedback_label)
+					self.assign_feedback(feedback_key='start_block')
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
 					
 				else:
-					self.feedback_label.text = self.feedback_dict['mid_block']
+					self.assign_feedback(feedback_key='mid_block')
 
 					self.hold_button.bind(on_press=self.start_block)
 					
 					self.protocol_floatlayout.add_widget(self.reward_image)
-					self.protocol_floatlayout.add_widget(self.feedback_label)
 					self.protocol_floatlayout.add_widget(self.quit_button)
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')

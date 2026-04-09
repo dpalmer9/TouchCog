@@ -784,6 +784,10 @@ class ProtocolBase(Screen):
 		self.hold_button.bind(on_press=self.hold_lift_returned)
 		self.hold_button.always_release = True
 
+		self.feedback_image = Image()
+		self.feedback_image.size_hint = (0.4, 0.4)
+		self.feedback_image.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
 		# Define widgets - Video (hold)
 		self.tutorial_video = None
 		
@@ -805,6 +809,9 @@ class ProtocolBase(Screen):
 		self.feedback_label = Label(text='', font_size='50sp', markup=True)
 		self.feedback_label.size_hint = (0.7, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
+		# Define Widgets - Hold for Feedback
+		self.feedback = self.feedback_label
 		
 		
 		# Define Widgets - Buttons
@@ -1032,8 +1039,10 @@ class ProtocolBase(Screen):
 		stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
 		stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
 		
-		if stim_feedback_correct_color != '':
-			color_text = '[color=%s]' % stim_feedback_correct_color
+		# Check if stim_feedback_correct_str is a png file by looking for .png extension
+		if not stim_feedback_correct_str.endswith('.png'):
+			if stim_feedback_correct_color != '':
+				color_text = '[color=%s]' % stim_feedback_correct_color
 			stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
 		
 		self.feedback_dict['correct'] = stim_feedback_correct_str
@@ -1041,8 +1050,9 @@ class ProtocolBase(Screen):
 		stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
 		stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
 		
-		if stim_feedback_incorrect_color != '':
-			color_text = '[color=%s]' % stim_feedback_incorrect_color
+		if not stim_feedback_incorrect_str.endswith('.png'):
+			if stim_feedback_incorrect_color != '':
+				color_text = '[color=%s]' % stim_feedback_incorrect_color
 			stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
 		
 		self.feedback_dict['incorrect'] = stim_feedback_incorrect_str
@@ -1435,20 +1445,15 @@ class ProtocolBase(Screen):
 			else:
 					# remove any other feedback text
 				Clock.unschedule(self.remove_feedback)
-				self.protocol_floatlayout.remove_widget(self.feedback_label)
+				self.protocol_floatlayout.remove_widget(self.feedback)
 				self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
 				self.feedback_on_screen = False
 
 		if not self.feedback_on_screen:
 			if self.block_started:
 				return
-			self.feedback_label.text = self.feedback_dict['return']
-			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.assign_feedback('return')
 
-			self.feedback_start_time = time.perf_counter()
-			self.feedback_on_screen = True
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		return
 		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
@@ -1499,9 +1504,43 @@ class ProtocolBase(Screen):
 	def hold_lift_returned(self, *args):
 		self.hold_button_pressed = True
 
+	def assign_feedback(self, feedback_key=None, override_text=None):
+		if feedback_key in self.feedback_dict:
+			# Check if override contains value, use as feedback
+			if override_text is not None and type(override_text) == str and override_text != '':
+				feedback_str = override_text
+			# Else use feedback_dict value for feedback_key
+			elif feedback_key in self.feedback_dict:
+				# Extract string value from feedback_dict, which may contain markup. Default to empty string if key is missing or value is None.
+				feedback_str = self.feedback_dict.get(feedback_key, '') or ''
+			# Handle error case where neither argument is valid
+			else:
+				print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+				return
+			
+			# Check if feedback_str contains a png file extension. If so, set feedback_image source to that file and display the image instead of text.
+			if '.png' in feedback_str:
+				self.feedback_image.source = str(self.image_folder / feedback_str)
+				# Assign feedback_image to feedback
+				self.feedback = self.feedback_image
+			# Else if text entry
+			else:
+				self.feedback_label.text = feedback_str
+				# Assign feedback_label to feedback
+				self.feedback = self.feedback_label
+		# Add feedback to screen if not already present
+		if not self.feedback_on_screen:
+			self.protocol_floatlayout.add_widget(self.feedback)
+
+			self.protocol_floatlayout.add_object_event('Display', 'Feedback', 'Trial Feedback', feedback_key)
+
+			self.feedback_start_time = time.perf_counter()
+			self.feedback_on_screen = True
+		return
+
 	def remove_feedback(self, *args):
 		if self.feedback_on_screen:
-			self.protocol_floatlayout.remove_widget(self.feedback_label)
+			self.protocol_floatlayout.remove_widget(self.feedback)
 
 			self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
 

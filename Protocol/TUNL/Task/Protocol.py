@@ -889,7 +889,6 @@ class ProtocolScreen(ProtocolBase):
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.tutorial_video.source), self.video_position)
 
-		self.feedback_label.text = self.feedback_dict['abort']
 
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
@@ -897,11 +896,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
 		if self.feedback_on_screen is False:	
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.perf_counter()
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.assign_feedback(feedback_key='abort')
 		
 		self.stimulus_on_screen = False
 		self.cue_completed = False
@@ -944,15 +939,11 @@ class ProtocolScreen(ProtocolBase):
 		self.last_response = np.nan
 		self.response_latency = np.nan
 		self.iti_active = False
-		self.feedback_label.text = self.feedback_dict['abort']
 
 		if self.feedback_on_screen is False:	
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.perf_counter()
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback',self.feedback_label.text)
+			self.assign_feedback(feedback_key='abort')
 		
+
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Contingency', self.contingency)
 		
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Trial Outcome', self.trial_outcome)
@@ -999,8 +990,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Last Response', self.last_response)
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
-		
-		self.feedback_label.text = self.feedback_dict['incorrect']
 
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
@@ -1010,12 +999,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.feedback_label.text != '' \
 			and not self.feedback_on_screen:
 			
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-
-			self.feedback_start_time = time.perf_counter()
-			self.feedback_on_screen = True
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.assign_feedback(feedback_key='incorrect')
 		
 		self.hold_active = False
 		self.stimulus_on_screen = False
@@ -1066,22 +1050,14 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 
-		self.feedback_label.text = self.feedback_dict['correct']
-
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
 		if self.feedback_label.text != '' \
-			and not self.feedback_on_screen:
-			
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-
-			self.feedback_start_time = time.perf_counter()
-			self.feedback_on_screen = True
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			and not self.feedback_on_screen:			
+			self.assign_feedback(feedback_key='correct')
 
 		self.hold_active = False
 		self.stimulus_on_screen = False

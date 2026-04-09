@@ -703,14 +703,9 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 		
 		self.iti_active = False
-		self.feedback_label.text = self.feedback_dict['wait']
 
 		if self.feedback_on_screen is False:
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.perf_counter()
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.assign_feedback(feedback_key='wait')
 		
 		#self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.iti_start)
@@ -739,18 +734,11 @@ class ProtocolScreen(ProtocolBase):
 
 		elif self.current_stage == 'Recall':
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.target_image)
-		
-		self.feedback_label.text = self.feedback_dict['correct']
 
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
-		self.protocol_floatlayout.add_widget(self.feedback_label)
-
-		self.feedback_on_screen = True
-		self.feedback_start_time = time.perf_counter()
-
-		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+		self.assign_feedback(feedback_key='correct')
 		
 		self.write_trial()
 		self.trial_contingency()
@@ -783,17 +771,10 @@ class ProtocolScreen(ProtocolBase):
 		elif self.current_stage == 'Recall':
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.target_image)
 
-		self.feedback_label.text = self.feedback_dict['incorrect']
-
 		self.hold_button.bind(on_press=	self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
-		self.protocol_floatlayout.add_widget(self.feedback_label)
-		
-		self.feedback_on_screen = True
-		self.feedback_start_time = time.perf_counter()
-
-		self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+		self.assign_feedback(feedback_key='incorrect')
 		
 		self.write_trial()
 		self.trial_contingency()
