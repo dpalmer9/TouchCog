@@ -135,6 +135,7 @@ class FloatLayoutLog(FloatLayout):
 	def __init__(self, screen_resolution, **kwargs):
 		
 		super(FloatLayoutLog, self).__init__(**kwargs)
+		self.register_event_type('on_multi_touch')
 		
 		self.app = App.get_running_app()
 		self.block_on_move_touch_down = False
@@ -167,6 +168,8 @@ class FloatLayoutLog(FloatLayout):
 		self.elapsed_time = 0
 		self.touch_time = 0
 		self.start_time = 0
+		self.active_touches = set()
+		self.multi_touch_active = False
 
 		threading.Thread(target=self.event_writer, daemon=True).start()
 	
@@ -183,11 +186,33 @@ class FloatLayoutLog(FloatLayout):
 	def filter_children(self, string):
 		
 		return
+
+	def on_multi_touch(self, touch, touch_count):
+		return
+
+	def _track_touch_down(self, touch):
+		touch_uid = getattr(touch, 'uid', None)
+		if touch_uid is None:
+			return
+
+		self.active_touches.add(touch_uid)
+		if len(self.active_touches) > 1 and not self.multi_touch_active:
+			self.multi_touch_active = True
+			self.dispatch('on_multi_touch', touch, len(self.active_touches))
+
+	def _track_touch_up(self, touch):
+		touch_uid = getattr(touch, 'uid', None)
+		if touch_uid is not None:
+			self.active_touches.discard(touch_uid)
+
+		if len(self.active_touches) <= 1:
+			self.multi_touch_active = False
 	
 	
 	
 	def on_touch_down(self, touch):
 		
+		self._track_touch_down(touch)
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
 		
@@ -306,6 +331,7 @@ class FloatLayoutLog(FloatLayout):
 	
 	def on_touch_up(self, touch):
 		
+		self._track_touch_up(touch)
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
 		
@@ -456,6 +482,9 @@ class FloatLayoutLog(FloatLayout):
 		
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
+
+	# Add new bind option to FloatLayoutLog for when multi-touch is detected (i.e., a second touch occurs while one is already active)
+	
 
 class PreloadedVideo(Image):
 	def __init__(self, source_path, player=None, loop=False, **kwargs):
@@ -632,6 +661,7 @@ class ProtocolBase(Screen):
 		self.name = 'protocolscreen'
 
 		self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
+		self.protocol_floatlayout.bind(on_multi_touch=self.multi_touch_warning)
 		self.protocol_floatlayout.size = screen_resolution
 		self.add_widget(self.protocol_floatlayout)
 			
@@ -1075,6 +1105,15 @@ class ProtocolBase(Screen):
 		
 		self.feedback_dict['return'] = hold_feedback_return_str
 
+		hold_feedback_multi_touch_str = feedback_lang_config.get('Hold', 'multi_touch', fallback='PLEASE REMOVE EXTRA FINGER AND RETURN TO WHITE SQUARE')
+		hold_feedback_multi_touch_color = feedback_lang_config.get('Hold', 'multi_touch_colour', fallback=hold_feedback_return_color)
+
+		if hold_feedback_multi_touch_color != '':
+			color_text = '[color=%s]' % hold_feedback_multi_touch_color
+			hold_feedback_multi_touch_str = color_text + hold_feedback_multi_touch_str + '[/color]'
+
+		self.feedback_dict['multi_touch'] = hold_feedback_multi_touch_str
+
 
 		stim_feedback_too_slow_str = feedback_lang_config['Stimulus']['too_slow']
 		stim_feedback_too_slow_color = feedback_lang_config['Stimulus']['too_slow_colour']
@@ -1424,7 +1463,34 @@ class ProtocolBase(Screen):
 
 		return
 	
+	def multi_touch_warning(self, *args):
+		self.protocol_floatlayout.add_text_event('Multi-touch Detected', 'Screen')
+		#
+		if self.feedback_on_screen:
+			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
+					# leave feedback as-is
+				Clock.unschedule(self.remove_feedback)
+				return
+			else:
+					# remove any other feedback text
+				Clock.unschedule(self.remove_feedback)
+				self.protocol_floatlayout.remove_widget(self.feedback)
+				self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
+				self.feedback_on_screen = False
 
+		if not self.feedback_on_screen:
+			self.assign_feedback('multi_touch')
+		
+		# Check if hold button is not on screen and if so, add the hold button
+		if self.hold_button not in self.protocol_floatlayout.children:
+			self.protocol_floatlayout.add_widget(self.hold_button)
+			self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
+		
+		# Schedule hold remind for after 5 seconds if not already scheduled
+		if self.hold_remind_event is None:
+			self.schedule_hold_remind(delay=5.0)
+		
+		return
 
 	def hold_remind(self, *args):
 		self.hold_remind_event = None
@@ -1455,7 +1521,6 @@ class ProtocolBase(Screen):
 			self.assign_feedback('return')
 
 		return
-		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
 	
 	
