@@ -1100,7 +1100,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_press_latency = np.nan
 		self.movement_latency = np.nan
 
-		self.feedback_label.text = ''
+		outcome_label = ''
 		
 		self.protocol_floatlayout.add_stage_event('Premature Response')
 		
@@ -1120,7 +1120,7 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
 
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
+			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', outcome_label)
 		
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.premature_resolved)
@@ -1152,7 +1152,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.response = 1
 
-		self.feedback_label.text = ''
+		outcome_label = ''
 		
 		if (self.current_stage == 'SART_Fixed_Probe'):
 
@@ -1171,7 +1171,7 @@ class ProtocolScreen(ProtocolBase):
 				self.trial_outcome = 5
 				
 				if self.current_stage == 'LimHold_Staircase_Difficulty':
-					self.feedback_label.text = self.feedback_dict['too_slow']
+					outcome_label = self.feedback_dict['too_slow']
 				
 			else:
 				self.contingency = 2
@@ -1248,7 +1248,7 @@ class ProtocolScreen(ProtocolBase):
 		self.limhold_started = False
 		self.response_made = False
 
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 		
 		if (self.current_stage == 'SART_Fixed_Probe') and not self.cjb_task:
 
@@ -1257,14 +1257,14 @@ class ProtocolScreen(ProtocolBase):
 				self.trial_outcome = 1
 				
 				if self.current_block == 0:
-					self.feedback_label.text = 'correct'
+					outcome_feedback = 'correct'
 			
 			else:
 				self.contingency = 0
 				self.trial_outcome = 3
 				
 				if self.current_block == 0:
-					self.feedback_label.text = 'incorrect'
+					outcome_feedback = 'incorrect'
 
 		elif self.cjb_task:
 			if (self.center_image == self.cjb_target_image):
@@ -1398,7 +1398,10 @@ class ProtocolScreen(ProtocolBase):
 				if (self.center_image == self.cjb_target_image):
 					self.contingency = 0
 					self.trial_outcome = 2
-					self.feedback_label.text = self.feedback_dict['miss']
+					if self.current_stage in ['CJB_Training']:
+						outcome_feedback = self.feedback_dict['miss']
+					else:
+						outcome_feedback = ''
 				elif (self.center_image == self.cjb_nontarget_image):
 					self.contingency = 1
 					self.trial_outcome = 4
@@ -1414,7 +1417,7 @@ class ProtocolScreen(ProtocolBase):
 					self.contingency = 0
 					self.trial_outcome = 2
 
-					if self.current_stage in ['Training', 'LimHold_Staircase_Difficulty', 'Similarity_Staircase_Difficulty', 'Blur_Staircase_Difficulty', 'Noise_Staircase_Difficulty', 'StimDur_Staircase_Probe', 'Blur_Staircase_Probe', 'Noise_Staircase_Probe']:
+					if self.current_stage in ['Training']:
 						outcome_feedback = 'miss'
 				
 				else:
@@ -1437,7 +1440,7 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.unbind(on_press=self.response_cancelled)
 			
 
-		if self.feedback_label.text != '' \
+		if outcome_feedback != '' \
 			and not self.feedback_on_screen:
 			
 			self.assign_feedback(feedback_key=outcome_feedback)
@@ -1463,10 +1466,10 @@ class ProtocolScreen(ProtocolBase):
 	def response_cancelled(self, *args):
 		
 		if self.trial_outcome == 5:
-			self.feedback_label.text = self.feedback_dict['miss']
+			outcome_feedback = self.feedback_dict['miss']
 
 		else:
-			self.feedback_label.text = self.feedback_dict['abort']
+			outcome_feedback = self.feedback_dict['abort']
 
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
@@ -2238,7 +2241,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 		self.protocol_floatlayout.add_stage_event('Screen Cleared')
 		self.previous_stage = self.current_stage
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 		self.hold_button_pressed = False
 		self.block_started = True
 

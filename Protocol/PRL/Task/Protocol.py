@@ -502,10 +502,10 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_stage_event('Choice Rewarded')
 
 			if self.current_stage == 'Training':
-				outcome_label = self.feedback_dict['correct']
+				outcome_label = 'correct'
 
 			else:
-				outcome_label = self.feedback_dict['points_awarded']
+				outcome_label = 'points_awarded'
 				self.point_counter += 10
 
 				self.protocol_floatlayout.add_stage_event('Points Collected')
@@ -529,11 +529,9 @@ class ProtocolScreen(ProtocolBase):
 		self.hold_button.bind(on_press=self.iti_start)
 		self.hold_button.bind(on_release=self.premature_response)
 
-		if self.feedback_label.text != '' \
+		if outcome_label != '' \
 			and not self.feedback_on_screen:
 			self.assign_feedback(feedback_key=outcome_label)
-			Clock.schedule_once(self.remove_feedback, self.feedback_length)
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		

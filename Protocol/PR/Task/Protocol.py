@@ -256,7 +256,7 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label = Label(font_size='32sp')
 		self.feedback_label.size_hint = (0.8, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 
 		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
@@ -386,8 +386,6 @@ class ProtocolScreen(ProtocolBase):
 			self.feedback_on_screen = False
 
 			self.outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
-
-			self.feedback_label.text = self.outcome_string
 			
 			self.quit_button.unbind(on_press=self.results_screen)
 			self.quit_button.bind(on_press=self.protocol_end)
@@ -439,7 +437,6 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 		
 		self.iti_active = False
-		self.feedback_label.text = self.feedback_dict['wait']
 
 		if self.feedback_on_screen is False:	
 			self.assign_feedback(feedback_key='wait')
@@ -586,7 +583,7 @@ class ProtocolScreen(ProtocolBase):
 	def start_block(self, *args):
 		self.hold_button_pressed = True
 		self.protocol_floatlayout.remove_widget(self.feedback_label)
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 		
 		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Stage', 'Results')
 

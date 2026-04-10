@@ -617,7 +617,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_start_time = time.perf_counter()
 		self.trial_end_time = time.perf_counter()
 		
-		self.feedback_label.text = ''
+		outcome_label = ''
 		self.block_contingency()
 
 	def section_start(self, *args):
@@ -996,8 +996,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
-		if self.feedback_label.text != '' \
-			and not self.feedback_on_screen:
+		if not self.feedback_on_screen:
 			
 			self.assign_feedback(feedback_key='incorrect')
 		
@@ -1055,8 +1054,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
-		if self.feedback_label.text != '' \
-			and not self.feedback_on_screen:			
+		if not self.feedback_on_screen:			
 			self.assign_feedback(feedback_key='correct')
 
 		self.hold_active = False

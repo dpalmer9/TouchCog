@@ -676,7 +676,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stimulus_start_time = time.perf_counter()
 		
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 		
 		self.protocol_floatlayout.add_stage_event('Object Display')
 		
@@ -998,7 +998,7 @@ class ProtocolScreen(ProtocolBase):
 			self.remove_feedback()
 			
 			self.protocol_floatlayout.clear_widgets()
-			self.feedback_label.text = ''
+			outcome_feedback = ''
 			
 			self.protocol_floatlayout.add_stage_event('Block Contingency')
 			
