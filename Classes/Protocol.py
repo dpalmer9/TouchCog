@@ -1128,9 +1128,10 @@ class ProtocolBase(Screen):
 		stim_feedback_miss_str = feedback_lang_config['Stimulus']['miss']
 		stim_feedback_miss_color = feedback_lang_config['Stimulus']['miss_colour']
 		
-		if stim_feedback_miss_color != '':
-			color_text = '[color=%s]' % stim_feedback_miss_color
-			stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
+		if not stim_feedback_miss_str.endswith('.png'):
+			if stim_feedback_miss_color != '':
+				color_text = '[color=%s]' % stim_feedback_miss_color
+				stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
 		
 		self.feedback_dict['miss'] = stim_feedback_miss_str
 

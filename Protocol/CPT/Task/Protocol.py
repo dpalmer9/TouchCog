@@ -1115,7 +1115,7 @@ class ProtocolScreen(ProtocolBase):
 		self.iti_active = False
 			
 		if not self.feedback_on_screen:
-			self.assign_feedback_color('wait')
+			self.assign_feedback('wait')
 
 			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
@@ -1399,7 +1399,7 @@ class ProtocolScreen(ProtocolBase):
 					self.contingency = 0
 					self.trial_outcome = 2
 					if self.current_stage in ['CJB_Training']:
-						outcome_feedback = self.feedback_dict['miss']
+						outcome_feedback = 'miss'
 					else:
 						outcome_feedback = ''
 				elif (self.center_image == self.cjb_nontarget_image):
