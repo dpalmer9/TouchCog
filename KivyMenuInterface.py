@@ -1441,9 +1441,12 @@ class VideoScreen(Screen):
 		if video_path is None:
 			return False
 
+		# Video should occupy the space above the buttons (buttons are at y=0.01 with height=0.15)
+		# We set size_hint=(1, 0.8) and center_y=0.55 to leave room for the buttons at the bottom
 		self.current_video = PreloadedVideo(
 			source_path=str(video_path),
-			pos_hint={'center_x': 0.5, 'center_y': 0.5},
+			pos_hint={'center_x': 0.5, 'center_y': 0.55},
+			size_hint=(0.95, 0.75),
 			fit_mode='contain',
 			loop=False
 		)

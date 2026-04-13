@@ -405,8 +405,9 @@ class ProtocolScreen(ProtocolBase):
 
 			self.tutorial_video = PreloadedVideo(
 				source_path = str(self.tutorial_video_dPAL_path)
-				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
-				, fit_mode = 'contain'
+				, pos_hint={'center_x': 0.5, 'center_y': 0.55},
+				size_hint=(0.95, 0.75),
+				fit_mode = 'contain'
 				, loop=False
 				)
 		
