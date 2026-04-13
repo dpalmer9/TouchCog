@@ -7,15 +7,19 @@
 
 # Setup #
 
+import os
+import sys
+
+os.environ['PYTHONUTF8'] = '1'
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
 import configparser
 import importlib
 import importlib.util
-import os
 import shutil
 import pathlib
 import subprocess
 import re
-import sys
 import queue
 
 TOUCHCOG_VERSION = "2.0.0"
