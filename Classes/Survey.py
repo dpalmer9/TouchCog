@@ -167,6 +167,8 @@ class SurveyBase(Screen):
         self.end_survey_text = "Thank you for completing the survey!"
         self.survey_title_label = Label(text=self.survey_title, font_size='35sp', halign='center', valign='middle')
         self.survey_title_description = Label(text=self.survey_description, font_size='30sp', halign='center', valign='middle')
+        self._configure_multiline_label(self.survey_title_label, min_height=dp(70))
+        self._configure_multiline_label(self.survey_title_description, min_height=dp(110))
         self.survey_button_text = "Next"
         self.survey_button = Button(text=self.survey_button_text, size_hint=(0.3, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
@@ -185,6 +187,36 @@ class SurveyBase(Screen):
         documents_path = pathlib.Path.home() / 'Documents'
         self.data_folder = documents_path / 'TouchCog' / 'Data'
         self.data_folder.mkdir(parents=True, exist_ok=True)
+
+    def _configure_multiline_label(self, label, min_height=dp(60), horizontal_padding=dp(20)):
+        """
+        Configure a label so its text wraps within the available width and
+        its height grows to fit the wrapped content.
+        """
+        label.size_hint_y = None
+
+        def _update_label_bounds(instance, *args):
+            available_width = max(instance.width - horizontal_padding, dp(100))
+            instance.text_size = (available_width, None)
+            instance.texture_update()
+            instance.height = max(instance.texture_size[1] + dp(20), min_height)
+
+        label.bind(width=_update_label_bounds, text=_update_label_bounds)
+        _update_label_bounds(label)
+
+    def _build_label_scrollview(self, label, size_hint_y):
+        """
+        Keep long label content on-screen while allowing vertical scrolling
+        when wrapped text becomes taller than the available area.
+        """
+        scroll_view = ScrollView(
+            size_hint=(1, size_hint_y),
+            do_scroll_x=False,
+            effect_cls=ScrollEffect,
+            bar_width=dp(8)
+        )
+        scroll_view.add_widget(label)
+        return scroll_view
 
     def _record_response(self, question_text, response):
         """
@@ -267,6 +299,7 @@ class SurveyBase(Screen):
     def _load_end_survey_text(self):
         self.end_survey_text = "Thank you for completing the survey!"
         self.end_survey_label = Label(text=self.end_survey_text, font_size='32sp', halign='center', valign='middle')
+        self._configure_multiline_label(self.end_survey_label, min_height=dp(90))
         self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
     def _return_to_main_menu(self, instance):
@@ -684,8 +717,8 @@ class SurveyBase(Screen):
 
     def start_screen(self):
         self.main_layout.clear_widgets()
-        self.main_layout.add_widget(self.survey_title_label)
-        self.main_layout.add_widget(self.survey_title_description)
+        self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_label, 0.18))
+        self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_description, 0.42))
         if not self.app.battery_active:
             self.main_layout.add_widget(self.participant_id_entry)
         else:
@@ -695,6 +728,6 @@ class SurveyBase(Screen):
 
     def end_survey(self):
         self.main_layout.clear_widgets()
-        self.main_layout.add_widget(self.end_survey_label)
+        self.main_layout.add_widget(self._build_label_scrollview(self.end_survey_label, 0.7))
         self.main_layout.add_widget(self.end_survey_button)
         self.end_survey_button.bind(on_press=self._return_to_main_menu)
