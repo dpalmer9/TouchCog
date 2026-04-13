@@ -163,10 +163,10 @@ y_dim = config_file['Screen']['y']
 fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
-skip_video = config_file.getint(
+skip_video = config_file.getboolean(
 	'Video',
 	'skip_video',
-	fallback=default_config_file.getint('Video', 'skip_video', fallback=0)
+	fallback=default_config_file.getboolean('Video', 'skip_video', fallback=False)
 )
 Config.set('graphics', 'allow_screensaver', 0)
 Config.set('kivy', 'kivy_clock', 'interrupt')
