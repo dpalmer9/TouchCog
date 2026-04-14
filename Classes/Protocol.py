@@ -1425,6 +1425,8 @@ class ProtocolBase(Screen):
 	
 	
 	def return_to_main(self, *args):
+		# Safe guard remove the return button immediately to prevent multiple presses
+		self.protocol_floatlayout.remove_widget(self.return_button)
 
 		# If a battery run is active, notify the app so it can advance to next task
 		try:
