@@ -867,6 +867,12 @@ class ProtocolBase(Screen):
 		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+
+	def _safe_get_bool(self, key, fallback):
+		val = self.parameters_dict.get(key, fallback)
+		if isinstance(val, str):
+			return val.lower() == 'true'
+		return bool(val)
 		
 	
 	def update_task(self):

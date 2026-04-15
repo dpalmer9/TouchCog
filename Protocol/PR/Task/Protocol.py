@@ -5,6 +5,7 @@ import numpy as np
 import pathlib
 import random
 import statistics
+import traceback
 import time
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
@@ -111,7 +112,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_level = int(self.parameters_dict.get('response_level_start', '1'))
 		self.response_level_end = int(self.parameters_dict.get('response_level_end', '10'))
 
-		self.use_confirmation = self.parameters_dict.get('use_confirmation', 'True')
+		self.use_confirmation = self._safe_get_bool('use_confirmation', 'True')
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -215,6 +216,12 @@ class ProtocolScreen(ProtocolBase):
 			, round((self.hold_button.pos_hint['center_x'] \
 				+ (self.main_move * self.width_adjust)), 3)
 			]
+		
+		# Clamp the boundaries
+		min_x = max(min(self.x_boundaries), (((self.stimulus_size * self.width_adjust) / 2) + 0.005))
+		max_x = min(max(self.x_boundaries), (1 - ((self.stimulus_size * self.width_adjust) / 2) - 0.005))
+
+		self.x_boundaries = [round(min_x, 3), round(max_x, 3)]
 
 		# Ensure possible x locations don't put stimulus outside edge of screen
 		if ((min(self.x_boundaries) - ((self.stimulus_size * self.width_adjust) / 2) - 0.005) < 0) \
@@ -336,8 +343,10 @@ class ProtocolScreen(ProtocolBase):
 		x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
 
 		# If difference between existing and new x position is less than 10% of screen width, select new location
-		while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+		pos_attempts = 0
+		while abs(x_pos - self.stimulus_pos['center_x']) < 0.1 and pos_attempts < 50:
 			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+			pos_attempts += 1
 
 		x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
@@ -350,8 +359,10 @@ class ProtocolScreen(ProtocolBase):
 			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
 
 			# If difference between existing and new x position is less than 10% of screen width, select new location
-			while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+			pos_attempts = 0
+			while abs(x_pos - self.stimulus_pos['center_x']) < 0.1 and pos_attempts < 50:
 				x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+				pos_attempts += 1
 
 			x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
@@ -565,9 +576,9 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except Exception:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
 	
 
@@ -672,7 +683,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
