@@ -3,8 +3,8 @@ import configparser
 import numpy as np
 import pathlib
 import random
-import statistics
 import time
+import traceback
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
@@ -424,7 +424,7 @@ class ProtocolScreen(ProtocolBase):
 	def premature_response(self, *args):
 		
 		if self.stimulus_on_screen is True:
-			pass
+			return
 		
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.remove_feedback)
@@ -624,7 +624,7 @@ class ProtocolScreen(ProtocolBase):
 					if self.target_loc_index >= len(self.target_loc_list):
 						self.target_loc_index = 0
 
-					elif self.nontarget_loc_index >= len(self.target_loc_list):
+					if self.nontarget_loc_index >= len(self.target_loc_list):
 						self.nontarget_loc_index = 0
 
 					self.target_loc = self.target_loc_list[self.target_loc_index]
@@ -664,9 +664,9 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
 
 	
@@ -732,7 +732,7 @@ class ProtocolScreen(ProtocolBase):
 				if self.target_loc_index >= len(self.target_loc_list):
 					self.target_loc_index = 0
 
-				elif self.nontarget_loc_index >= len(self.target_loc_list):
+				if self.nontarget_loc_index >= len(self.target_loc_list):
 					self.nontarget_loc_index = 0
 
 				self.target_loc = self.target_loc_list[self.target_loc_index]
@@ -799,7 +799,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
