@@ -858,8 +858,13 @@ class ProtocolScreen(ProtocolBase):
 
 		# Use the constrained shuffle function to shuffle the target and nontarget trials
 		shuffled_target_nontarget_trials = self.constrained_shuffle(target_nontarget_trials, max_run=max_run)
+		# Use general random shuffle to shuffle the other trials (e.g., neutral trials in CJB probe)
+		random.shuffle(other_trials)
+		# Calculate range of index positions for the shuffled target and nontarget trials (starting after the first 20 trials to ensure no early runs of target/nontarget trials)
+		total_trials = len(shuffled_target_nontarget_trials) + len(other_trials)
+		buffer_trials = min(20, max(0, total_trials - len(other_trials)))
 		# Use random to create a list of index positions to insert the other trials back into the shuffled list
-		insert_positions = sorted(random.sample(range(len(shuffled_target_nontarget_trials) + len(other_trials)), len(other_trials)))
+		insert_positions = sorted(random.sample(range(buffer_trials, total_trials), len(other_trials)))
 		# Create new list to hold the final shuffled trials
 		final_shuffled_trials = []
 		# Copy target_nontarget_trials into final list, then insert other trials at the randomly generated index positions
@@ -2435,6 +2440,7 @@ class ProtocolScreen(ProtocolBase):
 
 		elif self.current_stage == 'CJB_Discrimination':
 			self.block_trial_max = self.block_trial_max_staircase
+			self.block_duration = self.block_duration_max
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_discrimination
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
@@ -2443,6 +2449,7 @@ class ProtocolScreen(ProtocolBase):
 
 		elif self.current_stage == 'CJB_Probe':
 			self.block_trial_max = self.cjb_probe_trials
+			self.block_duration = 3 * self.block_trial_max
 			self.target_probability = self.cjb_target_prob
 			self.trial_list = self.trial_list_cjb_probe
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
