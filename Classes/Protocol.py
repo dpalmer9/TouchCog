@@ -219,7 +219,7 @@ class FloatLayoutLog(FloatLayout):
 		if self.disabled and self.collide_point(*touch.pos):
 			return True
 		
-		for child in self.children:
+		for child in self.children[:]:
 			
 			if child.dispatch('on_touch_down', touch):
 				
@@ -229,10 +229,7 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					self.held_name = ''
 				
-				threading.Thread(
-					target=self.add_event
-					, args=([
-						self.touch_time
+				self.add_event([self.touch_time
 						, 'Screen'
 						, 'Touch Press'
 						, 'X Position'
@@ -240,12 +237,7 @@ class FloatLayoutLog(FloatLayout):
 						, 'Y Position'
 						, self.touch_pos[1]
 						, 'Stimulus Name'
-						, self.held_name
-						]
-						, 
-						)
-					, daemon=False
-					).start()
+						, self.held_name])
 				
 				return True
 		
@@ -274,7 +266,7 @@ class FloatLayoutLog(FloatLayout):
 		if self.disabled:
 			return
 		
-		for child in self.children:
+		for child in self.children[:]:
 			
 			if not self.block_on_move_touch_down:
 				if child.collide_point(*touch.pos):
@@ -338,7 +330,7 @@ class FloatLayoutLog(FloatLayout):
 		if self.disabled:
 			return
 		
-		for child in self.children:
+		for child in self.children[:]:
 			
 			if child.dispatch('on_touch_up', touch):
 				
@@ -569,6 +561,8 @@ class PreloadedVideo(Image):
 
 	def _stop_thread(self):
 		self._stop_event.set()
+		if self._playback_thread and self._playback_thread.is_alive():
+			self._playback_thread.join(timeout=0.5)
 
 	def _video_loop(self):
 		while not self._stop_event.is_set():
