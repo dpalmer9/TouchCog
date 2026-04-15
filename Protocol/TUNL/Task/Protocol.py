@@ -514,56 +514,59 @@ class ProtocolScreen(ProtocolBase):
 			]
 
 		main_move = float(sep_level) + 1
-		
-		cue_xpos = random.uniform(min(x_lim), max(x_lim))
-		cue_ypos = random.uniform(min(y_lim), max(y_lim))
-		
-		horz_dist = random.uniform(-main_move, main_move)
-		horz_move = horz_dist * stimulus_size[0]
-		
-		target_xpos = cue_xpos + horz_move
 
-		vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
-		vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
-		
-		target_ypos = cue_ypos + vert_move
-		
-		while (target_xpos < min(x_lim)) \
-			or (target_xpos > max(x_lim)) \
-			or (target_ypos < min(y_lim)) \
-			or (target_ypos > max(y_lim)):
+		max_x_units = (max(x_lim) - min(x_lim)) / stimulus_size[0]
+		max_y_units = (max(y_lim) - min(y_lim)) / stimulus_size[1]
+		max_possible_move = float(np.sqrt(max_x_units**2 + max_y_units**2))
 
-			if (target_xpos < min(x_lim)) \
-				or (target_xpos > max(x_lim)):
+		if main_move > max_possible_move:
+			print(f"Warning: Requested TUNL separation {main_move} exceeds screen limits. Capping to {max_possible_move:.2f}.")
+			main_move = max_possible_move
 
-				horz_move *= -1
+		max_attempts = 100
+		attempt = 0
+		valid_position_found = False
+
+		while not valid_position_found and attempt < max_attempts:
+			attempt += 1
+		
+			cue_xpos = random.uniform(min(x_lim), max(x_lim))
+			cue_ypos = random.uniform(min(y_lim), max(y_lim))
 			
-
-			if (target_ypos < min(y_lim)) \
-				or (target_ypos > max(y_lim)):
-
-				vert_move *= -1
-
+			horz_dist = random.uniform(-main_move, main_move)
+			horz_move = horz_dist * stimulus_size[0]
+			
 			target_xpos = cue_xpos + horz_move
+
+			vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
+			vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
+			
 			target_ypos = cue_ypos + vert_move
 
-			if (target_xpos < min(x_lim)) \
-				or (target_xpos > max(x_lim)) \
-				or (target_ypos < min(y_lim)) \
-				or (target_ypos > max(y_lim)):
+			if (min(x_lim) <= target_xpos <= max(x_lim)) and (min(y_lim) <= target_ypos <= max(y_lim)):
+				valid_position_found = True
+			else:
+				if not (min(x_lim) <= target_xpos <= max(x_lim)):
+					horz_move *= -1
+					target_xpos = cue_xpos + horz_move
 
-				horz_dist = random.uniform(-main_move, main_move)
-				horz_move = horz_dist * stimulus_size[0]
-				target_xpos = cue_xpos + horz_move
+				if not (min(y_lim) <= target_ypos <= max(y_lim)):
+					vert_move *= -1
+					target_ypos = cue_ypos + vert_move
 
-				vert_dist = float(np.sqrt(main_move**2 - horz_dist**2))
-				vert_move = (random.choice([-vert_dist, vert_dist])) * stimulus_size[1]
-				target_ypos = cue_ypos + vert_move
+				if (min(x_lim) <= target_xpos <= max(x_lim)) and (min(y_lim) <= target_ypos <= max(y_lim)):
+					valid_position_found = True
+
+		if not valid_position_found:
+			print("Warning: Could not fit TUNL separation. Defaulting to center overlap to prevent crash.")
+			cue_xpos = (min(x_lim) + max(x_lim)) / 2
+			cue_ypos = (min(y_lim) + max(y_lim)) / 2
+			target_xpos = cue_xpos
+			target_ypos = cue_ypos
 
 		cue_coord = {'x': round(cue_xpos, 4), 'y': round(cue_ypos, 4)}
 		target_coord = {'x': round(target_xpos, 4), 'y': round(target_ypos, 4)}
 		combined_coord = {'Cue': cue_coord, 'Target': target_coord}
-		
 		return combined_coord
 
 
@@ -1295,7 +1298,8 @@ class ProtocolScreen(ProtocolBase):
 								self.current_sep = round(statistics.mean([self.delay_probe_sep_limit_dict['min'], self.delay_probe_sep_limit_dict['max']]), 2)
 					
 							# Else, if difference between min and max separations is less than or equal to separation resolution, check whether min and max values have been tested
-							elif (self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min']) <= self.delay_probe_sep_resolution:
+							diff = round(self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min'], 3)
+							if diff <= self.delay_probe_sep_resolution:
 					
 								# If minimum separation does not exist in separation tracking, set current separation to minimum
 								if (self.delay_probe_sep_limit_dict['min'] not in self.delay_probe_sep_tracking) and (self.staircase_flag > 0):
