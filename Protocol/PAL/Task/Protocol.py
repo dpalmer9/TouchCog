@@ -6,6 +6,7 @@ import pathlib
 import random
 import statistics
 import time
+import traceback
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
@@ -854,10 +855,7 @@ class ProtocolScreen(ProtocolBase):
 			# Set next trial parameters
 			
 			for stimulus in self.stimulus_grid_list:
-				stimulus.bind(on_press=self.target_pressed)
 				stimulus.unbind(on_press=self.target_pressed)
-
-				stimulus.bind(on_press=self.nontarget_pressed)
 				stimulus.unbind(on_press=self.nontarget_pressed)
 
 			self.current_trial += 1
@@ -981,8 +979,9 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
 
 	# Block Contingency
@@ -1148,6 +1147,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
