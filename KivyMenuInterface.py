@@ -5,7 +5,7 @@
 #                      Version: 2.0.0                                        #
 ##############################################################################
 
-# Setup #
+# Import - General #
 
 import os
 import sys
@@ -21,6 +21,13 @@ import pathlib
 import subprocess
 import re
 import queue
+import pandas as pd
+import json
+import threading
+import urllib.request
+import zipfile
+from datetime import datetime
+from functools import partial
 
 TOUCHCOG_VERSION = "2.0.0"
 
@@ -211,24 +218,12 @@ if use_mouse == 0:
 
 
 
-# Imports #
-
-import configparser
+# Imports - Kivy once config is done #
 import kivy
-import os
-import pandas as pd
-import sys
-import json
-import threading
-import urllib.request
-import zipfile
-from datetime import datetime
 
 from Classes.Menu import MenuBase
 from Classes.Survey import SurveyBase
 from Classes.Protocol import ProtocolBase, PreloadedVideo
-
-from functools import partial
 
 from ffpyplayer.player import MediaPlayer
 
@@ -256,29 +251,27 @@ from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
 
 class LargeVKeyboard(VKeyboard):
-    """Custom VKeyboard that forces itself to be 66% of the screen width."""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-		# Identify the default height, width, and ratio of the keyboard
-        self.widget_ratio = self.width / self.height
+	"""Custom VKeyboard that forces itself to be 66% of the screen width."""
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		# Disable the default size hint so Kivy doesn't shrink it
+		self.size_hint_y = None 
+		# Force the width to 66% of the Window
+		self.width = Window.width * 0.66
 
-        # Disable the default size hint so Kivy doesn't shrink it
-        self.size_hint_y = None 
-        # Force the width to 66% of the Window
-        self.width = Window.width * 0.66
-
-		# Set height based on the width and the original ratio
-        self.height = self.width / self.widget_ratio
-        # Ensure it sits at the bottom
-        self.y = 0
+		# Ensure it sits at the bottom
+		self.y = 0
 		# Change default font size
-        self.font_size = '40sp'
+		self.font_size = '40sp'
 
-    def on_width(self, instance, value):
-        # Prevent Kivy's internal layout from resetting the width later
-        target = Window.width * 0.66
-        if abs(value - target) > 5:
-            self.width = target
+	def on_width(self, instance, value):
+		# Prevent Kivy's internal layout from resetting the width later
+		target = Window.width * 0.66
+		if abs(value - target) > 5:
+			self.width = target
+		# Maintain 16:9/standard keyboard ratio dynamically
+		standard_keyboard_ratio = 3.0
+		self.height = self.width / standard_keyboard_ratio
 
 
 
@@ -954,6 +947,9 @@ class BatteryMenu(Screen):
 
 			for task in battery_data.get('tasks', []):
 				pname = task.get('task')
+				if not pname:
+					print("Warning: Skipping malformed battery entry with missing 'task' field:", task)
+					continue
 				ttype = task.get('type', 'task')
 				self.app.battery_task_types[pname] = ttype
 				
