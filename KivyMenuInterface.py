@@ -14,8 +14,10 @@ os.environ['PYTHONUTF8'] = '1'
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 import configparser
+import csv
 import importlib
 import importlib.util
+import atexit
 import shutil
 import pathlib
 import subprocess
@@ -23,6 +25,7 @@ import re
 import queue
 import pandas as pd
 import json
+import signal
 import threading
 import urllib.request
 import zipfile
@@ -1556,9 +1559,12 @@ class MenuApp(App):
 		self.survey_data_path = ''
 		self.survey_data_list = list()
 		self.event_queue = queue.Queue()
+		self.file_io_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
 		self.data_written = False
+		self.file_io_thread = threading.Thread(target=self._file_io_worker, daemon=True)
+		self.file_io_thread.start()
 
 		self.battery_active = False
 		self.battery_protocols = list()
@@ -1582,8 +1588,120 @@ class MenuApp(App):
 		self.general_video_screen = VideoScreen()
 		self.s_manager.add_widget(self.general_video_screen)
 		self.active_screen = self.language_menu.name
+		self._register_shutdown_handlers()
 		
 		return self.s_manager
+
+	def _register_shutdown_handlers(self):
+		if getattr(self, '_shutdown_handlers_registered', False):
+			return
+
+		atexit.register(self._write_pending_output_data)
+		for signal_name in ('SIGINT', 'SIGTERM'):
+			try:
+				signal.signal(getattr(signal, signal_name), self._handle_shutdown_signal)
+			except (AttributeError, ValueError):
+				pass
+		self._shutdown_handlers_registered = True
+
+	def _handle_shutdown_signal(self, signum, frame):
+		self._write_pending_output_data()
+		try:
+			self.stop()
+		except Exception:
+			pass
+
+	def _file_io_worker(self):
+		while True:
+			job = self.file_io_queue.get()
+			try:
+				if job is None:
+					return
+
+				action = job.get('action')
+				if action == 'write_header':
+					with open(job['path'], 'w', newline='', encoding='utf-8') as output_file:
+						writer = csv.writer(output_file)
+						writer.writerow(job['columns'])
+				elif action == 'append_row':
+					with open(job['path'], 'a', newline='', encoding='utf-8') as output_file:
+						writer = csv.writer(output_file)
+						writer.writerow(job['row'])
+				elif action == 'write_dataframe':
+					job['dataframe'].to_csv(job['path'], index=job.get('index', False))
+			except (FileNotFoundError, OSError):
+				pass
+			finally:
+				self.file_io_queue.task_done()
+
+	def queue_csv_header(self, path, columns):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'write_header',
+			'path': str(path),
+			'columns': list(columns),
+		})
+
+	def queue_csv_row(self, path, row):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'append_row',
+			'path': str(path),
+			'row': list(row),
+		})
+
+	def queue_dataframe_write(self, path, dataframe, index=False):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'write_dataframe',
+			'path': str(path),
+			'dataframe': dataframe.copy(deep=True),
+			'index': index,
+		})
+
+	def _drain_file_io_queue(self):
+		if hasattr(self, 'file_io_queue'):
+			self.file_io_queue.join()
+
+	def _finalize_event_queue(self):
+		event_thread = getattr(self, 'event_writer_thread', None)
+		if event_thread is not None and event_thread.is_alive():
+			self.event_queue.put(None)
+			event_thread.join(timeout=2.0)
+
+		while True:
+			try:
+				event_row = self.event_queue.get_nowait()
+			except queue.Empty:
+				break
+
+			if event_row is not None:
+				self.event_list.append(event_row)
+
+	def _write_pending_output_data(self):
+		if not hasattr(self, 'event_queue'):
+			return
+
+		self._finalize_event_queue()
+
+		if (not self.data_written) and self.session_event_path and len(self.event_list) > 0:
+			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
+			if not self.session_event_data.empty:
+				self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+			self.queue_dataframe_write(self.session_event_path, self.session_event_data, index=False)
+
+		if (not self.data_written) and self.summary_event_path and len(self.trial_summary_data) > 0:
+			self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
+			self.queue_dataframe_write(self.summary_event_path, self.summary_event_data, index=False)
+
+		if (not self.data_written) and self.survey_data_path and len(self.survey_data_list) > 0:
+			self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
+			self.queue_dataframe_write(self.survey_data_path, self.survey_data, index=False)
+
+		self._drain_file_io_queue()
 
 	def _set_current_screen(self, screen_name, *args):
 		if self.s_manager.has_screen(screen_name):
@@ -1736,27 +1854,7 @@ class MenuApp(App):
 		self.s_manager.add_widget(screen)
 	
 	def on_stop(self):
-		self.event_queue.put(None)
-		if not self.data_written:
-			if len(self.event_list) > 0:
-				self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
-				self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-				try:
-					self.session_event_data.to_csv(self.session_event_path, index=False)
-				except FileNotFoundError:
-					pass
-			if len(self.trial_summary_data) > 0:
-				try:
-					self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
-					self.summary_event_data.to_csv(self.summary_event_path, index=False)
-				except FileNotFoundError:
-					pass
-			if len(self.survey_data_list) > 0:
-				try:
-					self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
-					self.survey_data.to_csv(self.survey_data_path, index=False)
-				except FileNotFoundError:
-					pass
+		self._write_pending_output_data()
 		try:
 				# Only call clear_video_cache() if current_screen is a protocol-related
 				# screen. ProtocolScreen subclasses ProtocolBase in protocol modules,

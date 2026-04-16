@@ -304,7 +304,8 @@ class SurveyBase(Screen):
 
     def _return_to_main_menu(self, instance):
         self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
-        self.app.survey_data.to_csv(self.app.survey_data_path, index=False)
+        if hasattr(self.app, 'queue_dataframe_write'):
+            self.app.queue_dataframe_write(self.app.survey_data_path, self.app.survey_data, index=False)
         try:
             if hasattr(self.app, 'handle_task_completion'):
                 self.app.handle_task_completion(self.name)

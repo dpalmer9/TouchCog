@@ -171,7 +171,9 @@ class FloatLayoutLog(FloatLayout):
 		self.active_touches = set()
 		self.multi_touch_active = False
 
-		threading.Thread(target=self.event_writer, daemon=True).start()
+		self._event_writer_thread = threading.Thread(target=self.event_writer, daemon=True)
+		self._event_writer_thread.start()
+		self.app.event_writer_thread = self._event_writer_thread
 	
 	def event_writer(self):
 		while True:
@@ -180,8 +182,17 @@ class FloatLayoutLog(FloatLayout):
 				if event_row is None: # Sentinel to stop the thread
 					break
 				self.app.event_list.append(event_row)
+				self._append_event_row(event_row)
 			except queue.Empty:
 				continue # Should not happen with blocking get()
+
+	def _append_event_row(self, event_row):
+		if not getattr(self.app, 'session_event_path', ''):
+			return
+
+		if hasattr(self.app, 'queue_csv_row'):
+			row = [event_row.get(column, '') for column in self.app.event_columns]
+			self.app.queue_csv_row(self.app.session_event_path, row)
 	
 	def filter_children(self, string):
 		
@@ -463,10 +474,15 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def write_data(self):
+		if hasattr(self.app, '_finalize_event_queue'):
+			self.app._finalize_event_queue()
 		self.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-		self.session_event_data.Time = self.session_event_data.Time.astype('float64')
-		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
+		if not self.session_event_data.empty:
+			self.session_event_data.Time = self.session_event_data.Time.astype('float64')
+			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+		self.app.session_event_data = self.session_event_data
+		if self.app.session_event_path and hasattr(self.app, 'queue_dataframe_write'):
+			self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
 	
 	
 	
@@ -474,6 +490,8 @@ class FloatLayoutLog(FloatLayout):
 		
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
+		if hasattr(self.app, 'queue_csv_header'):
+			self.app.queue_csv_header(self.save_path, self.app.event_columns)
 
 	# Add new bind option to FloatLayoutLog for when multi-touch is detected (i.e., a second touch occurs while one is already active)
 	
@@ -1167,8 +1185,8 @@ class ProtocolBase(Screen):
 			temp_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
 			self.file_path = pathlib.Path(folder_path, temp_filename + '_Summary_Data.csv')
 		
-		# self.session_data = pd.DataFrame(columns=self.data_cols)
-		# self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
+		if hasattr(self.app, 'queue_csv_header'):
+			self.app.queue_csv_header(self.file_path, self.data_cols)
 		
 		event_path = pathlib.Path(folder_path, temp_filename + '_Event_Data.csv')
 		
@@ -1203,7 +1221,8 @@ class ProtocolBase(Screen):
 			meta_output_path = pathlib.Path(folder_path, meta_output_filename + '_Metadata.csv')
 		
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
-		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
+		if hasattr(self.app, 'queue_dataframe_write'):
+			self.app.queue_dataframe_write(meta_output_path, self.meta_data, index=False)
 		return
 
 	def trigger_tutorial_screen(self, *args):
@@ -1413,14 +1432,19 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
 
+		if hasattr(self.app, '_finalize_event_queue'):
+			self.app._finalize_event_queue()
+
 		if self.app.summary_event_path:
 			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
-			self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
-		self.app.event_queue.put(None)
+			if hasattr(self.app, 'queue_dataframe_write'):
+				self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
 		if self.app.session_event_path:
 			self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-			self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-			self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
+			if not self.app.session_event_data.empty:
+				self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
+			if hasattr(self.app, 'queue_dataframe_write'):
+				self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
@@ -1628,6 +1652,8 @@ class ProtocolBase(Screen):
 	
 	def write_summary_file(self, data_row):
 		self.app.trial_summary_data.append(data_row)
+		if self.app.summary_event_path and hasattr(self.app, 'queue_csv_row'):
+			self.app.queue_csv_row(self.app.summary_event_path, data_row)
 		return
 	
 	
