@@ -760,6 +760,7 @@ class ProtocolBase(Screen):
 		self.premature_override = False
 		self.skip_tutorial_video = False
 		self.display_video = True
+		self.protocol_ended = False
 		
 		
 		# Define Variables - Counter
@@ -1152,6 +1153,7 @@ class ProtocolBase(Screen):
 	def generate_output_files(self):
 
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
+		self.protocol_ended = False
 
 		if not folder_path.is_dir():
 			folder_path.mkdir()
@@ -1374,6 +1376,10 @@ class ProtocolBase(Screen):
 		return
 	
 	def protocol_end(self, *args):
+		if self.protocol_ended:
+			return
+
+		self.protocol_ended = True
 		# Check Video Removal
 		self.clear_video_cache()
 		# Check if self.tutorial_video still exists and unload if so
@@ -1407,12 +1413,14 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
 
-		self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
-		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
+		if self.app.summary_event_path:
+			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
+			self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
 		self.app.event_queue.put(None)
-		self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
+		if self.app.session_event_path:
+			self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
+			self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
+			self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
