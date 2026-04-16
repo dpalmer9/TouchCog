@@ -2593,7 +2593,8 @@ class ProtocolScreen(ProtocolBase):
 		self.decision_point_tracking = list()
 		self.stimdur_frame_tracking = [(self.limhold_seconds // self.frame_duration)]
 
-		self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
+		if self.stage_list[self.stage_index] != 'CJB_Probe':
+			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=self.trial_list_max_run)
 
 		self.block_start = time.perf_counter()
 
