@@ -505,12 +505,15 @@ class ProtocolScreen(ProtocolBase):
 			if self.current_stage == 'Training':
 				outcome_label = 'correct'
 
+
+
+
 			else:
 				outcome_label = 'correct'
 				self.point_counter += 10
 
 				self.protocol_floatlayout.add_stage_event('Points Collected')
-				self.protocol_floatlayout.add_variable_event('Outcome', 'Points', self.response_latency)
+				self.protocol_floatlayout.add_variable_event('Outcome', 'Points', self.point_counter)
 		
 		else:
 			outcome_label = ''
