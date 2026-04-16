@@ -210,6 +210,7 @@ class ProtocolScreen(ProtocolBase):
 		self.current_sep = 0		
 		self.current_block = 1
 		self.current_block_trial = 0
+		self.combo_probe_initial_delay_trial_count = 0
 		self.last_response = 0
 
 		self.max_blocks = self.block_multiplier
@@ -1210,6 +1211,14 @@ class ProtocolScreen(ProtocolBase):
 
 				# Else, check for staircasing
 				else:
+					if self.current_stage == 'Combo':
+						initial_delay = round(statistics.mean([
+							self.combo_probe_delay_limit_dict[self.current_sep]['min'],
+							self.combo_probe_delay_limit_dict[self.current_sep]['max']
+						]))
+
+						if self.current_delay == initial_delay:
+							self.combo_probe_initial_delay_trial_count += 1
 
 					## Note: Staircase flag variable not required but makes for easier criteria/stage changes down the line
 
@@ -1222,13 +1231,19 @@ class ProtocolScreen(ProtocolBase):
 					# Staircase up as soon as sum of hits >= 7
 					# Staircase down as soon as two or more 0's in list
 
+					combo_initial_delay_locked = (
+						self.current_stage == 'Combo'
+						and self.current_delay == initial_delay
+						and self.combo_probe_initial_delay_trial_count < 10
+					)
+
 					# If minimum 7 trials correct, staircase up
-					if sum(self.response_tracking) >= 7:
+					if (not combo_initial_delay_locked) and sum(self.response_tracking) >= 7:
 						self.staircase_flag = 1
 
 					# Else, if two or more 0's present in list, staircase down
 					# Else, do nothing
-					elif self.response_tracking.count(0) >= 2:
+					elif (not combo_initial_delay_locked) and self.response_tracking.count(0) >= 2:
 						self.staircase_flag = -1
 
 
@@ -1572,6 +1587,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 			self.response_tracking = list()
+			self.combo_probe_initial_delay_trial_count = 0
 			self.last_response = 0
 			self.contingency = np.nan # Reset contingency
 			self.trial_outcome = np.nan # Reset trial outcome
