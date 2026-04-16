@@ -221,13 +221,9 @@ class ProtocolScreen(ProtocolBase):
 		self.iti_range = [float(iNum) for iNum in self.iti_import]
 		self.iti_length = self.iti_range[0]
 		self.trial_list = list()
-		self.trial_list_pal = list()
-		self.trial_list_pa = list()
+		self.trial_list_pal = [i % self.num_stimuli_pal for i in range(self.dpal_trial_max)]
+		self.trial_list_pa = [i % self.num_stimuli_pa for i in range(self.recall_trial_max)]
 		self.trial_list_index = 0
-
-		for iNum in range(15):
-			self.trial_list_pal.append(iNum % self.num_stimuli_pal)
-			self.trial_list_pa.append(iNum % self.num_stimuli_pa)
 
 	def _setup_image_widgets(self):
 		# Define Widgets - Image Paths
@@ -901,7 +897,7 @@ class ProtocolScreen(ProtocolBase):
 			else:
 				self.current_correction_trial = 0
 				if self.trial_list_index >= len(self.trial_list):
-					self.trial_list = self.constrained_shuffle(self.trial_list, max_run=1)
+					self.trial_list = self.constrained_shuffle(self.trial_list, max_run=2)
 					self.trial_list_index = 0
 				
 				new_target_loc = self.trial_list[self.trial_list_index]
@@ -1103,7 +1099,7 @@ class ProtocolScreen(ProtocolBase):
 				stimulus.bind(on_press=self.nontarget_pressed)
 				stimulus.unbind(on_press=self.nontarget_pressed)
 
-			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=1)
+			self.trial_list = self.constrained_shuffle(self.trial_list, max_run=2)
 			self.target_loc = self.trial_list[0]
 			
 			pos_list = list(range(self.num_stimuli))
