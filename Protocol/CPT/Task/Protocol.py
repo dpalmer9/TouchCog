@@ -1058,16 +1058,6 @@ class ProtocolScreen(ProtocolBase):
 
 			self.stimulus_mask_on_screen = True
 
-		# Check if CJB Task and add stimulus mask
-		if self.cjb_task:
-
-			self.protocol_floatlayout.remove_widget(self.img_stimulus_C)
-
-			self.protocol_floatlayout.add_widget(self.img_stimulus_C_mask)
-			#self.protocol_floatlayout.add_widget(self.img_outline_C)
-
-			self.stimulus_mask_on_screen = True
-
 		self.stimdur_actual = time.perf_counter() - self.stimulus_start_time
 		
 		self.limhold_started = True
