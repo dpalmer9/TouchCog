@@ -204,6 +204,13 @@ class ProtocolScreen(ProtocolBase):
 		self.sep0_video_played = False
 		self.staircase_video_played = False
 		self.data_file_generated = False
+		self.tutorial_completed = False
+		self.protocol_started_from_tutorial = False
+		self.section_advance_active = False
+		self.results_active = False
+		self.end_task_active = False
+		self.block_contingency_active = False
+		self.trial_resolution_active = False
 
 		# Define Variables - Numeric
 		self.stage_index = -1
@@ -225,6 +232,47 @@ class ProtocolScreen(ProtocolBase):
 
 		self.section_instr_string = ''
 		self.current_stage = self.stage_list[0]
+
+	def _set_hold_button_callbacks(self, on_press=None, on_release=None):
+		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_release=self.premature_response)
+		self.hold_button.unbind(on_release=self.hold_released)
+		self.hold_button.unbind(on_release=self.hold_remind)
+
+		if on_press is not None:
+			self.hold_button.bind(on_press=on_press)
+		if on_release is not None:
+			self.hold_button.bind(on_release=on_release)
+
+	def _bind_instruction_button(self, callback):
+		self.instruction_button.unbind(on_press=self.section_start)
+		self.instruction_button.unbind(on_press=self.start_protocol_from_tutorial)
+		self.instruction_button.unbind(on_press=self.block_contingency)
+		self.instruction_button.unbind(on_press=self.protocol_end)
+		self.instruction_button.unbind(on_press=self.end_task_pressed)
+		self.instruction_button.disabled = False
+		self.instruction_button.bind(on_press=callback)
+
+	def _reset_tutorial_continue_button(self):
+		self.tutorial_completed = False
+		self.tutorial_continue_button.disabled = False
+		self.tutorial_continue_button.unbind(on_press=self.stop_tutorial_video)
+		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
+
+	def _set_response_button_callbacks(self, enabled):
+		self.cue_image_button.unbind(on_press=self.cue_pressed)
+		self.target_image_button.unbind(on_press=self.target_pressed)
+		if enabled:
+			self.cue_image_button.bind(on_press=self.cue_pressed)
+			self.target_image_button.bind(on_press=self.target_pressed)
+
+	def end_task_pressed(self, *args):
+		if self.end_task_active or getattr(self, 'protocol_ended', False):
+			return
+
+		self.end_task_active = True
+		self.instruction_button.disabled = True
+		self.protocol_end()
 
 	def _setup_session_stages(self):
 
@@ -298,13 +346,12 @@ class ProtocolScreen(ProtocolBase):
 		# Define Widgets - Buttons
 		
 		self.hold_button.source = str(self.image_folder / (self.hold_image + '.png'))
-		self.hold_button.bind(on_press=self.iti_start)
+		self._set_hold_button_callbacks(on_press=self.iti_start)
 				
 
 		self.cue_image_button = ImageButton(source=str(self.stimulus_button_image_path))
-		self.cue_image_button.bind(on_press=self.cue_pressed)
 		self.target_image_button = ImageButton(source=str(self.stimulus_button_image_path))
-		self.target_image_button.bind(on_press=self.target_pressed)
+		self._set_response_button_callbacks(True)
 
 		self.cue_image.size_hint = self.stimulus_image_size
 		self.target_image.size_hint = self.stimulus_image_size
@@ -413,7 +460,7 @@ class ProtocolScreen(ProtocolBase):
 				loop=False
 			)
 	
-			self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
+			self._reset_tutorial_continue_button()
 
 
 		# Instruction - Dictionary
@@ -446,7 +493,7 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button.size_hint = self.text_button_size
 		self.instruction_button.pos_hint =  self.text_button_pos_UC
 		self.instruction_button.text = ''
-		self.instruction_button.bind(on_press=self.section_start)
+		self._bind_instruction_button(self.section_start)
 		
 		
 		# Define Widgets - Labels
@@ -579,7 +626,7 @@ class ProtocolScreen(ProtocolBase):
 		self.section_instr_label.text = self.instruction_dict[str(self.current_stage)]['task']
 		
 		self.instruction_button.text = 'Continue'
-		self.instruction_button.bind(on_press=self.start_protocol_from_tutorial)
+		self._bind_instruction_button(self.start_protocol_from_tutorial)
 		
 		self.protocol_floatlayout.add_widget(self.section_instr_label)
 		self.protocol_floatlayout.add_widget(self.instruction_button)
@@ -590,12 +637,22 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stop_tutorial_video(self, *args):
+		if self.tutorial_completed or getattr(self, 'protocol_ended', False):
+			return
+
+		self.tutorial_completed = True
+		self.tutorial_continue_button.disabled = True
+		self.tutorial_continue_button.unbind(on_press=self.stop_tutorial_video)
 		self.tutorial_video.state = 'stop'
 		self.tutorial_video.unload()
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.start_protocol_from_tutorial()
 	
 	def start_protocol_from_tutorial(self, *args):
+		if self.protocol_started_from_tutorial or getattr(self, 'protocol_ended', False):
+			return
+
+		self.protocol_started_from_tutorial = True
 		
 		if not self.data_file_generated:
 			self.generate_output_files()
@@ -626,6 +683,11 @@ class ProtocolScreen(ProtocolBase):
 		self.block_contingency()
 
 	def section_start(self, *args):
+		if self.section_advance_active or getattr(self, 'protocol_ended', False):
+			return
+
+		self.section_advance_active = True
+		self.instruction_button.disabled = True
 
 		self.protocol_floatlayout.clear_widgets()
 
@@ -640,6 +702,11 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def results_screen(self, *args):
+		if self.results_active or getattr(self, 'protocol_ended', False):
+			return
+
+		self.results_active = True
+		self.end_task_active = False
 		
 		Clock.unschedule(self.iti_end)
 		
@@ -699,15 +766,12 @@ class ProtocolScreen(ProtocolBase):
 		if self.stage_index < (len(self.stage_list) - 1) \
 				or (self.current_block <= self.max_blocks):
 			staging_string = self.staging_dict.get('continue')
-			self.instruction_button.unbind(on_press=self.section_start)
-			self.instruction_button.bind(on_press=self.block_contingency)
+			self._bind_instruction_button(self.block_contingency)
 			self.instruction_button.text = 'Continue'
 
 		else:
 			staging_string = self.staging_dict.get('end')
-			self.instruction_button.unbind(on_press=self.section_start)
-			self.instruction_button.unbind(on_press=self.block_contingency)
-			self.instruction_button.bind(on_press=self.protocol_end)
+			self._bind_instruction_button(self.end_task_pressed)
 			self.instruction_button.text = self.end_task_str
 
 		self.section_instr_label.size_hint = {0.8, 0.5}
@@ -728,12 +792,10 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def cue_present(self, *args): # Present cue
-		self.hold_button.unbind(on_press=self.iti_start)
-		self.hold_button.unbind(on_release=self.premature_response)
-
-		self.hold_button.bind(on_release=self.hold_released)
+		self._set_hold_button_callbacks(on_release=self.hold_released)
 		
 		self.cue_image_button.unbind(on_press=self.cue_pressed)
+		self.trial_resolution_active = False
 		
 		self.protocol_floatlayout.add_widget(self.cue_image)
 		self.protocol_floatlayout.add_widget(self.cue_image_button)
@@ -782,6 +844,9 @@ class ProtocolScreen(ProtocolBase):
 	# Display Distractor During Delay
 	
 	def delay_end(self, *args):
+		if self.trial_resolution_active or getattr(self, 'protocol_ended', False):
+			return
+
 		self.tutorial_video.state = 'stop'
 		self.tutorial_video.reset()
 		self.tutorial_video.unload()
@@ -808,10 +873,12 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def target_present(self, *args): # Present stimulus
+		if self.trial_resolution_active or getattr(self, 'protocol_ended', False):
+			return
 		
 		self.hold_button.unbind(on_release=self.hold_released)
 
-		self.cue_image_button.bind(on_press=self.cue_pressed)
+		self._set_response_button_callbacks(True)
 		
 		self.protocol_floatlayout.add_widget(self.cue_image)
 		self.protocol_floatlayout.add_widget(self.target_image)
@@ -851,8 +918,13 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target Image', self.target_image.pos_hint)
 
 	def hold_released(self, *args): # Trial outcomes: 7-Cue abort,8-Delay abort
+		if self.trial_resolution_active or getattr(self, 'protocol_ended', False):
+			return
+
+		self.trial_resolution_active = True
 		Clock.unschedule(self.delay_present)
 		Clock.unschedule(self.delay_end)
+		Clock.unschedule(self.no_response)
 		Clock.unschedule(self.stimulus_presentation_end)
 		self.hold_button_pressed = False
 		
@@ -895,8 +967,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Remove', 'Video', str(self.tutorial_video.source), self.video_position)
 
 
-		self.hold_button.bind(on_press=self.iti_start)
-		self.hold_button.bind(on_release=self.premature_response)
+		self._set_response_button_callbacks(False)
+		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
@@ -931,7 +1003,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	def premature_response(self, *args): # Trial outcome: 0-Premature (ITI)
 		
-		if self.stimulus_on_screen is True:
+		if self.stimulus_on_screen is True or self.section_advance_active or self.block_started or getattr(self, 'protocol_ended', False):
 			return
 	
 		self.hold_active = False
@@ -957,14 +1029,17 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 		
-		self.hold_button.unbind(on_release=self.premature_response)
-		self.hold_button.bind(on_press=self.iti_start)
+		self._set_hold_button_callbacks(on_press=self.iti_start)
 	
 	
 	
 	# Cue Stimuli Pressed during Target
 	
 	def cue_pressed(self, *args): # Trial outcome: 3-False alarm (non-target response)
+		if self.trial_resolution_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
+			return
+
+		self.trial_resolution_active = True
 		self.protocol_floatlayout.remove_widget(self.cue_image)
 		self.protocol_floatlayout.remove_widget(self.target_image)
 		self.protocol_floatlayout.remove_widget(self.cue_image_button)
@@ -996,8 +1071,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 
-		self.hold_button.bind(on_press=self.iti_start)
-		self.hold_button.bind(on_release=self.premature_response)
+		self._set_response_button_callbacks(False)
+		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
@@ -1023,6 +1098,10 @@ class ProtocolScreen(ProtocolBase):
 	# Target Stimuli Pressed during Target
 	
 	def target_pressed(self, *args): # Trial outcome: 1-Hit (target response)
+		if self.trial_resolution_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
+			return
+
+		self.trial_resolution_active = True
 		self.protocol_floatlayout.remove_widget(self.cue_image)
 		self.protocol_floatlayout.remove_widget(self.target_image)
 		self.protocol_floatlayout.remove_widget(self.cue_image_button)
@@ -1054,8 +1133,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 
-		self.hold_button.bind(on_press=self.iti_start)
-		self.hold_button.bind(on_release=self.premature_response)
+		self._set_response_button_callbacks(False)
+		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 
@@ -1080,6 +1159,10 @@ class ProtocolScreen(ProtocolBase):
 	# No response during test phase limited hold
 	
 	def no_response(self, *args): # Trial outcome: 2-Miss (no response)
+		if self.trial_resolution_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
+			return
+
+		self.trial_resolution_active = True
 		
 		self.contingency = 0 # 0-Incorrect
 		self.trial_outcome = 2 # 2-Miss (no response)
@@ -1119,8 +1202,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.feedback_label.text = ''
 
-		self.hold_button.bind(on_press=self.iti_start)
-		self.hold_button.bind(on_release=self.premature_response)
+		self._set_response_button_callbacks(False)
+		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		
@@ -1182,6 +1265,7 @@ class ProtocolScreen(ProtocolBase):
 	def trial_contingency(self):
 		
 		try:
+			self.trial_resolution_active = False
 			
 			if self.hold_active:
 				self.hold_active = False
@@ -1343,6 +1427,8 @@ class ProtocolScreen(ProtocolBase):
 			# Set next trial parameters
 
 			# Trial number and trial index
+			self.section_advance_active = False
+			self.block_started = False
 
 			self.current_trial += 1
 			self.current_block_trial += 1
@@ -1431,12 +1517,23 @@ class ProtocolScreen(ProtocolBase):
 	# Block Contingency Function
 	
 	def block_contingency(self, *args):
+		if self.block_contingency_active or getattr(self, 'protocol_ended', False):
+			return
+
+		self.block_contingency_active = True
 		
 		try:
 
 			Clock.unschedule(self.iti_end)
+			Clock.unschedule(self.delay_end)
+			Clock.unschedule(self.no_response)
+			Clock.unschedule(self.stimulus_presentation_end)
+			self._set_hold_button_callbacks(on_press=self.iti_start)
+			self._set_response_button_callbacks(False)
 
 			self.block_started = True
+			self.section_advance_active = False
+			self.trial_resolution_active = False
 			Clock.unschedule(self.remove_feedback)
 			self.remove_feedback()
 
@@ -1489,6 +1586,7 @@ class ProtocolScreen(ProtocolBase):
 					if (self.combo_probe_sep_index >= len(self.combo_probe_sep_list)):
 						self.current_block += 1
 						self.block_contingency()
+						return
 
 					self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
 					self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
@@ -1613,3 +1711,5 @@ class ProtocolScreen(ProtocolBase):
 			
 			print('Error; program terminated.')
 			self.protocol_end()
+		finally:
+			self.block_contingency_active = False

@@ -142,6 +142,12 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 		self.stimulus_on_screen = False
 		self.participant_stopped = False
+		self.tutorial_completed = False
+		self.protocol_started_from_tutorial = False
+		self.results_active = False
+		self.block_start_active = False
+		self.response_recorded = False
+		self.awaiting_restart = False
 
 	def _setup_session_stages(self):
 		self.task_clock = Clock
@@ -375,6 +381,12 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stop_tutorial_video(self, *args):
+		if self.tutorial_completed or getattr(self, 'protocol_ended', False):
+			return
+
+		self.tutorial_completed = True
+		self.tutorial_continue_button.disabled = True
+		self.tutorial_continue_button.unbind(on_press=self.stop_tutorial_video)
 		self.tutorial_video.state = 'stop'
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.start_protocol_from_tutorial()
@@ -382,6 +394,10 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def start_protocol_from_tutorial(self, *args):
+		if self.protocol_started_from_tutorial or getattr(self, 'protocol_ended', False):
+			return
+
+		self.protocol_started_from_tutorial = True
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
@@ -393,6 +409,10 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def results_screen(self, *args):
+			if self.results_active or getattr(self, 'protocol_ended', False):
+				return
+
+			self.results_active = True
 			self.protocol_floatlayout.clear_widgets()
 			self.participant_stopped = True
 			self.feedback_on_screen = False
@@ -400,8 +420,10 @@ class ProtocolScreen(ProtocolBase):
 			self.outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
 			
 			self.quit_button.unbind(on_press=self.results_screen)
+			self.quit_button.unbind(on_press=self.protocol_end)
 			self.quit_button.bind(on_press=self.protocol_end)
 			self.quit_button.pos_hint = {'center_x': 0.5, 'center_y': 0.07}
+			self.quit_button.disabled = False
 
 			self.assign_feedback(override_text=self.outcome_string)
 			self.protocol_floatlayout.add_widget(self.quit_button)
@@ -409,7 +431,10 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation
+		self.response_recorded = False
+		self.awaiting_restart = False
 		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_press=self.target_pressed)
 		self.hold_button.unbind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
@@ -434,11 +459,15 @@ class ProtocolScreen(ProtocolBase):
 				
 	
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
+		if self.awaiting_restart or getattr(self, 'protocol_ended', False):
+			return
+
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return
 		
 		Clock.unschedule(self.iti_end)
+		self.awaiting_restart = True
 		
 		self.protocol_floatlayout.clear_widgets()
 		
@@ -453,18 +482,23 @@ class ProtocolScreen(ProtocolBase):
 		if self.feedback_on_screen is False:	
 			self.assign_feedback(feedback_key='wait')
 		
+		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_press=self.start_block)
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.start_block)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		self.protocol_floatlayout.add_widget(self.quit_button)
-		self.hold_button.bind(on_press=self.iti_start)
 	
 	
 	
 	# Target Pressed
 	
 	def target_pressed(self, *args):
+		if self.response_recorded or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
+			return
+
+		self.response_recorded = True
 	
 		Clock.unschedule(self.no_response_event)
 
@@ -593,7 +627,12 @@ class ProtocolScreen(ProtocolBase):
 	# Block start function (add widgets and set block start time)
 
 	def start_block(self, *args):
+		if self.block_start_active or self.iti_active or self.stimulus_on_screen or getattr(self, 'protocol_ended', False):
+			return
+
+		self.block_start_active = True
 		self.hold_button_pressed = True
+		self.awaiting_restart = False
 		self.protocol_floatlayout.remove_widget(self.feedback_label)
 		outcome_feedback = ''
 		
@@ -605,6 +644,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_start_time = time.time()
 
 		self.hold_button.unbind(on_press=self.start_block)
+		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.bind(on_press=self.iti_start)
 
 		self.hold_button.bind(on_release=self.premature_response)
@@ -612,13 +652,19 @@ class ProtocolScreen(ProtocolBase):
 		if self.hold_button_pressed:
 			self.iti_start()
 
+		self.block_start_active = False
+
 
 	# Block Contingency Function
 	
 	def block_contingency(self, *args):
 		
 		try:			
+			self.block_start_active = False
+			self.awaiting_restart = False
+			self.response_recorded = False
 			self.hold_button.unbind(on_press=self.iti_start)
+			self.hold_button.unbind(on_press=self.start_block)
 			self.hold_button.unbind(on_release=self.premature_response)
 			Clock.unschedule(self.iti_end)
 			Clock.unschedule(self.remove_feedback)
