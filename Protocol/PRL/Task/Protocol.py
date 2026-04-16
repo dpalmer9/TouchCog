@@ -506,7 +506,7 @@ class ProtocolScreen(ProtocolBase):
 				outcome_label = 'correct'
 
 			else:
-				outcome_label = 'points_awarded'
+				outcome_label = 'correct'
 				self.point_counter += 10
 
 				self.protocol_floatlayout.add_stage_event('Points Collected')
