@@ -367,6 +367,8 @@ class ProtocolScreen(ProtocolBase):
 		self._setup_image_widgets()
 		self._setup_language_localization()
 		self._load_video_and_instruction_components()
+
+		self.start_clock()
 		
 		
 		# Begin Task
@@ -407,7 +409,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.generate_output_files()
 		self.metadata_output_generation()
-		self.start_clock()
 		self.block_contingency()
 
 
