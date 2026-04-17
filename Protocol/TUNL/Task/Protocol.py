@@ -1276,9 +1276,9 @@ class ProtocolScreen(ProtocolBase):
 
 			if self.current_block_trial != 0:
 
-				# Track responses to check criteria
-				if self.last_response in [0, 1]:
-					self.response_tracking.append(self.last_response)
+				# Track completed trial accuracy so misses count as incorrect for staircasing.
+				if self.contingency in [0, 1]:
+					self.response_tracking.append(int(self.contingency))
 
 
 				# Check if training block
@@ -1584,13 +1584,7 @@ class ProtocolScreen(ProtocolBase):
 
 				# If combination probe, set separation and delay parameters
 				elif self.current_stage == 'Combo':
-					self.combo_probe_sep_index = self.current_block - 1
-
-					# If end of separation list reached, trigger block contingency
-					if (self.combo_probe_sep_index >= len(self.combo_probe_sep_list)):
-						self.current_block += 1
-						self.block_contingency()
-						return
+					self.combo_probe_sep_index = (self.current_block - 1) % len(self.combo_probe_sep_list)
 
 					self.current_sep = self.combo_probe_sep_list[self.combo_probe_sep_index]
 					self.current_delay = round(statistics.mean([self.combo_probe_delay_limit_dict[self.current_sep]['min'], self.combo_probe_delay_limit_dict[self.current_sep]['max']]))
