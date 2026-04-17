@@ -1287,7 +1287,9 @@ class ProtocolBase(Screen):
 	def present_tutorial_video_start_button(self, *args):
 
 		self.protocol_floatlayout.add_widget(self.tutorial_continue_button)
+		self.tutorial_continue_button.disabled = False
 		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
+		self.tutorial_restart_button.disabled = False
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
 		return
