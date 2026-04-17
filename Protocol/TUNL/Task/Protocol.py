@@ -667,6 +667,10 @@ class ProtocolScreen(ProtocolBase):
 		)
 
 		self.protocol_floatlayout.clear_widgets()
+		self.tutorial_continue_button.disabled = False
+		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
+		self.tutorial_completed = False
+		self.protocol_started_from_tutorial = False
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
 		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
