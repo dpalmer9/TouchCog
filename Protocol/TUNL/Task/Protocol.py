@@ -1378,6 +1378,7 @@ class ProtocolScreen(ProtocolBase):
 
 									self.current_block += 1
 									self.results_screen()
+									return
 
 
 						# Else, if delay probe, check staircasing
@@ -1419,6 +1420,7 @@ class ProtocolScreen(ProtocolBase):
 									# Move to results screen
 									self.current_block += 1
 									self.results_screen()
+									return
 
 						# Reset response_tracking list for next staircase
 						self.response_tracking = list()
@@ -1427,6 +1429,7 @@ class ProtocolScreen(ProtocolBase):
 				if (time.perf_counter() - self.block_start_time >= self.block_duration):
 					self.current_block += 1
 					self.results_screen()
+					return
 
 			# Set next trial parameters
 
