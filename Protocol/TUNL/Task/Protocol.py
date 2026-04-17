@@ -1399,7 +1399,7 @@ class ProtocolScreen(ProtocolBase):
 
 							# If difference between min and max separations is greater than separation resolution, take next midpoint
 							if (self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min']) > self.delay_probe_sep_resolution:
-								self.current_sep = round(statistics.mean([self.delay_probe_sep_limit_dict['min'], self.delay_probe_sep_limit_dict['max']]), 2)
+								self.current_sep = round(statistics.mean([self.delay_probe_sep_limit_dict['min'], self.delay_probe_sep_limit_dict['max']]), 1)
 					
 							# Else, if difference between min and max separations is less than or equal to separation resolution, check whether min and max values have been tested
 							diff = round(self.delay_probe_sep_limit_dict['max'] - self.delay_probe_sep_limit_dict['min'], 3)
