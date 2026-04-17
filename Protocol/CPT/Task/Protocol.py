@@ -1005,6 +1005,7 @@ class ProtocolScreen(ProtocolBase):
 			return
 
 		self.protocol_floatlayout.clear_widgets()
+		self.tutorial_advance_active = False
 		self._reset_section_controls()
 
 		self.protocol_floatlayout.add_widget(self.tutorial_checkmark)
