@@ -792,6 +792,7 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_text_event('Display', 'Results')
 
 		self.protocol_floatlayout.add_button_event('Display', 'Continue')
+		self.results_active = False
 
 
 
@@ -1378,7 +1379,6 @@ class ProtocolScreen(ProtocolBase):
 
 									self.current_block += 1
 									self.results_screen()
-									return
 
 
 						# Else, if delay probe, check staircasing
