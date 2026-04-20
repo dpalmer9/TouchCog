@@ -804,6 +804,8 @@ class ProtocolBase(Screen):
 		self.skip_tutorial_video = False
 		self.display_video = True
 		self.protocol_ended = False
+		self.output_generated = False
+		self.metadata_generated = False
 		
 		
 		# Define Variables - Counter
@@ -1199,6 +1201,8 @@ class ProtocolBase(Screen):
 	
 	
 	def generate_output_files(self):
+		if self.output_generated:
+			return
 
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		self.protocol_ended = False
@@ -1225,11 +1229,15 @@ class ProtocolBase(Screen):
 		self.app.summary_event_path = self.file_path
 		self.app.summary_event_data = self.session_data
 		self.app.data_written = False
+		self.output_generated = True
 		return
 	
 	
 	
 	def metadata_output_generation(self):
+
+		if self.metadata_generated:
+			return
 		
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		
@@ -1253,6 +1261,7 @@ class ProtocolBase(Screen):
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
 		if hasattr(self.app, 'queue_dataframe_write'):
 			self.app.queue_dataframe_write(meta_output_path, self.meta_data, index=False)
+		self.metadata_generated = True
 		return
 
 	def trigger_tutorial_screen(self, *args):
