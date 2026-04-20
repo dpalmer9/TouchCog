@@ -5,18 +5,32 @@
 #                      Version: 2.0.0                                        #
 ##############################################################################
 
-# Setup #
+# Import - General #
+
+import os
+import sys
+
+os.environ['PYTHONUTF8'] = '1'
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 import configparser
+import csv
 import importlib
 import importlib.util
-import os
+import atexit
 import shutil
 import pathlib
 import subprocess
 import re
-import sys
 import queue
+import pandas as pd
+import json
+import signal
+import threading
+import urllib.request
+import zipfile
+from datetime import datetime
+from functools import partial
 
 TOUCHCOG_VERSION = "2.0.0"
 
@@ -154,12 +168,20 @@ config_file = configparser.ConfigParser()
 read_files = config_file.read(str(config_path), encoding='utf-8')
 print("Read Config files:", read_files)
 
+default_config_file = configparser.ConfigParser()
+default_config_file.read(str(app_root / 'Config.ini'), encoding='utf-8')
+
 x_dim = config_file['Screen']['x']
 y_dim = config_file['Screen']['y']
 
 fullscreen = int(config_file['Screen']['fullscreen'])
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
+skip_video = config_file.getboolean(
+	'Video',
+	'skip_video',
+	fallback=default_config_file.getboolean('Video', 'skip_video', fallback=False)
+)
 Config.set('graphics', 'allow_screensaver', 0)
 Config.set('kivy', 'kivy_clock', 'interrupt')
 maxfps = get_refresh_rate()
@@ -199,24 +221,12 @@ if use_mouse == 0:
 
 
 
-# Imports #
-
-import configparser
+# Imports - Kivy once config is done #
 import kivy
-import os
-import pandas as pd
-import sys
-import json
-import threading
-import urllib.request
-import zipfile
-from datetime import datetime
 
 from Classes.Menu import MenuBase
 from Classes.Survey import SurveyBase
 from Classes.Protocol import ProtocolBase, PreloadedVideo
-
-from functools import partial
 
 from ffpyplayer.player import MediaPlayer
 
@@ -244,29 +254,27 @@ from kivy.uix.progressbar import ProgressBar
 from kivy.uix.popup import Popup
 
 class LargeVKeyboard(VKeyboard):
-    """Custom VKeyboard that forces itself to be 66% of the screen width."""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-		# Identify the default height, width, and ratio of the keyboard
-        self.widget_ratio = self.width / self.height
+	"""Custom VKeyboard that forces itself to be 66% of the screen width."""
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		# Disable the default size hint so Kivy doesn't shrink it
+		self.size_hint_y = None 
+		# Force the width to 66% of the Window
+		self.width = Window.width * 0.66
 
-        # Disable the default size hint so Kivy doesn't shrink it
-        self.size_hint_y = None 
-        # Force the width to 66% of the Window
-        self.width = Window.width * 0.66
-
-		# Set height based on the width and the original ratio
-        self.height = self.width / self.widget_ratio
-        # Ensure it sits at the bottom
-        self.y = 0
+		# Ensure it sits at the bottom
+		self.y = 0
 		# Change default font size
-        self.font_size = '40sp'
+		self.font_size = '40sp'
 
-    def on_width(self, instance, value):
-        # Prevent Kivy's internal layout from resetting the width later
-        target = Window.width * 0.66
-        if abs(value - target) > 5:
-            self.width = target
+	def on_width(self, instance, value):
+		# Prevent Kivy's internal layout from resetting the width later
+		target = Window.width * 0.66
+		if abs(value - target) > 5:
+			self.width = target
+		# Maintain 16:9/standard keyboard ratio dynamically
+		standard_keyboard_ratio = 3.0
+		self.height = self.width / standard_keyboard_ratio
 
 
 
@@ -695,14 +703,10 @@ class MainMenu(Screen):
 		
 		if isinstance(self.protocol_window, BatteryMenu):
 			self.manager.current = 'batterymenu'
-		if isinstance(self.protocol_window, BatteryMenu):
-			self.manager.current = 'batterymenu'
 		
 		else:
 			self.protocol_window = BatteryMenu()
-			self.protocol_window = BatteryMenu()
 			self.manager.add_widget(self.protocol_window)
-			self.manager.current = 'batterymenu'
 			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
@@ -771,15 +775,11 @@ class ProtocolMenu(Screen):
 
 		self.Protocol_Configure_Screen.size = Window.size
 		self.manager.add_widget(self.Protocol_Configure_Screen)
-		if self.app.first_tutorial_played:
+		if isinstance(self.Protocol_Configure_Screen, SurveyBase):
+			self.app.present_task_screen(self.Protocol_Configure_Screen.name)
+		else:
 			self.app.active_screen = self.Protocol_Configure_Screen.name
 			self.manager.current = self.Protocol_Configure_Screen.name
-		else:
-			self.tutorial_screen = VideoScreen()
-			self.tutorial_screen.size = Window.size
-			self.tutorial_screen.destination_screen = self.Protocol_Configure_Screen.name
-			self.manager.add_widget(self.tutorial_screen)
-			self.manager.current = self.tutorial_screen.name
 
 	
 	
@@ -950,6 +950,9 @@ class BatteryMenu(Screen):
 
 			for task in battery_data.get('tasks', []):
 				pname = task.get('task')
+				if not pname:
+					print("Warning: Skipping malformed battery entry with missing 'task' field:", task)
+					continue
 				ttype = task.get('type', 'task')
 				self.app.battery_task_types[pname] = ttype
 				
@@ -1350,62 +1353,186 @@ class VideoScreen(Screen):
 		super(VideoScreen, self).__init__(**kwargs)
 		
 		self.video_Layout = FloatLayout()
-		self.name = 'videoscreen'
+		self.name = 'generalvideoscreen'
 		self.app = App.get_running_app()
 		self.app.active_screen = self.name
 		self.language = self.app.language
-
 		self.destination_screen = None
-
-		self.menu_config = configparser.ConfigParser()
-		self.menu_config.read(app_root / 'Language' / self.language / 'videoscreen.ini')
+		self.finish_callback = None
+		self.current_video = None
+		self.current_video_duration = 0.0
+		self.video_finish_event = None
+		self.skip_video_enabled = bool(skip_video)
+		self.video_prefixes = {
+			'tutorial': 'General-Tutorial_Video',
+			'next_task': 'General-Next_Task',
+			'end_session': 'General-End_Session'
+		}
 		
 		self.add_widget(self.video_Layout)
-
-		self.tutorial_video_path = app_root / 'Language' / self.language / 'Tutorial_Video' / 'General-Tutorial_Video-2025-09-18.mp4'
-
-		
 		self.tutorial_continue_button = Button(text='Continue', font_size='48sp')
 		self.tutorial_continue_button.size_hint = [0.4, 0.15]
 		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
-		self.tutorial_start_button = Button(text='Start Task', font_size='48sp')
-		self.tutorial_start_button.size_hint = [0.4, 0.15]
-		self.tutorial_start_button.pos_hint = {'center_x': 0.5, 'center_y': 0.3}
+		self.tutorial_continue_button.bind(on_press=self.complete_video)
 		self.tutorial_restart_button = Button(text='Restart Video', font_size='48sp')
 		self.tutorial_restart_button.size_hint = [0.4, 0.15]
 		self.tutorial_restart_button.pos_hint = {"center_x": 0.25, "y": 0.01}
-		self.tutorial_restart_button.bind(on_press=self.tutorial_restart)
+		self.tutorial_restart_button.bind(on_press=self.restart_video)
 		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
-		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+		self.tutorial_video_button.bind(on_press=self.start_video)
 		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
 
-		self.tutorial_video = PreloadedVideo(
-				source_path = str(self.tutorial_video_path)
-				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
-				, fit_mode = 'contain',
-				loop=False
-				)
-		self.tutorial_video.state = 'stop'
+	def _cancel_video_finish_event(self):
+		if self.video_finish_event is not None:
+			try:
+				self.video_finish_event.cancel()
+			except Exception:
+				pass
+			self.video_finish_event = None
+
+	def _clear_video_player(self):
+		self._cancel_video_finish_event()
+		if self.current_video is not None:
+			try:
+				self.current_video.state = 'stop'
+			except Exception:
+				pass
+			try:
+				self.current_video.unload()
+			except Exception:
+				pass
+		self.current_video = None
+		self.current_video_duration = 0.0
+
+	def _resolve_video_path(self, video_key):
+		prefix = self.video_prefixes.get(video_key)
+		if prefix is None:
+			return None
+
+		search_roots = [
+			app_root / 'Language' / self.language / 'Tutorial_Video',
+			app_root / 'Language' / 'English' / 'Tutorial_Video'
+		]
+
+		for folder in search_roots:
+			if not folder.exists():
+				continue
+			exact_path = folder / f'{prefix}.mp4'
+			if exact_path.exists():
+				return exact_path
+			matches = sorted(folder.glob(f'{prefix}*.mp4'))
+			if matches:
+				return matches[0]
+
+		return None
+
+	def prepare_video(self, video_key, on_complete=None, destination_screen=None):
+		self.language = getattr(self.app, 'language', 'English')
+		self.skip_video_enabled = bool(skip_video)
+		self.finish_callback = on_complete
+		self.destination_screen = destination_screen
+		self.video_Layout.clear_widgets()
+		self._clear_video_player()
+
+		video_path = self._resolve_video_path(video_key)
+		if video_path is None:
+			return False
+
+		# Video should occupy the space above the buttons (buttons are at y=0.01 with height=0.15)
+		# We set size_hint=(1, 0.8) and center_y=0.55 to leave room for the buttons at the bottom
+		self.current_video = PreloadedVideo(
+			source_path=str(video_path),
+			pos_hint={'center_x': 0.5, 'center_y': 0.55},
+			size_hint=(0.95, 0.75),
+			fit_mode='contain',
+			loop=False
+		)
+		self.current_video.state = 'stop'
+		self.current_video_duration = float(getattr(self.current_video, 'duration', 0) or 0.0)
+		if self.skip_video_enabled:
+			self.show_video_controls()
+			Clock.schedule_once(self._start_video_bypass, 0)
+		else:
+			self.display_video_widgets()
+		return True
 
 	def display_video_widgets(self):
 		self.video_Layout.clear_widgets()
 		self.video_Layout.add_widget(self.tutorial_video_button)
 
-	def start_tutorial_video(self, *args):
+	def show_video_controls(self):
 		self.video_Layout.clear_widgets()
-		self.video_Layout.add_widget(self.tutorial_video)
-		self.tutorial_video.state = 'play'
-		Clock.schedule_once(lambda dt: self.display_video_widgets(), self.tutorial_video.duration)
-
-	def tutorial_video_end(self, *args):
+		if self.current_video is not None:
+			self.video_Layout.add_widget(self.current_video)
 		self.video_Layout.add_widget(self.tutorial_continue_button)
 		self.video_Layout.add_widget(self.tutorial_restart_button)
 
-	def tutorial_restart(self, *args):
-		self.tutorial_video.state = 'stop'
-		self.start_tutorial_video()
+	def _start_video_bypass(self, *args):
+		if self.skip_video_enabled and self.current_video is not None:
+			self.start_video()
+
+	def start_video(self, *args):
+		if self.current_video is None:
+			self.complete_video()
+			return
+
+		self._cancel_video_finish_event()
+		self.video_Layout.clear_widgets()
+		self.video_Layout.add_widget(self.current_video)
+		self.current_video.state = 'play'
+		if self.skip_video_enabled:
+			self.video_Layout.add_widget(self.tutorial_continue_button)
+			self.video_Layout.add_widget(self.tutorial_restart_button)
+		else:
+			self.video_finish_event = Clock.schedule_once(self.tutorial_video_end, self.current_video_duration)
+
+	def tutorial_video_end(self, *args):
+		self.show_video_controls()
+
+	def restart_video(self, *args):
+		if self.current_video is None:
+			self.complete_video()
+			return
+
+		self._cancel_video_finish_event()
+		self.video_Layout.clear_widgets()
+		self.video_Layout.add_widget(self.current_video)
+		try:
+			self.current_video.state = 'stop'
+		except Exception:
+			pass
+		try:
+			self.current_video.unload()
+			self.current_video.reload()
+		except Exception:
+			pass
+		self.current_video.state = 'play'
+		if self.skip_video_enabled:
+			self.video_Layout.add_widget(self.tutorial_continue_button)
+			self.video_Layout.add_widget(self.tutorial_restart_button)
+		else:
+			self.video_finish_event = Clock.schedule_once(self.tutorial_video_end, self.current_video_duration)
+
+	def complete_video(self, *args):
+		callback = self.finish_callback
+		destination_screen = self.destination_screen
+		self.finish_callback = None
+		self.destination_screen = None
+		self.video_Layout.clear_widgets()
+		self._clear_video_player()
+
+		if callable(callback):
+			Clock.schedule_once(lambda dt: callback(), 0)
+		elif destination_screen and self.manager is not None:
+			Clock.schedule_once(lambda dt: self._go_to_destination(destination_screen), 0)
+		else:
+			Clock.schedule_once(lambda dt: self._go_to_destination('mainmenu'), 0)
+
+	def _go_to_destination(self, destination_screen):
+		if self.manager is not None and self.manager.has_screen(destination_screen):
+			self.manager.current = destination_screen
 	
 	def exit_tutorial(self, *args):
 		if self.destination_screen:
@@ -1432,9 +1559,12 @@ class MenuApp(App):
 		self.survey_data_path = ''
 		self.survey_data_list = list()
 		self.event_queue = queue.Queue()
+		self.file_io_queue = queue.Queue()
 		self.event_list = list()
 		self.event_columns = list()
 		self.data_written = False
+		self.file_io_thread = threading.Thread(target=self._file_io_worker, daemon=True)
+		self.file_io_thread.start()
 
 		self.battery_active = False
 		self.battery_protocols = list()
@@ -1442,7 +1572,7 @@ class MenuApp(App):
 		self.battery_configs = {}
 		self.battery_required_fields = {}  # Maps protocol name to list of required fields
 
-		self.first_tutorial_played = True
+		self.first_tutorial_played = False
 
 		self.s_manager = ScreenManager()
 		self.active_screen = ''
@@ -1455,9 +1585,180 @@ class MenuApp(App):
 		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
 		self.s_manager.add_widget(self.language_menu)
+		self.general_video_screen = VideoScreen()
+		self.s_manager.add_widget(self.general_video_screen)
 		self.active_screen = self.language_menu.name
+		self._register_shutdown_handlers()
 		
 		return self.s_manager
+
+	def _register_shutdown_handlers(self):
+		if getattr(self, '_shutdown_handlers_registered', False):
+			return
+
+		atexit.register(self._write_pending_output_data)
+		for signal_name in ('SIGINT', 'SIGTERM'):
+			try:
+				signal.signal(getattr(signal, signal_name), self._handle_shutdown_signal)
+			except (AttributeError, ValueError):
+				pass
+		self._shutdown_handlers_registered = True
+
+	def _handle_shutdown_signal(self, signum, frame):
+		self._write_pending_output_data()
+		try:
+			self.stop()
+		except Exception:
+			pass
+
+	def _file_io_worker(self):
+		while True:
+			job = self.file_io_queue.get()
+			try:
+				if job is None:
+					return
+
+				action = job.get('action')
+				if action == 'write_header':
+					with open(job['path'], 'w', newline='', encoding='utf-8') as output_file:
+						writer = csv.writer(output_file)
+						writer.writerow(job['columns'])
+				elif action == 'append_row':
+					with open(job['path'], 'a', newline='', encoding='utf-8') as output_file:
+						writer = csv.writer(output_file)
+						writer.writerow(job['row'])
+				elif action == 'write_dataframe':
+					job['dataframe'].to_csv(job['path'], index=job.get('index', False))
+			except (FileNotFoundError, OSError):
+				pass
+			finally:
+				self.file_io_queue.task_done()
+
+	def queue_csv_header(self, path, columns):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'write_header',
+			'path': str(path),
+			'columns': list(columns),
+		})
+
+	def queue_csv_row(self, path, row):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'append_row',
+			'path': str(path),
+			'row': list(row),
+		})
+
+	def queue_dataframe_write(self, path, dataframe, index=False):
+		if not path:
+			return
+		self.file_io_queue.put({
+			'action': 'write_dataframe',
+			'path': str(path),
+			'dataframe': dataframe.copy(deep=True),
+			'index': index,
+		})
+
+	def _drain_file_io_queue(self):
+		if hasattr(self, 'file_io_queue'):
+			self.file_io_queue.join()
+
+	def _finalize_event_queue(self):
+		event_thread = getattr(self, 'event_writer_thread', None)
+		if event_thread is not None and event_thread.is_alive():
+			self.event_queue.put(None)
+			event_thread.join(timeout=2.0)
+
+		while True:
+			try:
+				event_row = self.event_queue.get_nowait()
+			except queue.Empty:
+				break
+
+			if event_row is not None:
+				self.event_list.append(event_row)
+
+	def _write_pending_output_data(self):
+		if not hasattr(self, 'event_queue'):
+			return
+
+		self._finalize_event_queue()
+
+		if (not self.data_written) and self.session_event_path and len(self.event_list) > 0:
+			self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
+			if not self.session_event_data.empty:
+				self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+			self.queue_dataframe_write(self.session_event_path, self.session_event_data, index=False)
+
+		if (not self.data_written) and self.summary_event_path and len(self.trial_summary_data) > 0:
+			self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
+			self.queue_dataframe_write(self.summary_event_path, self.summary_event_data, index=False)
+
+		if (not self.data_written) and self.survey_data_path and len(self.survey_data_list) > 0:
+			self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
+			self.queue_dataframe_write(self.survey_data_path, self.survey_data, index=False)
+
+		self._drain_file_io_queue()
+
+	def _set_current_screen(self, screen_name, *args):
+		if self.s_manager.has_screen(screen_name):
+			self.active_screen = screen_name
+			self.s_manager.current = screen_name
+
+	def open_main_menu(self, *args):
+		self._set_current_screen('mainmenu')
+
+	def show_general_video(self, video_key, on_complete=None, destination_screen=None):
+		if not hasattr(self, 'general_video_screen') or self.general_video_screen is None:
+			self.general_video_screen = VideoScreen()
+			self.s_manager.add_widget(self.general_video_screen)
+
+		self.general_video_screen.size = Window.size
+		prepared = self.general_video_screen.prepare_video(
+			video_key,
+			on_complete=on_complete,
+			destination_screen=destination_screen
+		)
+
+		if prepared:
+			self._set_current_screen(self.general_video_screen.name)
+		elif callable(on_complete):
+			Clock.schedule_once(lambda dt: on_complete(), 0)
+		elif destination_screen:
+			Clock.schedule_once(lambda dt: self._set_current_screen(destination_screen), 0)
+		else:
+			Clock.schedule_once(self.open_main_menu, 0)
+
+	def present_task_screen(self, screen_name):
+		if not self.first_tutorial_played:
+			self.first_tutorial_played = True
+			self.show_general_video('tutorial', on_complete=lambda: self._set_current_screen(screen_name))
+		else:
+			self._set_current_screen(screen_name)
+
+	def cleanup_task_screen(self, screen_name):
+		if not screen_name or not self.s_manager.has_screen(screen_name):
+			return
+
+		screen = self.s_manager.get_screen(screen_name)
+		if hasattr(screen, 'clear_video_cache'):
+			try:
+				screen.clear_video_cache()
+			except Exception:
+				pass
+
+		self.s_manager.remove_widget(screen)
+
+	def handle_task_completion(self, completed_screen_name=None):
+		if getattr(self, 'battery_active', False):
+			self.battery_task_finished(completed_screen_name)
+			return
+
+		self.cleanup_task_screen(completed_screen_name)
+		self.show_general_video('end_session', on_complete=self.open_main_menu)
 	
 	def start_next_battery_config(self):
 		if self.battery_index < len(self.battery_protocols):
@@ -1500,7 +1801,7 @@ class MenuApp(App):
 	def start_battery_tasks(self):
 		# Start the task at the current battery_index (do not reset here)
 		if not self.battery_protocols:
-			self.s_manager.current = 'mainmenu'
+			self.open_main_menu()
 			self.battery_active = False
 			return
 
@@ -1522,20 +1823,13 @@ class MenuApp(App):
 			except Exception:
 				# Some protocols may expect different parameter shapes; still continue
 				pass
-			if self.battery_index > 0:
-				# Remove previous task screen to free memory
-				prev_protocol_name = self.battery_protocols[self.battery_index - 1]
-				prev_screen_name = f"{prev_protocol_name}_protocolscreen"
-				if self.s_manager.has_screen(prev_screen_name):
-					prev_screen = self.s_manager.get_screen(prev_screen_name)
-					self.s_manager.remove_widget(prev_screen)
-			self.s_manager.current = protocol_task_screen.name
+			self.present_task_screen(protocol_task_screen.name)
 		else:
 			# No more tasks in battery
 			self.battery_active = False
-			self.s_manager.current = 'mainmenu'
+			self.show_general_video('end_session', on_complete=self.open_main_menu)
 
-	def battery_task_finished(self):
+	def battery_task_finished(self, completed_screen_name=None):
 		"""Called by a protocol when it returns to the main menu during a battery run.
 		This advances the battery index and starts the next task if available.
 		"""
@@ -1543,57 +1837,24 @@ class MenuApp(App):
 		if not getattr(self, 'battery_active', False):
 			return
 		
-		Clock.schedule_once(self._perform_battery_transition, 0.2)
+		Clock.schedule_once(lambda dt: self._perform_battery_transition(completed_screen_name), 0.2)
 
-	def _perform_battery_transition(self, dt):
-		if self.battery_index < len(self.battery_protocols):
-			prev_protocol_name = self.battery_protocols[self.battery_index]
-			prev_screen_name = f"{prev_protocol_name}_protocolscreen"
-
-			if self.s_manager.has_screen(prev_screen_name):
-				prev_screen = self.s_manager.get_screen(prev_screen_name)
-				
-				if hasattr(prev_screen, 'clear_video_cache'):
-					prev_screen.clear_video_cache()
-
-				self.s_manager.remove_widget(prev_screen)
-		
-
+	def _perform_battery_transition(self, completed_screen_name, *args):
+		self.cleanup_task_screen(completed_screen_name)
 		self.battery_index = int(self.battery_index) + 1
 		if self.battery_index < len(self.battery_protocols):
-			# Use a Kivy Clock to ensure the next screen starts after the current one has fully transitioned out
-			Clock.schedule_once(lambda dt: self.start_battery_tasks(), 0.1)
+			self.show_general_video('next_task', on_complete=self.start_battery_tasks)
 		else:
 			# Finished all battery tasks
 			self.battery_active = False
-			self.s_manager.current = 'mainmenu'
+			self.show_general_video('end_session', on_complete=self.open_main_menu)
 	
 	def add_screen(self, screen):
 		
 		self.s_manager.add_widget(screen)
 	
 	def on_stop(self):
-		self.event_queue.put(None)
-		if not self.data_written:
-			if len(self.event_list) > 0:
-				self.session_event_data = pd.DataFrame(self.event_list, columns=self.event_columns)
-				self.session_event_data = self.session_event_data.sort_values(by=['Time'])
-				try:
-					self.session_event_data.to_csv(self.session_event_path, index=False)
-				except FileNotFoundError:
-					pass
-			if len(self.trial_summary_data) > 0:
-				try:
-					self.summary_event_data = pd.DataFrame(self.trial_summary_data, columns=self.trial_summary_cols)
-					self.summary_event_data.to_csv(self.summary_event_path, index=False)
-				except FileNotFoundError:
-					pass
-			if len(self.survey_data_list) > 0:
-				try:
-					self.survey_data = pd.DataFrame(self.survey_data_list, columns=['question', 'response'])
-					self.survey_data.to_csv(self.survey_data_path, index=False)
-				except FileNotFoundError:
-					pass
+		self._write_pending_output_data()
 		try:
 				# Only call clear_video_cache() if current_screen is a protocol-related
 				# screen. ProtocolScreen subclasses ProtocolBase in protocol modules,

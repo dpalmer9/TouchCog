@@ -135,6 +135,7 @@ class FloatLayoutLog(FloatLayout):
 	def __init__(self, screen_resolution, **kwargs):
 		
 		super(FloatLayoutLog, self).__init__(**kwargs)
+		self.register_event_type('on_multi_touch')
 		
 		self.app = App.get_running_app()
 		self.block_on_move_touch_down = False
@@ -167,8 +168,12 @@ class FloatLayoutLog(FloatLayout):
 		self.elapsed_time = 0
 		self.touch_time = 0
 		self.start_time = 0
+		self.active_touches = set()
+		self.multi_touch_active = False
 
-		threading.Thread(target=self.event_writer, daemon=True).start()
+		self._event_writer_thread = threading.Thread(target=self.event_writer, daemon=True)
+		self._event_writer_thread.start()
+		self.app.event_writer_thread = self._event_writer_thread
 	
 	def event_writer(self):
 		while True:
@@ -177,24 +182,69 @@ class FloatLayoutLog(FloatLayout):
 				if event_row is None: # Sentinel to stop the thread
 					break
 				self.app.event_list.append(event_row)
+				self._append_event_row(event_row)
 			except queue.Empty:
 				continue # Should not happen with blocking get()
+
+	def _append_event_row(self, event_row):
+		if not getattr(self.app, 'session_event_path', ''):
+			return
+
+		if hasattr(self.app, 'queue_csv_row'):
+			row = [event_row.get(column, '') for column in self.app.event_columns]
+			self.app.queue_csv_row(self.app.session_event_path, row)
 	
 	def filter_children(self, string):
 		
 		return
+
+	def on_multi_touch(self, touch, touch_count):
+		return
+
+	def _track_touch_down(self, touch):
+		touch_uid = getattr(touch, 'uid', None)
+		if touch_uid is None:
+			return
+
+		self.active_touches.add(touch_uid)
+		if len(self.active_touches) > 1 and not self.multi_touch_active:
+			self.multi_touch_active = True
+
+			for child in self.children:
+				if getattr(child, 'state', None) == 'down':
+					child.state = 'normal'
+					if hasattr(child, '_touch_inside'):
+						child._touch_inside = False
+						child._touch_inside = False
+
+			self.dispatch('on_multi_touch', touch, len(self.active_touches))
+
+	def _track_touch_up(self, touch):
+		touch_uid = getattr(touch, 'uid', None)
+		if touch_uid is not None:
+			self.active_touches.discard(touch_uid)
+
+		if len(self.active_touches) <= 1:
+			self.multi_touch_active = False
 	
 	
 	
 	def on_touch_down(self, touch):
 		
+		self._track_touch_down(touch)
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled and self.collide_point(*touch.pos):
 			return True
 		
-		for child in self.children:
+		if self.multi_touch_active:
+			self.held_name = ''
+			self.add_event([self.touch_time, 'Screen', 'Touch Press (Blocked)',
+			'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
+			return True
+		
+		for child in self.children[:]:
 			
 			if child.dispatch('on_touch_down', touch):
 				
@@ -204,10 +254,7 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					self.held_name = ''
 				
-				threading.Thread(
-					target=self.add_event
-					, args=([
-						self.touch_time
+				self.add_event([self.touch_time
 						, 'Screen'
 						, 'Touch Press'
 						, 'X Position'
@@ -215,12 +262,7 @@ class FloatLayoutLog(FloatLayout):
 						, 'Y Position'
 						, self.touch_pos[1]
 						, 'Stimulus Name'
-						, self.held_name
-						]
-						, 
-						)
-					, daemon=False
-					).start()
+						, self.held_name])
 				
 				return True
 		
@@ -249,7 +291,10 @@ class FloatLayoutLog(FloatLayout):
 		if self.disabled:
 			return
 		
-		for child in self.children:
+		if self.multi_touch_active:
+			return True
+		
+		for child in self.children[:]:
 			
 			if not self.block_on_move_touch_down:
 				if child.collide_point(*touch.pos):
@@ -305,14 +350,23 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def on_touch_up(self, touch):
+
+		was_multi_touch = self.multi_touch_active
 		
+		self._track_touch_up(touch)
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled:
 			return
 		
-		for child in self.children:
+		if was_multi_touch:
+			self.held_name = ''
+			self.add_event([self.touch_time, 'Screen', 'Touch Release (Blocked)', 
+				   'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
+			return True
+		
+		for child in self.children[:]:
 			
 			if child.dispatch('on_touch_up', touch):
 				
@@ -445,10 +499,15 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def write_data(self):
+		if hasattr(self.app, '_finalize_event_queue'):
+			self.app._finalize_event_queue()
 		self.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-		self.session_event_data.Time = self.session_event_data.Time.astype('float64')
-		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
+		if not self.session_event_data.empty:
+			self.session_event_data.Time = self.session_event_data.Time.astype('float64')
+			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
+		self.app.session_event_data = self.session_event_data
+		if self.app.session_event_path and hasattr(self.app, 'queue_dataframe_write'):
+			self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
 	
 	
 	
@@ -456,6 +515,11 @@ class FloatLayoutLog(FloatLayout):
 		
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
+		if hasattr(self.app, 'queue_csv_header'):
+			self.app.queue_csv_header(self.save_path, self.app.event_columns)
+
+	# Add new bind option to FloatLayoutLog for when multi-touch is detected (i.e., a second touch occurs while one is already active)
+	
 
 class PreloadedVideo(Image):
 	def __init__(self, source_path, player=None, loop=False, **kwargs):
@@ -540,6 +604,8 @@ class PreloadedVideo(Image):
 
 	def _stop_thread(self):
 		self._stop_event.set()
+		if self._playback_thread and self._playback_thread.is_alive():
+			self._playback_thread.join(timeout=0.5)
 
 	def _video_loop(self):
 		while not self._stop_event.is_set():
@@ -632,6 +698,7 @@ class ProtocolBase(Screen):
 		self.name = 'protocolscreen'
 
 		self.protocol_floatlayout = FloatLayoutLog(screen_resolution)
+		self.protocol_floatlayout.bind(on_multi_touch=self.multi_touch_warning)
 		self.protocol_floatlayout.size = screen_resolution
 		self.add_widget(self.protocol_floatlayout)
 			
@@ -736,6 +803,9 @@ class ProtocolBase(Screen):
 		self.premature_override = False
 		self.skip_tutorial_video = False
 		self.display_video = True
+		self.protocol_ended = False
+		self.output_generated = False
+		self.metadata_generated = False
 		
 		
 		# Define Variables - Counter
@@ -753,6 +823,7 @@ class ProtocolBase(Screen):
 		self.elapsed_time = 0
 		self.feedback_start_time = 0
 		self.trial_end_time = 0
+		self.multi_touch_warning_duration = 2.0
 		
 		
 		# Define Class - Clock
@@ -760,6 +831,7 @@ class ProtocolBase(Screen):
 		# hold_remind is managed manually with Clock.schedule_once; use a stage flag
 		# stage: 0 = initial (will schedule delayed), 1 = delayed (perform check)
 		self.hold_remind_stage = 0
+		self.hold_remind_event = None
 
 		self.session_clock = Clock
 		self.session_clock.interupt_next_only = False
@@ -783,6 +855,10 @@ class ProtocolBase(Screen):
 		self.hold_button.bind(on_press=self.hold_lift_returned)
 		self.hold_button.always_release = True
 
+		self.feedback_image = Image()
+		self.feedback_image.size_hint = (0.4, 0.4)
+		self.feedback_image.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
 		# Define widgets - Video (hold)
 		self.tutorial_video = None
 		
@@ -804,6 +880,13 @@ class ProtocolBase(Screen):
 		self.feedback_label = Label(text='', font_size='50sp', markup=True)
 		self.feedback_label.size_hint = (0.7, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
+		self.multi_touch_label = Label(text='', font_size='50sp', markup=True)
+		self.multi_touch_label.size_hint = (0.7, 0.4)
+		self.multi_touch_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
+
+		# Define Widgets - Hold for Feedback
+		self.feedback = self.feedback_label
 		
 		
 		# Define Widgets - Buttons
@@ -835,6 +918,12 @@ class ProtocolBase(Screen):
 		self.tutorial_video_button = Button(text='Tap the screen\nto start video', font_size='48sp', halign='center', valign='center')
 		self.tutorial_video_button.background_color = 'black'
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
+
+	def _safe_get_bool(self, key, fallback):
+		val = self.parameters_dict.get(key, fallback)
+		if isinstance(val, str):
+			return val.lower() == 'true'
+		return bool(val)
 		
 	
 	def update_task(self):
@@ -1031,8 +1120,10 @@ class ProtocolBase(Screen):
 		stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
 		stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
 		
-		if stim_feedback_correct_color != '':
-			color_text = '[color=%s]' % stim_feedback_correct_color
+		# Check if stim_feedback_correct_str is a png file by looking for .png extension
+		if not stim_feedback_correct_str.endswith('.png'):
+			if stim_feedback_correct_color != '':
+				color_text = '[color=%s]' % stim_feedback_correct_color
 			stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
 		
 		self.feedback_dict['correct'] = stim_feedback_correct_str
@@ -1040,8 +1131,9 @@ class ProtocolBase(Screen):
 		stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
 		stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
 		
-		if stim_feedback_incorrect_color != '':
-			color_text = '[color=%s]' % stim_feedback_incorrect_color
+		if not stim_feedback_incorrect_str.endswith('.png'):
+			if stim_feedback_incorrect_color != '':
+				color_text = '[color=%s]' % stim_feedback_incorrect_color
 			stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
 		
 		self.feedback_dict['incorrect'] = stim_feedback_incorrect_str
@@ -1064,6 +1156,15 @@ class ProtocolBase(Screen):
 		
 		self.feedback_dict['return'] = hold_feedback_return_str
 
+		hold_feedback_multi_touch_str = feedback_lang_config.get('Hold', 'multi_touch', fallback='PLEASE REMOVE EXTRA FINGER AND RETURN TO WHITE SQUARE')
+		hold_feedback_multi_touch_color = feedback_lang_config.get('Hold', 'multi_touch_colour', fallback=hold_feedback_return_color)
+
+		if hold_feedback_multi_touch_color != '':
+			color_text = '[color=%s]' % hold_feedback_multi_touch_color
+			hold_feedback_multi_touch_str = color_text + hold_feedback_multi_touch_str + '[/color]'
+
+		self.feedback_dict['multi_touch'] = hold_feedback_multi_touch_str
+
 
 		stim_feedback_too_slow_str = feedback_lang_config['Stimulus']['too_slow']
 		stim_feedback_too_slow_color = feedback_lang_config['Stimulus']['too_slow_colour']
@@ -1078,9 +1179,10 @@ class ProtocolBase(Screen):
 		stim_feedback_miss_str = feedback_lang_config['Stimulus']['miss']
 		stim_feedback_miss_color = feedback_lang_config['Stimulus']['miss_colour']
 		
-		if stim_feedback_miss_color != '':
-			color_text = '[color=%s]' % stim_feedback_miss_color
-			stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
+		if not stim_feedback_miss_str.endswith('.png'):
+			if stim_feedback_miss_color != '':
+				color_text = '[color=%s]' % stim_feedback_miss_color
+				stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
 		
 		self.feedback_dict['miss'] = stim_feedback_miss_str
 
@@ -1099,8 +1201,11 @@ class ProtocolBase(Screen):
 	
 	
 	def generate_output_files(self):
+		if self.output_generated:
+			return
 
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
+		self.protocol_ended = False
 
 		if not folder_path.is_dir():
 			folder_path.mkdir()
@@ -1114,8 +1219,8 @@ class ProtocolBase(Screen):
 			temp_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
 			self.file_path = pathlib.Path(folder_path, temp_filename + '_Summary_Data.csv')
 		
-		# self.session_data = pd.DataFrame(columns=self.data_cols)
-		# self.session_data.to_csv(path_or_buf=self.file_path, sep=',', index=False)
+		if hasattr(self.app, 'queue_csv_header'):
+			self.app.queue_csv_header(self.file_path, self.data_cols)
 		
 		event_path = pathlib.Path(folder_path, temp_filename + '_Event_Data.csv')
 		
@@ -1124,11 +1229,15 @@ class ProtocolBase(Screen):
 		self.app.summary_event_path = self.file_path
 		self.app.summary_event_data = self.session_data
 		self.app.data_written = False
+		self.output_generated = True
 		return
 	
 	
 	
 	def metadata_output_generation(self):
+
+		if self.metadata_generated:
+			return
 		
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		
@@ -1150,7 +1259,9 @@ class ProtocolBase(Screen):
 			meta_output_path = pathlib.Path(folder_path, meta_output_filename + '_Metadata.csv')
 		
 		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
-		self.meta_data.to_csv(path_or_buf=meta_output_path, sep=',', index=False)
+		if hasattr(self.app, 'queue_dataframe_write'):
+			self.app.queue_dataframe_write(meta_output_path, self.meta_data, index=False)
+		self.metadata_generated = True
 		return
 
 	def trigger_tutorial_screen(self, *args):
@@ -1215,7 +1326,9 @@ class ProtocolBase(Screen):
 	def present_tutorial_video_start_button(self, *args):
 
 		self.protocol_floatlayout.add_widget(self.tutorial_continue_button)
+		self.tutorial_continue_button.disabled = False
 		self.protocol_floatlayout.add_widget(self.tutorial_restart_button)
+		self.tutorial_restart_button.disabled = False
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Section Start')
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Instructions', 'Video Restart')
 		return
@@ -1289,6 +1402,23 @@ class ProtocolBase(Screen):
 		self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
 
 		return
+
+	def cancel_hold_remind(self):
+		if self.hold_remind_event is not None:
+			try:
+				self.hold_remind_event.cancel()
+			except Exception:
+				pass
+			self.hold_remind_event = None
+		Clock.unschedule(self.hold_remind)
+		return
+
+	def schedule_hold_remind(self, delay=None):
+		self.cancel_hold_remind()
+		if delay is None:
+			delay = self.hold_remind_delay
+		self.hold_remind_event = Clock.schedule_once(self.hold_remind, delay)
+		return self.hold_remind_event
 	
 	
 	
@@ -1306,6 +1436,10 @@ class ProtocolBase(Screen):
 		return
 	
 	def protocol_end(self, *args):
+		if self.protocol_ended:
+			return
+
+		self.protocol_ended = True
 		# Check Video Removal
 		self.clear_video_cache()
 		# Check if self.tutorial_video still exists and unload if so
@@ -1319,9 +1453,13 @@ class ProtocolBase(Screen):
 			gc.collect()
 		# reset any pending hold_remind stage
 		self.hold_remind_stage = 0
+
+		# Check if the self.session_event is scheduled and unschedule if so
+		if self.session_event.is_triggered:
+			self.session_event.cancel()
 		
 		self.protocol_floatlayout.clear_widgets()
-		Clock.unschedule(self.hold_remind)
+		self.cancel_hold_remind()
 		Clock.unschedule(self.iti_end)
 		self.protocol_floatlayout.add_widget(self.end_label)
 		
@@ -1335,12 +1473,19 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
 
-		self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
-		self.app.summary_event_data.to_csv(self.app.summary_event_path, index=False)
-		self.app.event_queue.put(None)
-		self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-		self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-		self.app.session_event_data.to_csv(self.app.session_event_path, index=False)
+		if hasattr(self.app, '_finalize_event_queue'):
+			self.app._finalize_event_queue()
+
+		if self.app.summary_event_path:
+			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
+			if hasattr(self.app, 'queue_dataframe_write'):
+				self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
+		if self.app.session_event_path:
+			self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
+			if not self.app.session_event_data.empty:
+				self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
+			if hasattr(self.app, 'queue_dataframe_write'):
+				self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
@@ -1353,13 +1498,13 @@ class ProtocolBase(Screen):
 	
 	
 	def return_to_main(self, *args):
+		# Safe guard remove the return button immediately to prevent multiple presses
+		self.protocol_floatlayout.remove_widget(self.return_button)
 
 		# If a battery run is active, notify the app so it can advance to next task
 		try:
-			bat_active = getattr(self.app, 'battery_active', False)
-			if bat_active:
-				if hasattr(self.app, 'battery_task_finished'):
-					self.app.battery_task_finished()
+			if hasattr(self.app, 'handle_task_completion'):
+				self.app.handle_task_completion(self.name)
 			else:
 				self.manager.current = 'mainmenu'
 				self.current_widget = self.manager.get_screen(self.name)
@@ -1394,9 +1539,28 @@ class ProtocolBase(Screen):
 
 		return
 	
+	def multi_touch_warning(self, *args):
+		# Check if multi-touch warning is already on screen to prevent duplicates
+		if self.multi_touch_label in self.protocol_floatlayout.children:
+			return
+		self.protocol_floatlayout.add_text_event('Multi-touch Detected', 'Screen')
+		
+		# Assign multi-touch feedback to the multi_touch_label and display it
+		self.multi_touch_label.text = self.feedback_dict['multi_touch']
+		self.protocol_floatlayout.add_widget(self.multi_touch_label)
 
+		# Schedule removal of multi-touch feedback after a delay
+		Clock.schedule_once(self.remove_multi_touch_warning, self.multi_touch_warning_duration)
+		
+		return
+	
+	def remove_multi_touch_warning(self, *args):
+		self.protocol_floatlayout.remove_widget(self.multi_touch_label)
+		self.protocol_floatlayout.add_text_event('Removed', 'Multi-touch Warning')
+		return
 
 	def hold_remind(self, *args):
+		self.hold_remind_event = None
 		# If a stage-specific screen is active or stimulus is on screen, do nothing
 		if hasattr(self, 'stage_screen_started') and getattr(self, 'stage_screen_started'):
 			return None
@@ -1414,28 +1578,22 @@ class ProtocolBase(Screen):
 			else:
 					# remove any other feedback text
 				Clock.unschedule(self.remove_feedback)
-				self.protocol_floatlayout.remove_widget(self.feedback_label)
+				self.protocol_floatlayout.remove_widget(self.feedback)
 				self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
 				self.feedback_on_screen = False
 
 		if not self.feedback_on_screen:
 			if self.block_started:
 				return
-			self.feedback_label.text = self.feedback_dict['return']
-			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.assign_feedback('return')
 
-			self.feedback_start_time = time.perf_counter()
-			self.feedback_on_screen = True
-
-			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Feedback', self.feedback_label.text)
 		return
-		# No further scheduling needed; one-shot behavior keeps polling minimal
 	
 	
 	
 	def iti_start(self, *args):	
 		if not self.iti_active:
-			Clock.unschedule(self.hold_remind)
+			self.cancel_hold_remind()
 			# ensure no pending reminder stage remains and swap bindings
 			self.hold_button_pressed = True
 			self.hold_button.unbind(on_press=self.iti_start)
@@ -1478,9 +1636,43 @@ class ProtocolBase(Screen):
 	def hold_lift_returned(self, *args):
 		self.hold_button_pressed = True
 
+	def assign_feedback(self, feedback_key=None, override_text=None):
+		if feedback_key in self.feedback_dict:
+			# Check if override contains value, use as feedback
+			if override_text is not None and type(override_text) == str and override_text != '':
+				feedback_str = override_text
+			# Else use feedback_dict value for feedback_key
+			elif feedback_key in self.feedback_dict:
+				# Extract string value from feedback_dict, which may contain markup. Default to empty string if key is missing or value is None.
+				feedback_str = self.feedback_dict.get(feedback_key, '') or ''
+			# Handle error case where neither argument is valid
+			else:
+				print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+				return
+			
+			# Check if feedback_str contains a png file extension. If so, set feedback_image source to that file and display the image instead of text.
+			if '.png' in feedback_str:
+				self.feedback_image.source = str(self.image_folder / feedback_str)
+				# Assign feedback_image to feedback
+				self.feedback = self.feedback_image
+			# Else if text entry
+			else:
+				self.feedback_label.text = feedback_str
+				# Assign feedback_label to feedback
+				self.feedback = self.feedback_label
+		# Add feedback to screen if not already present
+		if not self.feedback_on_screen:
+			self.protocol_floatlayout.add_widget(self.feedback)
+
+			self.protocol_floatlayout.add_object_event('Display', 'Feedback', 'Trial Feedback', feedback_key)
+
+			self.feedback_start_time = time.perf_counter()
+			self.feedback_on_screen = True
+		return
+
 	def remove_feedback(self, *args):
 		if self.feedback_on_screen:
-			self.protocol_floatlayout.remove_widget(self.feedback_label)
+			self.protocol_floatlayout.remove_widget(self.feedback)
 
 			self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
 
@@ -1492,6 +1684,8 @@ class ProtocolBase(Screen):
 	
 	def write_summary_file(self, data_row):
 		self.app.trial_summary_data.append(data_row)
+		if self.app.summary_event_path and hasattr(self.app, 'queue_csv_row'):
+			self.app.queue_csv_row(self.app.summary_event_path, data_row)
 		return
 	
 	

@@ -5,6 +5,7 @@ import numpy as np
 import pathlib
 import random
 import statistics
+import traceback
 import time
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
@@ -99,6 +100,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_duration = int(self.parameters_dict.get('block_duration', '1200'))
 		self.block_min_rest_duration = float(self.parameters_dict.get('block_min_rest_duration', '1'))
 		self.session_duration = float(self.parameters_dict.get('session_duration', '3600'))
+		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_duration, interval=False)
 		
 		self.block_multiplier = int(self.parameters_dict.get('block_multiplier', '1'))
 
@@ -110,7 +112,7 @@ class ProtocolScreen(ProtocolBase):
 		self.response_level = int(self.parameters_dict.get('response_level_start', '1'))
 		self.response_level_end = int(self.parameters_dict.get('response_level_end', '10'))
 
-		self.use_confirmation = self.parameters_dict.get('use_confirmation', 'True')
+		self.use_confirmation = self._safe_get_bool('use_confirmation', 'True')
 
 		self.hold_image = self.config_file['Hold']['hold_image']
 		self.mask_image = self.config_file['Mask']['mask_image']
@@ -140,6 +142,12 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 		self.stimulus_on_screen = False
 		self.participant_stopped = False
+		self.tutorial_completed = False
+		self.protocol_started_from_tutorial = False
+		self.results_active = False
+		self.block_start_active = False
+		self.response_recorded = False
+		self.awaiting_restart = False
 
 	def _setup_session_stages(self):
 		self.task_clock = Clock
@@ -214,6 +222,12 @@ class ProtocolScreen(ProtocolBase):
 			, round((self.hold_button.pos_hint['center_x'] \
 				+ (self.main_move * self.width_adjust)), 3)
 			]
+		
+		# Clamp the boundaries
+		min_x = max(min(self.x_boundaries), (((self.stimulus_size * self.width_adjust) / 2) + 0.005))
+		max_x = min(max(self.x_boundaries), (1 - ((self.stimulus_size * self.width_adjust) / 2) - 0.005))
+
+		self.x_boundaries = [round(min_x, 3), round(max_x, 3)]
 
 		# Ensure possible x locations don't put stimulus outside edge of screen
 		if ((min(self.x_boundaries) - ((self.stimulus_size * self.width_adjust) / 2) - 0.005) < 0) \
@@ -255,7 +269,7 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label = Label(font_size='32sp')
 		self.feedback_label.size_hint = (0.8, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 
 		feedback_lang_path = self.lang_folder_path / 'Feedback.ini'
 		feedback_lang_config = configparser.ConfigParser(allow_no_value=True)
@@ -285,8 +299,9 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_video_path = self.lang_folder_path / 'Tutorial_Video' / 'PR-Tutorial_Video-2025-11-19.mp4'
 			self.tutorial_video = PreloadedVideo(
 				source_path = str(self.tutorial_video_path)
-				, pos_hint = {'center_x': 0.5, 'center_y': 0.5 + self.text_button_size[1]}
-				, fit_mode = 'contain',
+				, pos_hint={'center_x': 0.5, 'center_y': 0.55},
+				size_hint=(0.95, 0.75),
+				fit_mode = 'contain',
 				loop=False
 				)
 
@@ -334,8 +349,10 @@ class ProtocolScreen(ProtocolBase):
 		x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
 
 		# If difference between existing and new x position is less than 10% of screen width, select new location
-		while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+		pos_attempts = 0
+		while abs(x_pos - self.stimulus_pos['center_x']) < 0.1 and pos_attempts < 50:
 			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+			pos_attempts += 1
 
 		x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
@@ -348,8 +365,10 @@ class ProtocolScreen(ProtocolBase):
 			x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
 
 			# If difference between existing and new x position is less than 10% of screen width, select new location
-			while abs(x_pos - self.stimulus_pos['center_x']) < 0.1:
+			pos_attempts = 0
+			while abs(x_pos - self.stimulus_pos['center_x']) < 0.1 and pos_attempts < 50:
 				x_pos = random.uniform(min(self.x_boundaries), max(self.x_boundaries))
+				pos_attempts += 1
 
 			x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
@@ -362,6 +381,12 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stop_tutorial_video(self, *args):
+		if self.tutorial_completed or getattr(self, 'protocol_ended', False):
+			return
+
+		self.tutorial_completed = True
+		self.tutorial_continue_button.disabled = True
+		self.tutorial_continue_button.unbind(on_press=self.stop_tutorial_video)
 		self.tutorial_video.state = 'stop'
 		self.protocol_floatlayout.add_object_event('Remove', 'Video', 'Section', 'Instructions')
 		self.start_protocol_from_tutorial()
@@ -369,6 +394,10 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def start_protocol_from_tutorial(self, *args):
+		if self.protocol_started_from_tutorial or getattr(self, 'protocol_ended', False):
+			return
+
+		self.protocol_started_from_tutorial = True
 		self.protocol_floatlayout.clear_widgets()
 
 		self.protocol_floatlayout.add_stage_event('Section Start')
@@ -380,25 +409,32 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def results_screen(self, *args):
+			if self.results_active or getattr(self, 'protocol_ended', False):
+				return
+
+			self.results_active = True
 			self.protocol_floatlayout.clear_widgets()
 			self.participant_stopped = True
 			self.feedback_on_screen = False
 
 			self.outcome_string = eval(f'f"""{self.outcome_dict.get("result", "")}"""')
-
-			self.feedback_label.text = self.outcome_string
 			
 			self.quit_button.unbind(on_press=self.results_screen)
+			self.quit_button.unbind(on_press=self.protocol_end)
 			self.quit_button.bind(on_press=self.protocol_end)
 			self.quit_button.pos_hint = {'center_x': 0.5, 'center_y': 0.07}
+			self.quit_button.disabled = False
 
-			self.protocol_floatlayout.add_widget(self.feedback_label)
+			self.assign_feedback(override_text=self.outcome_string)
 			self.protocol_floatlayout.add_widget(self.quit_button)
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation
+		self.response_recorded = False
+		self.awaiting_restart = False
 		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_press=self.target_pressed)
 		self.hold_button.unbind(on_release=self.premature_response)
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
@@ -423,11 +459,15 @@ class ProtocolScreen(ProtocolBase):
 				
 	
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center touch,6-False Alarm, no center touch
+		if self.awaiting_restart or getattr(self, 'protocol_ended', False):
+			return
+
 		self.hold_button_pressed = False
 		if self.stimulus_on_screen:
 			return
 		
 		Clock.unschedule(self.iti_end)
+		self.awaiting_restart = True
 		
 		self.protocol_floatlayout.clear_widgets()
 		
@@ -438,27 +478,27 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_variable_event('Outcome', 'Response Latency', self.response_latency)
 		
 		self.iti_active = False
-		self.feedback_label.text = self.feedback_dict['wait']
 
 		if self.feedback_on_screen is False:	
-			self.protocol_floatlayout.add_widget(self.feedback_label)
-			self.feedback_on_screen = True
-			self.feedback_start_time = time.time()
-
-			self.protocol_floatlayout.add_text_event('Display', self.feedback_label.text)
+			self.assign_feedback(feedback_key='wait')
 		
+		self.hold_button.unbind(on_press=self.iti_start)
+		self.hold_button.unbind(on_press=self.start_block)
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.bind(on_press=self.start_block)
 
 		self.protocol_floatlayout.add_widget(self.hold_button)
 		self.protocol_floatlayout.add_widget(self.quit_button)
-		self.hold_button.bind(on_press=self.iti_start)
 	
 	
 	
 	# Target Pressed
 	
 	def target_pressed(self, *args):
+		if self.response_recorded or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
+			return
+
+		self.response_recorded = True
 	
 		Clock.unschedule(self.no_response_event)
 
@@ -570,9 +610,9 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except Exception:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
 	
 
@@ -587,9 +627,14 @@ class ProtocolScreen(ProtocolBase):
 	# Block start function (add widgets and set block start time)
 
 	def start_block(self, *args):
+		if self.block_start_active or self.iti_active or self.stimulus_on_screen or getattr(self, 'protocol_ended', False):
+			return
+
+		self.block_start_active = True
 		self.hold_button_pressed = True
+		self.awaiting_restart = False
 		self.protocol_floatlayout.remove_widget(self.feedback_label)
-		self.feedback_label.text = ''
+		outcome_feedback = ''
 		
 		self.protocol_floatlayout.add_object_event('Remove', 'Text', 'Stage', 'Results')
 
@@ -599,6 +644,7 @@ class ProtocolScreen(ProtocolBase):
 		self.block_start_time = time.time()
 
 		self.hold_button.unbind(on_press=self.start_block)
+		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.bind(on_press=self.iti_start)
 
 		self.hold_button.bind(on_release=self.premature_response)
@@ -606,13 +652,19 @@ class ProtocolScreen(ProtocolBase):
 		if self.hold_button_pressed:
 			self.iti_start()
 
+		self.block_start_active = False
+
 
 	# Block Contingency Function
 	
 	def block_contingency(self, *args):
 		
 		try:			
+			self.block_start_active = False
+			self.awaiting_restart = False
+			self.response_recorded = False
 			self.hold_button.unbind(on_press=self.iti_start)
+			self.hold_button.unbind(on_press=self.start_block)
 			self.hold_button.unbind(on_release=self.premature_response)
 			Clock.unschedule(self.iti_end)
 			Clock.unschedule(self.remove_feedback)
@@ -632,21 +684,19 @@ class ProtocolScreen(ProtocolBase):
 			else:
 
 				if self.current_block == 1:
-					self.feedback_label.text = self.feedback_dict['start_block']
 					self.hold_button.bind(on_press=self.start_block)
 					
 					self.protocol_floatlayout.add_widget(self.quit_button)
-					self.protocol_floatlayout.add_widget(self.feedback_label)
+					self.assign_feedback(feedback_key='start_block')
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
 					
 				else:
-					self.feedback_label.text = self.feedback_dict['mid_block']
+					self.assign_feedback(feedback_key='mid_block')
 
 					self.hold_button.bind(on_press=self.start_block)
 					
 					self.protocol_floatlayout.add_widget(self.reward_image)
-					self.protocol_floatlayout.add_widget(self.feedback_label)
 					self.protocol_floatlayout.add_widget(self.quit_button)
 
 					self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Start')
@@ -679,7 +729,7 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
-			
-			print('Error; program terminated.')
+		except Exception as e:
+			print(f"Critical Error encountered: {e}")
+			traceback.print_exc() 
 			self.protocol_end()
