@@ -177,6 +177,7 @@ class SurveyBase(Screen):
 
         self.survey_data = pd.DataFrame(columns=['question', 'response'])
         self.app.survey_data = self.survey_data  # link to app-level survey data
+        self.app.survey_data_list = []  # use list for incremental appending before final DataFrame creation
 
         self.survey_json = None
 
