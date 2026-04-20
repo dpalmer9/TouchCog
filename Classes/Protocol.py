@@ -209,6 +209,14 @@ class FloatLayoutLog(FloatLayout):
 		self.active_touches.add(touch_uid)
 		if len(self.active_touches) > 1 and not self.multi_touch_active:
 			self.multi_touch_active = True
+
+			for child in self.children:
+				if getattr(child, 'state', None) == 'down':
+					child.state = 'normal'
+					if hasattr(child, '_touch_inside'):
+						child._touch_inside = False
+						child._touch_inside = False
+
 			self.dispatch('on_multi_touch', touch, len(self.active_touches))
 
 	def _track_touch_up(self, touch):
@@ -228,6 +236,12 @@ class FloatLayoutLog(FloatLayout):
 		self.touch_time = time.perf_counter() - self.start_time
 		
 		if self.disabled and self.collide_point(*touch.pos):
+			return True
+		
+		if self.multi_touch_active:
+			self.held_name = ''
+			self.add_event([self.touch_time, 'Screen', 'Touch Press (Blocked)',
+			'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
 			return True
 		
 		for child in self.children[:]:
@@ -276,6 +290,9 @@ class FloatLayoutLog(FloatLayout):
 		
 		if self.disabled:
 			return
+		
+		if self.multi_touch_active:
+			return True
 		
 		for child in self.children[:]:
 			
@@ -333,6 +350,8 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def on_touch_up(self, touch):
+
+		was_multi_touch = self.multi_touch_active
 		
 		self._track_touch_up(touch)
 		self.touch_pos = touch.pos
@@ -340,6 +359,12 @@ class FloatLayoutLog(FloatLayout):
 		
 		if self.disabled:
 			return
+		
+		if was_multi_touch:
+			self.held_name = ''
+			self.add_event([self.touch_time, 'Screen', 'Touch Release (Blocked)', 
+				   'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
+			return True
 		
 		for child in self.children[:]:
 			
@@ -796,6 +821,7 @@ class ProtocolBase(Screen):
 		self.elapsed_time = 0
 		self.feedback_start_time = 0
 		self.trial_end_time = 0
+		self.multi_touch_warning_duration = 2.0
 		
 		
 		# Define Class - Clock
@@ -852,6 +878,10 @@ class ProtocolBase(Screen):
 		self.feedback_label = Label(text='', font_size='50sp', markup=True)
 		self.feedback_label.size_hint = (0.7, 0.4)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
+
+		self.multi_touch_label = Label(text='', font_size='50sp', markup=True)
+		self.multi_touch_label.size_hint = (0.7, 0.4)
+		self.multi_touch_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
 
 		# Define Widgets - Hold for Feedback
 		self.feedback = self.feedback_label
@@ -1501,32 +1531,23 @@ class ProtocolBase(Screen):
 		return
 	
 	def multi_touch_warning(self, *args):
+		# Check if multi-touch warning is already on screen to prevent duplicates
+		if self.multi_touch_label in self.protocol_floatlayout.children:
+			return
 		self.protocol_floatlayout.add_text_event('Multi-touch Detected', 'Screen')
-		#
-		if self.feedback_on_screen:
-			if self.feedback_label.text in [self.feedback_dict['return'], self.feedback_dict['abort'], self.feedback_dict['wait']]:
-					# leave feedback as-is
-				Clock.unschedule(self.remove_feedback)
-				return
-			else:
-					# remove any other feedback text
-				Clock.unschedule(self.remove_feedback)
-				self.protocol_floatlayout.remove_widget(self.feedback)
-				self.protocol_floatlayout.add_text_event('Removed', 'Feedback')
-				self.feedback_on_screen = False
+		
+		# Assign multi-touch feedback to the multi_touch_label and display it
+		self.multi_touch_label.text = self.feedback_dict['multi_touch']
+		self.protocol_floatlayout.add_widget(self.multi_touch_label)
 
-		if not self.feedback_on_screen:
-			self.assign_feedback('multi_touch')
+		# Schedule removal of multi-touch feedback after a delay
+		Clock.schedule_once(self.remove_multi_touch_warning, self.multi_touch_warning_duration)
 		
-		# Check if hold button is not on screen and if so, add the hold button
-		if self.hold_button not in self.protocol_floatlayout.children:
-			self.protocol_floatlayout.add_widget(self.hold_button)
-			self.protocol_floatlayout.add_button_event('Displayed', 'Hold Button')
-		
-		# Schedule hold remind for after 5 seconds if not already scheduled
-		if self.hold_remind_event is None:
-			self.schedule_hold_remind(delay=5.0)
-		
+		return
+	
+	def remove_multi_touch_warning(self, *args):
+		self.protocol_floatlayout.remove_widget(self.multi_touch_label)
+		self.protocol_floatlayout.add_text_event('Removed', 'Multi-touch Warning')
 		return
 
 	def hold_remind(self, *args):
