@@ -793,7 +793,7 @@ class ProtocolScreen(ProtocolBase):
 			self.sim_scale_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
 			self.stimdur_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-StimDur-2025-09-18.mp4'
 			self.tar_prob_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CPT-General-2025-09-18.mp4'
-			self.cjb_train_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CJB-Main-26-04-27.mp4'
+			self.cjb_train_video_path = self.lang_folder_path / 'Tutorial_Video' / 'CJB-Main-2026-04-20.mp4'
 
 			if self.cjb_task:
 				start_tutorial_path = self.cjb_train_video_path
