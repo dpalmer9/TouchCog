@@ -1773,10 +1773,6 @@ class ProtocolScreen(ProtocolBase):
 			self.start_stage_screen()
 			return True
 
-		if (hr < self.staircase_hr_criterion) and (far >= self.staircase_far_criterion):
-			self.staircase_flag = -1
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Staircasing', 'Decrease')
-
 		return False
 
 
