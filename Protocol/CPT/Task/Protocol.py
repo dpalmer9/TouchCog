@@ -1723,9 +1723,9 @@ class ProtocolScreen(ProtocolBase):
 		trial_type = self.trial_list[self.trial_index]
 
 		if trial_type == 'Target':
-			trial_record = ('Target', 1 if self.trial_outcome in [1, 5] else 0)
+			trial_record = ('Target', 1 if self.trial_outcome == 1 else 0)
 		elif trial_type == 'Nontarget':
-			trial_record = ('Nontarget', 1 if self.trial_outcome in [3, 6] else 0)
+			trial_record = ('Nontarget', 1 if self.trial_outcome == 3 else 0)
 		else:
 			return
 
@@ -2135,6 +2135,13 @@ class ProtocolScreen(ProtocolBase):
 		# Block limit
 		if (self.current_block_trial > self.block_trial_max) \
 			or ((time.perf_counter() - self.block_start) >= self.block_duration):
+
+			if self.current_stage == 'CJB_Discrimination':
+				self.protocol_floatlayout.add_stage_event('CJB Failed Block End - Restarted CJB Discrimination')
+				self.current_block_trial = 0
+				self.block_start = time.perf_counter()
+				self.trial_contingency()
+				return True
 
 			self.protocol_floatlayout.add_stage_event('Block End')
 			self.hold_button.unbind(on_press=self.iti_start)
