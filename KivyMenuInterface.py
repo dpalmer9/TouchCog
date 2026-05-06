@@ -32,7 +32,7 @@ import zipfile
 from datetime import datetime
 from functools import partial
 
-TOUCHCOG_VERSION = "2.0.0"
+TOUCHCOG_VERSION = "2.0.1"
 
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
