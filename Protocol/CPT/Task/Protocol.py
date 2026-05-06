@@ -346,6 +346,8 @@ class ProtocolScreen(ProtocolBase):
 		self.blur_level = 0
 		self.blur_base = 0
 		self.blur_change = 30
+
+		self.cjb_discrimination_count = 0
 		
 		
 		# Define Variables - String
@@ -1719,6 +1721,18 @@ class ProtocolScreen(ProtocolBase):
 
 		if (self.trial_index < 0) or (self.trial_index >= len(self.trial_list)):
 			return
+		
+		# Create an exit-condition if users take 3x the len of trial_list. Exit will remove CJB_Probe and exit block to next in list
+		if (self.cjb_discrimination_count >= (3 * len(self.trial_list))):
+			self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination Window', len(self.cjb_discrimination_history), 'Trials')
+			self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination Hit Rate', np.nan)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination False Alarm Rate', np.nan)
+			self.protocol_floatlayout.add_stage_event('CJB Discrimination Failed Criteria')
+			self.protocol_floatlayout.add_stage_event('Block End')
+			self.stage_list.remove('CJB_Probe')
+			self.current_block += 1
+			self.start_stage_screen()
+			return
 
 		trial_type = self.trial_list[self.trial_index]
 
@@ -1733,6 +1747,8 @@ class ProtocolScreen(ProtocolBase):
 
 		if len(self.cjb_discrimination_history) > self.cjb_discrimination_trials:
 			self.cjb_discrimination_history.pop(0)
+		
+		self.cjb_discrimination_count += 1
 
 
 	def _run_cjb_discrimination_staircase(self):
