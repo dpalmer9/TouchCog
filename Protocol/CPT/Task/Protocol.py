@@ -285,6 +285,7 @@ class ProtocolScreen(ProtocolBase):
 		self.end_session_active = False
 		self.premature_response_active = False
 		self.block_contingency_active = False
+		self.forced_response = False
 		# Re-check if a CJB task is the first stage in self.stage_list. If so, set self.cjb_task to True
 		self.cjb_task = self.stage_list[0] in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe']
 
@@ -1098,9 +1099,10 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
 
 
-		Clock.schedule_once(self.stimulus_end, self.stimdur_seconds)
+		if not self.forced_response:
+			Clock.schedule_once(self.stimulus_end, self.stimdur_seconds)
 
-		Clock.schedule_once(self.center_notpressed, self.limhold_seconds)
+			Clock.schedule_once(self.center_notpressed, self.limhold_seconds)
 
 
 
@@ -2523,6 +2525,7 @@ class ProtocolScreen(ProtocolBase):
 			self.block_duration = 3*(self.block_trial_max)
 			self.target_probability = 1.0
 			self.cjb_task = True
+			self.forced_response = True
 
 		elif self.current_stage == 'CJB_Discrimination':
 			self.block_trial_max = self.block_trial_max_staircase
@@ -2531,6 +2534,7 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_list = self.trial_list_cjb_discrimination
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			self.cjb_task = True
+			self.forced_response = False
 		
 
 		elif self.current_stage == 'CJB_Probe':
@@ -2540,6 +2544,7 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_list = self.trial_list_cjb_probe
 			self.trial_list = self._constrained_shuffle_cjb(self.trial_list, max_run=self.trial_list_max_run)
 			self.cjb_task = True
+			self.forced_response = False
 
 		elif self.current_stage == 'Training':
 			self.trial_list = ['Target']
@@ -2547,12 +2552,14 @@ class ProtocolScreen(ProtocolBase):
 			self.block_duration = 3*(self.block_trial_max)
 			self.target_probability = 1.0
 			self.cjb_task = False
+			self.forced_response = False
 
 		# Create initial non-target image list
 		elif 'Similarity' in self.current_stage:
 			self.current_nontarget_image_list = self.nontarget_images[self.similarity_index_min:self.similarity_index_max]
 			self.block_trial_max = self.block_trial_max_staircase
 			self.cjb_task = False
+			self.forced_response = False
 
 		# Set starting stimulus duration to mean decision point time (i.e., finger lift from hold button)
 		elif 'StimDur' in self.current_stage:
@@ -2570,6 +2577,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_frames), 'Frames')
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Duration', str(self.stimdur_seconds), 'Seconds')
 			self.cjb_task = False
+			self.forced_response = False
 
 		# Set maximum trial number for flanker probe
 		elif self.current_stage == 'Flanker_Fixed_Probe':
@@ -2583,6 +2591,7 @@ class ProtocolScreen(ProtocolBase):
 
 			self.trial_list_flanker_index_dict = {'non': 0, 'con': 0, 'inc': 0}
 			self.cjb_task = False
+			self.forced_response = False
 
 		# Set parameters for first target probability probe
 		elif self.current_stage == 'TarProb_Fixed_Probe':
@@ -2599,6 +2608,7 @@ class ProtocolScreen(ProtocolBase):
 			for iTrial in range(len(self.trial_list), self.trial_list_length_hilo):
 				self.trial_list.append('Nontarget')
 			self.cjb_task = False
+			self.forced_response = False
 
 		# Set parameters for SART probe
 		elif self.current_stage == 'SART_Fixed_Probe':
@@ -2613,6 +2623,7 @@ class ProtocolScreen(ProtocolBase):
 			for iTrial in range(len(self.trial_list_hilo), self.trial_list_length_hilo):
 				self.trial_list.append('Target')
 			self.cjb_task = False
+			self.forced_response = False
 
 		self.instruction_button.text = 'Press Here to Start'
 		self.center_instr_image.texture = self.image_dict[self.target_image].image.texture
