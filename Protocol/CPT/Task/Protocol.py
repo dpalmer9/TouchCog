@@ -375,6 +375,12 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_image_proportion = 0.35
 		self.instruction_image_proportion = 0.25
 
+		self.cjb_probe_tar_nontar_feedback_prob = 0.5
+		self.cjb_probe_target_feedback_index = 0
+		self.cjb_probe_nontarget_feedback_index = 0
+		self.cjb_target_feedback = True
+		self.cjb_nontarget_feedback = False
+
 	def _set_hold_button_callbacks(self, on_press=None, on_release=None):
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_press=self.premature_resolved)
@@ -498,6 +504,16 @@ class ProtocolScreen(ProtocolBase):
 		cjb_probe_min_neutral_nontar_trials = round((self.cjb_probe_trials * (self.cjb_probe_neutral_prob / 3)))
 		cjb_probe_min_neutral_true_trials = round((self.cjb_probe_trials * (self.cjb_probe_neutral_prob / 3)))
 		self.trial_list_cjb_probe = list()
+		# Create cjb target and non target feedback based on feedback prob
+		self.cjb_probe_target_feedback = list()
+		self.cjb_probe_target_feedback.extend([True] * round(cjb_probe_min_target_trials * self.cjb_probe_tar_nontar_feedback_prob))
+		self.cjb_probe_target_feedback.extend([False] * round(cjb_probe_min_target_trials * (1 - self.cjb_probe_tar_nontar_feedback_prob)))
+		self.cjb_probe_nontarget_feedback = list()
+		self.cjb_probe_nontarget_feedback.extend([True] * round(cjb_probe_min_nontarget_trials * self.cjb_probe_tar_nontar_feedback_prob))
+		self.cjb_probe_nontarget_feedback.extend([False] * round(cjb_probe_min_nontarget_trials * (1 - self.cjb_probe_tar_nontar_feedback_prob)))
+		# use constrained shuffle for each of the feedback lists
+		self.cjb_probe_target_feedback = self.constrained_shuffle(self.cjb_probe_target_feedback, max_run=3)
+		self.cjb_probe_nontarget_feedback = self.constrained_shuffle(self.cjb_probe_nontarget_feedback, max_run=3)
 		for iTrial in range(cjb_probe_min_target_trials):
 			self.trial_list_cjb_probe.append('Target')
 		for iTrial in range(cjb_probe_min_nontarget_trials):
@@ -924,9 +940,9 @@ class ProtocolScreen(ProtocolBase):
 		shuffled_target_nontarget_trials = self.constrained_shuffle(target_nontarget_trials, max_run=max_run)
 		# Use general random shuffle to shuffle the other trials (e.g., neutral trials in CJB probe)
 		random.shuffle(other_trials)
-		# Calculate range of index positions for the shuffled target and nontarget trials (starting after the first 20 trials to ensure no early runs of target/nontarget trials)
+		# Calculate range of index positions for the shuffled target and nontarget trials (starting after the first 10 trials to ensure no early runs of target/nontarget trials)
 		total_trials = len(shuffled_target_nontarget_trials) + len(other_trials)
-		buffer_trials = min(20, max(0, total_trials - len(other_trials)))
+		buffer_trials = min(10, max(0, total_trials - len(other_trials)))
 		# Use random to create a list of index positions to insert the other trials back into the shuffled list
 		insert_positions = sorted(random.sample(range(buffer_trials, total_trials), len(other_trials)))
 		# Create new list to hold the final shuffled trials
@@ -1366,10 +1382,28 @@ class ProtocolScreen(ProtocolBase):
 				self.contingency = 1
 				self.trial_outcome = 1
 				outcome_feedback = 'correct'
+				if self.stage_list[self.stage_index] == 'CJB_Probe':
+					self.cjb_target_feedback = self.cjb_probe_target_feedback[self.cjb_probe_target_feedback_index]
+					self.protocol_floatlayout.add_variable_event('Outcome','CJB Target Feedback', self.cjb_target_feedback)
+					self.cjb_probe_target_feedback_index += 1
+					if not self.cjb_target_feedback:
+						outcome_feedback = ''
+					if self.cjb_probe_target_feedback_index >= len(self.cjb_probe_target_feedback):
+						self.cjb_probe_target_feedback = self.constrained_shuffle(self.cjb_probe_target_feedback, max_run=2)
+						self.cjb_probe_target_feedback_index = 0
 			elif (self.center_image == self.cjb_nontarget_image):
 				self.contingency = 0
 				self.trial_outcome = 3
 				outcome_feedback = 'incorrect'
+				if self.stage_list[self.stage_index] == 'CJB_Probe':
+					self.cjb_nontarget_feedback = self.cjb_probe_nontarget_feedback[self.cjb_probe_nontarget_feedback_index]
+					self.protocol_floatlayout.add_variable_event('Outcome','CJB Nontarget Feedback', self.cjb_nontarget_feedback)
+					self.cjb_probe_nontarget_feedback_index += 1
+					if not self.cjb_nontarget_feedback:
+						outcome_feedback = ''
+					if self.cjb_probe_nontarget_feedback_index >= len(self.cjb_probe_nontarget_feedback):
+						self.cjb_probe_nontarget_feedback = self.constrained_shuffle(self.cjb_probe_nontarget_feedback, max_run=2)
+						self.cjb_probe_nontarget_feedback_index = 0
 			elif (self.center_image in [self.cjb_neutral_target_image, self.cjb_neutral_nontarget_image, self.cjb_neutral_true_image]):
 				self.contingency = 0
 				self.trial_outcome = 8
