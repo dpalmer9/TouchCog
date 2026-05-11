@@ -1326,6 +1326,9 @@ class ProtocolScreen(ProtocolBase):
 						and self.combo_probe_initial_delay_trial_count < 10
 					)
 
+					if (len(self.response_tracking) > 8):
+						self.response_tracking = self.response_tracking[-8:]
+
 					# If two or more 0's present in list, staircase down
 					if (not combo_initial_delay_locked) and self.response_tracking.count(0) >= 2:
 						self.staircase_flag = -1
