@@ -2033,10 +2033,11 @@ class ProtocolScreen(ProtocolBase):
 		self.center_image = random.choice(self.current_nontarget_image_list)
 
 		if 'Similarity_Staircase_Difficulty' in self.stage_list:
-			self.current_similarity = float(self.similarity_data.loc[
+			sim_list = self.similarity_data.loc[
 				self.similarity_data['Nontarget'] == self.center_image
 				, self.target_image
-				].to_numpy())
+				].to_numpy()
+			self.current_similarity = float(sim_list[0]) if len(sim_list) > 0 else np.nan
 
 
 	def _select_flanker_stimulus(self):
