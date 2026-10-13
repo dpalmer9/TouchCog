@@ -1222,7 +1222,11 @@ class ProtocolScreen(ProtocolBase):
 		self.write_trial()
 		
 		self.trial_contingency()
-		
+
+		# trial_contingency may have moved to the results screen or ended the task
+		if self.block_started or getattr(self, 'protocol_ended', False):
+			return
+
 		if self.hold_button_pressed:
 			self.iti_start()
 		else:
