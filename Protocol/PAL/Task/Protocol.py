@@ -599,6 +599,11 @@ class ProtocolScreen(ProtocolBase):
 		self.block_end()
 		return
 
+	def _is_final_block(self):
+		# Mirrors block_contingency: the stage advances once current_block reaches block_multiplier
+		return (self.stage_index >= len(self.stage_list) - 1) \
+			and (self.current_block >= self.block_multiplier)
+
 	def start_stage_screen(self, *args):
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.stage_screen_end)
@@ -614,7 +619,7 @@ class ProtocolScreen(ProtocolBase):
 			hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
 			self.outcome_string = eval(f'f"""{self.outcome_dict.get("acc", "")}"""')
 
-		if self.stage_index < len(self.stage_list):
+		if not self._is_final_block():
 			self.stage_string = eval(f'f"""{self.staging_dict.get("continue", "")}"""')
 
 		else:
@@ -640,7 +645,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_screen_started = False
 
-		if self.stage_index >= (len(self.stage_list)):
+		if self._is_final_block():
 			self.session_event.cancel()
 			self._prepare_stage_continue_button(ends_task=True)
 			self.stage_continue_button.text = 'End Task'
