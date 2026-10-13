@@ -158,8 +158,8 @@ class ProtocolScreen(ProtocolBase):
 		image_index_choice = [0, 1]
 		self.image_index_choice = self.constrained_shuffle(image_index_choice)
 
-		self.target_image_index = image_index_choice[0]
-		self.nontarget_image_index = image_index_choice[1]
+		self.target_image_index = self.image_index_choice[0]
+		self.nontarget_image_index = self.image_index_choice[1]
 
 
 		# Define Boolean
