@@ -443,7 +443,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
 
-		self.stimulus_start_time = time.time()
+		self.stimulus_start_time = time.perf_counter()
 		self.protocol_floatlayout.add_stage_event('State Change')
 		if (self.current_block_trial % 2) != 1 \
 			and self.use_confirmation:
@@ -506,7 +506,7 @@ class ProtocolScreen(ProtocolBase):
 	
 		Clock.unschedule(self.no_response_event)
 
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 
 		self.protocol_floatlayout.add_stage_event('Target Pressed')
@@ -572,7 +572,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.hit_target = 2 ** self.response_level
 
-				self.block_end_time = time.time()
+				self.block_end_time = time.perf_counter()
 
 				self.protocol_floatlayout.add_stage_event('Block End')
 
@@ -645,7 +645,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.current_block != 1:
 			self.protocol_floatlayout.remove_widget(self.reward_image)
 
-		self.block_start_time = time.time()
+		self.block_start_time = time.perf_counter()
 
 		self.hold_button.unbind(on_press=self.start_block)
 		self.hold_button.unbind(on_press=self.iti_start)
