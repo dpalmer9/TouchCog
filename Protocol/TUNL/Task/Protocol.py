@@ -1297,6 +1297,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_block += 1
 						self.results_screen()
+						return
 
 
 				# Else, check for staircasing
@@ -1382,6 +1383,7 @@ class ProtocolScreen(ProtocolBase):
 
 									self.current_block += 1
 									self.results_screen()
+									return
 
 
 						# Else, if delay probe, check staircasing
