@@ -1133,7 +1133,7 @@ class ProtocolBase(Screen):
 		if not stim_feedback_correct_str.endswith('.png'):
 			if stim_feedback_correct_color != '':
 				color_text = '[color=%s]' % stim_feedback_correct_color
-			stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
+				stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
 		
 		self.feedback_dict['correct'] = stim_feedback_correct_str
 		
@@ -1143,7 +1143,7 @@ class ProtocolBase(Screen):
 		if not stim_feedback_incorrect_str.endswith('.png'):
 			if stim_feedback_incorrect_color != '':
 				color_text = '[color=%s]' % stim_feedback_incorrect_color
-			stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
+				stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
 		
 		self.feedback_dict['incorrect'] = stim_feedback_incorrect_str
 		
