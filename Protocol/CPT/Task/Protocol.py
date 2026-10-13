@@ -1117,8 +1117,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.add_widget(self.img_stimulus_R)
             
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 
 
 		if not self.forced_response:
@@ -1168,9 +1168,9 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 
 
 
@@ -1356,8 +1356,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 		
 		self.stimulus_on_screen = False
 		self.limhold_started = False
@@ -1505,8 +1505,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 		
 		self.stimulus_on_screen = False
 		self.limhold_started = False
