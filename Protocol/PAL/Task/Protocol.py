@@ -493,8 +493,15 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.start_clock()
 		self._reset_tutorial_continue_button()
-		self.trigger_tutorial_screen()
-	
+		if self.tutorial_video is not None:
+			self.trigger_tutorial_screen()
+		else:
+			# No tutorial videos downloaded: fall back to text instructions like PRL
+			self.protocol_floatlayout.clear_widgets()
+			self.present_instructions()
+			self.start_button.unbind(on_press=self.start_protocol)
+			self.start_button.bind(on_press=self.start_protocol_from_tutorial)
+
 
 
 	# Protocol Staging	
@@ -1222,7 +1229,8 @@ class ProtocolScreen(ProtocolBase):
 				self._bind_instruction_button(self.section_start)
 
 				if self.current_stage == 'Recall':
-					self.tutorial_video.state = 'stop'
+					if self.tutorial_video is not None:
+						self.tutorial_video.state = 'stop'
 					self._bind_instruction_button(self.start_recall_target_screen)
 					self.instruction_button.text = self.image_recall_button_str
 					
