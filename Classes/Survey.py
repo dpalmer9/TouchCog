@@ -15,6 +15,7 @@ from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Line, Color, Ellipse
 from kivy.core.window import Window
 from kivy.metrics import dp
+import datetime
 import pandas as pd
 import json
 import configparser
@@ -693,7 +694,13 @@ class SurveyBase(Screen):
             self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
         folder_path = pathlib.Path(self.data_folder, self.participant_id)
         folder_path.mkdir(parents=True, exist_ok=True)
-        self.app.survey_data_path = str(folder_path / f"{self.name}.csv")
+        # Date + index like task files so repeat sessions do not overwrite earlier responses
+        file_index = 1
+        survey_path = folder_path / f"{self.participant_id}_{self.name}_{datetime.date.today()}_{file_index}.csv"
+        while survey_path.exists():
+            file_index += 1
+            survey_path = folder_path / f"{self.participant_id}_{self.name}_{datetime.date.today()}_{file_index}.csv"
+        self.app.survey_data_path = str(survey_path)
         self.main_layout.clear_widgets()
         
         # Start with question_index at -1 so advance_survey will move to 0
