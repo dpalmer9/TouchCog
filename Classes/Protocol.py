@@ -171,6 +171,15 @@ class FloatLayoutLog(FloatLayout):
 		self.active_touches = set()
 		self.multi_touch_active = False
 
+		# Stop any previous writer and give this layout its own queue, so events
+		# logged after a prior task ended cannot leak into this task's data.
+		previous_thread = getattr(self.app, 'event_writer_thread', None)
+		if previous_thread is not None and previous_thread.is_alive():
+			self.app.event_queue.put(None)
+			previous_thread.join(timeout=1.0)
+		self.event_queue = queue.Queue()
+		self.app.event_queue = self.event_queue
+
 		self._event_writer_thread = threading.Thread(target=self.event_writer, daemon=True)
 		self._event_writer_thread.start()
 		self.app.event_writer_thread = self._event_writer_thread
@@ -178,7 +187,7 @@ class FloatLayoutLog(FloatLayout):
 	def event_writer(self):
 		while True:
 			try:
-				event_row = self.app.event_queue.get()
+				event_row = self.event_queue.get()
 				if event_row is None: # Sentinel to stop the thread
 					break
 				self.app.event_list.append(event_row)
@@ -425,7 +434,7 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					new_row[self.app.event_columns[iCol]] = str(row[iCol])
 
-		self.app.event_queue.put(new_row)
+		self.event_queue.put(new_row)
 
 	def add_stage_event(self, stage_name):
 		self.add_event([
