@@ -1513,7 +1513,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Cue Position', self.cue_image.pos_hint)
 
 			# Variable change: Target Position
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Position', self.cue_image.pos_hint)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Position', self.target_image.pos_hint)
 
 			self.trial_end_time = time.perf_counter()
 		
