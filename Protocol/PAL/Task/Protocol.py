@@ -346,14 +346,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.load_images(self.total_image_list)
 
-		# Define Widgets - Images
-
-		self.recall_stimulus = ImageButton(
-			source = str(self.mask_image_path)
-			, size_hint = [0.3 * self.width_adjust, 0.3 * self.height_adjust]
-			, pos_hint = {"center_x": 0.5, "center_y": 0.85}
-			)
-		
 		self.hold_button.source = str(self.hold_image_path)
 		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
