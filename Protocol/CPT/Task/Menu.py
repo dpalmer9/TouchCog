@@ -91,7 +91,7 @@ class ConfigureScreen(MenuBase):
             sim_config = self.parameters_config.getboolean('similarity_difficulty')
 
         # Choose initial options based on the checkbox (default True if not found)
-        if (sim_checkbox is None and sim_config) or (sim_checkbox.active):
+        if (sim_checkbox is None and sim_config) or (sim_checkbox is not None and sim_checkbox.active):
             init_options = self.image_set_similarity_targets
         else:
             init_options = self.image_set_standard
