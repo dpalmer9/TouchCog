@@ -1081,7 +1081,6 @@ class ProtocolBattery(Screen):
 		self.app = App.get_running_app()
 
 		self.protocol_battery_layout = FloatLayout()
-		self.protocol_configure_screen = MenuBase()
 		self.name = 'protocolbattery'
 		self.app.active_screen = self.name
 		
