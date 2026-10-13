@@ -7,6 +7,7 @@ import pathlib
 import random
 import statistics
 import time
+import traceback
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
@@ -1516,9 +1517,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 			
 			print('Error; program terminated.')
+			traceback.print_exc()
 			self.protocol_end()
 
 
@@ -1710,9 +1712,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 			
 			print('Error; program terminated.')
+			traceback.print_exc()
 			self.protocol_end()
 		finally:
 			self.block_contingency_active = False
