@@ -1767,7 +1767,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination False Alarm Rate', np.nan)
 			self.protocol_floatlayout.add_stage_event('CJB Discrimination Failed Criteria')
 			self.protocol_floatlayout.add_stage_event('Block End')
-			self.stage_list.remove('CJB_Probe')
+			if 'CJB_Probe' in self.stage_list:
+				self.stage_list.remove('CJB_Probe')
 			self.current_block += 1
 			self.start_stage_screen()
 			return
