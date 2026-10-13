@@ -2677,7 +2677,7 @@ class ProtocolScreen(ProtocolBase):
 			for iTrial in range(round((self.trial_list_length_hilo * self.target_probability))):
 				self.trial_list.append('Nontarget')
 
-			for iTrial in range(len(self.trial_list_hilo), self.trial_list_length_hilo):
+			for iTrial in range(len(self.trial_list), self.trial_list_length_hilo):
 				self.trial_list.append('Target')
 			self.cjb_task = False
 			self.forced_response = False
