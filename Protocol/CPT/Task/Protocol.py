@@ -2174,7 +2174,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Session limit
 		if (self.current_trial > self.session_trial_max) \
-			or ((time.perf_counter() - self.start_time) >= self.session_length_max):
+			or ((time.perf_counter() - self.start_time) >= self.session_duration):
 
 			self.protocol_floatlayout.add_stage_event('Session End')
 			self.hold_button.unbind(on_release=self.stimulus_response)
