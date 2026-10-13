@@ -1492,12 +1492,7 @@ class ProtocolBase(Screen):
 			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
 			if hasattr(self.app, 'queue_dataframe_write'):
 				self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
-		if self.app.session_event_path:
-			self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-			if not self.app.session_event_data.empty:
-				self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-			if hasattr(self.app, 'queue_dataframe_write'):
-				self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
+		# write_data() rewrites the sorted event file once
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
