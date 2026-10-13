@@ -340,7 +340,7 @@ class ProtocolScreen(ProtocolBase):
 			self.target_image_list_pa = self._pick_target_images(
 				self.image_set_recall, self.image_set_recall_list, stimulus_image_list, self.num_stimuli_pa)
 
-		self.total_image_list = self.stimulus_image_path_list
+		self.total_image_list = list(self.stimulus_image_path_list)
 
 		self.total_image_list += [self.hold_image_path, self.mask_image_path, self.outline_image_path, self.training_image_path]
 

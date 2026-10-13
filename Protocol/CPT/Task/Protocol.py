@@ -643,7 +643,7 @@ class ProtocolScreen(ProtocolBase):
 				self.current_nontarget_image_list = self.nontarget_images
 	
 
-		total_image_list = self.stimulus_image_path_list
+		total_image_list = list(self.stimulus_image_path_list)
 
 		# CJB Image Preparation
 		if 'CJB_Training' in self.stage_list or 'CJB_Discrimination' in self.stage_list or 'CJB_Probe' in self.stage_list:
