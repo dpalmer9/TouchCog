@@ -646,13 +646,16 @@ class ProtocolScreen(ProtocolBase):
 
 				if (time.perf_counter() - self.block_start >= self.block_duration) \
 					or (self.current_block_trial >= self.block_trial_max):
-					
+
+					# block_contingency sets up the next trial itself
 					self.block_contingency()
+					return
 
 				elif (self.current_stage == 'Training') \
 					and (sum(self.response_tracking) >= self.training_block_max_correct):
-					
+
 					self.block_contingency()
+					return
 
 			# Set next trial parameters
 			
@@ -687,6 +690,7 @@ class ProtocolScreen(ProtocolBase):
 
 				if self.current_reversal > self.max_reversals:
 					self.block_contingency()
+					return
 
 				else:
 					self.target_loc_index += 1
