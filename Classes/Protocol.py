@@ -1614,8 +1614,10 @@ class ProtocolBase(Screen):
 			self.protocol_floatlayout.add_stage_event('ITI Start')
 
 			Clock.schedule_once(self.iti_end, self.iti_length)
-			if (time.perf_counter() - self.start_iti) > (time.perf_counter() - self.feedback_start_time) and self.feedback_on_screen:
-				Clock.schedule_once(self.remove_feedback, self.feedback_length - (time.perf_counter() - self.feedback_start_time))
+			if self.feedback_on_screen:
+				# Remove feedback once it has been shown for feedback_length in total
+				feedback_elapsed = time.perf_counter() - self.feedback_start_time
+				Clock.schedule_once(self.remove_feedback, max(0, self.feedback_length - feedback_elapsed))
 			else:
 				Clock.schedule_once(self.remove_feedback, self.feedback_length)			
 			return
