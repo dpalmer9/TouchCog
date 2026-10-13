@@ -1301,6 +1301,9 @@ class ProtocolBase(Screen):
 		else:
 			# Check if duration is already available (it should be, since we preloaded), otherwise wait briefly
 			if self.tutorial_video.duration is None:
+				# Re-read metadata; duration is only set once in PreloadedVideo.__init__
+				if self.tutorial_video.player is not None:
+					self.tutorial_video.duration = self.tutorial_video.player.get_metadata().get('duration')
 				# Wait briefly to allow the video to load and update its duration
 				Clock.schedule_once(self.present_tutorial_video, 0.1)
 				return
