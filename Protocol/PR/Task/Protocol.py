@@ -356,7 +356,7 @@ class ProtocolScreen(ProtocolBase):
 
 		x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
-		y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+		y_move = float(np.sqrt(max(self.main_move**2 - x_move**2, 0)))
 		y_pos = self.hold_button.pos_hint['center_y'] + y_move
 
 		while (y_pos < min(self.y_boundaries)) \
@@ -372,7 +372,7 @@ class ProtocolScreen(ProtocolBase):
 
 			x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
-			y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+			y_move = float(np.sqrt(max(self.main_move**2 - x_move**2, 0)))
 			y_pos = self.hold_button.pos_hint['center_y'] + y_move
 		
 		stimulus_pos = {'center_x': x_pos, 'center_y': y_pos}
