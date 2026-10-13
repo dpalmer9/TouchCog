@@ -121,9 +121,9 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.participant_id = parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 		
 		self.iti_fixed_or_range = parameters_dict.get('iti_fixed_or_range', 'range')
 
@@ -171,8 +171,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
-		self.display_stimulus_outline = int(parameters_dict.get('display_stimulus_outline', 'True'))
-		self.mask_during_limhold = int(parameters_dict.get('mask_during_limhold', 'True'))
+		self.display_stimulus_outline = int(self._safe_get_bool('display_stimulus_outline', True))
+		self.mask_during_limhold = int(self._safe_get_bool('mask_during_limhold', True))
 		self.limhold_mask_type = parameters_dict.get('limhold_mask_type', 'noise')
 
 		self.staircase_hr_criterion = float(parameters_dict.get('staircase_hit_rate_criterion', '0.80'))
@@ -200,41 +200,41 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 
-		if parameters_dict.get('cjb_training_task', 'False'):
+		if self._safe_get_bool('cjb_training_task', False):
 			self.stage_list.append('CJB_Training')
-		
-		if parameters_dict.get('cjb_discrimination_task', 'False'):
+
+		if self._safe_get_bool('cjb_discrimination_task', False):
 			self.stage_list.append('CJB_Discrimination')
-		
-		if parameters_dict.get('cjb_probe_task', 'False'):
+
+		if self._safe_get_bool('cjb_probe_task', False):
 			self.stage_list.append('CJB_Probe')
 
 		# Check if one of the CJB tasks was appended to stage list. If so, set self.cjb_task to True
 		self.cjb_task = any(stage in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe'] for stage in self.stage_list)
 		
-		if parameters_dict.get('training_task', 'True'):
+		if self._safe_get_bool('training_task', True):
 			self.stage_list.append('Training')
 
 		# if parameters_dict['limhold_difficulty']:
 		# 	self.stage_list.append('LimHold_Staircase_Difficulty')
 
-		if parameters_dict.get('similarity_difficulty', 'True'):
+		if self._safe_get_bool('similarity_difficulty', True):
 			self.stage_list.append('Similarity_Staircase_Difficulty')
 			self.stimulus_family = 'Fb'
-		
+
 		else:
 			self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
-		if parameters_dict.get('stimdur_probe', 'True'):
+		if self._safe_get_bool('stimdur_probe', True):
 			self.stage_list.append('StimDur_Staircase_Probe')
 
-		if parameters_dict.get('flanker_probe', 'True'):
+		if self._safe_get_bool('flanker_probe', True):
 			self.stage_list.append('Flanker_Fixed_Probe')
 
-		if parameters_dict.get('tarprob_probe', 'True'):
+		if self._safe_get_bool('tarprob_probe', True):
 			self.stage_list.append('TarProb_Fixed_Probe')
 
-		if parameters_dict.get('sart_probe', 'False'):
+		if self._safe_get_bool('sart_probe', False):
 			self.stage_list.append('SART_Fixed_Probe')
 
 		self.image_set = parameters_dict.get('image_set', 'rand')
