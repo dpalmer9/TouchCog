@@ -27,6 +27,7 @@ import pandas as pd
 import json
 import signal
 import threading
+import time
 import urllib.request
 import zipfile
 from datetime import datetime
@@ -1611,6 +1612,19 @@ class MenuApp(App):
 		except Exception:
 			pass
 
+	def _run_file_job(self, job, path):
+		action = job.get('action')
+		if action == 'write_header':
+			with open(path, 'w', newline='', encoding='utf-8') as output_file:
+				writer = csv.writer(output_file)
+				writer.writerow(job['columns'])
+		elif action == 'append_row':
+			with open(path, 'a', newline='', encoding='utf-8') as output_file:
+				writer = csv.writer(output_file)
+				writer.writerow(job['row'])
+		elif action == 'write_dataframe':
+			job['dataframe'].to_csv(path, index=job.get('index', False))
+
 	def _file_io_worker(self):
 		while True:
 			job = self.file_io_queue.get()
@@ -1618,19 +1632,28 @@ class MenuApp(App):
 				if job is None:
 					return
 
-				action = job.get('action')
-				if action == 'write_header':
-					with open(job['path'], 'w', newline='', encoding='utf-8') as output_file:
-						writer = csv.writer(output_file)
-						writer.writerow(job['columns'])
-				elif action == 'append_row':
-					with open(job['path'], 'a', newline='', encoding='utf-8') as output_file:
-						writer = csv.writer(output_file)
-						writer.writerow(job['row'])
-				elif action == 'write_dataframe':
-					job['dataframe'].to_csv(job['path'], index=job.get('index', False))
-			except (FileNotFoundError, OSError):
-				pass
+				# Retry briefly (e.g. file locked by Excel/OneDrive), then fall back to a
+				# sibling '_unsaved' file so trial data is never silently dropped.
+				last_error = None
+				for attempt in range(3):
+					try:
+						self._run_file_job(job, job['path'])
+						last_error = None
+						break
+					except OSError as e:
+						last_error = e
+						time.sleep(0.5)
+
+				if last_error is not None:
+					original_path = pathlib.Path(job['path'])
+					fallback_path = original_path.with_name(original_path.stem + '_unsaved' + original_path.suffix)
+					print(f"WARNING: Could not write {original_path} ({last_error}); writing to {fallback_path}")
+					try:
+						self._run_file_job(job, fallback_path)
+					except OSError as e:
+						print(f"ERROR: Could not write fallback file {fallback_path}: {e}")
+			except Exception as e:
+				print(f"ERROR: File write job failed: {e}")
 			finally:
 				self.file_io_queue.task_done()
 
