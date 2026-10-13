@@ -327,7 +327,8 @@ class MenuBase(Screen):
 		
 		def lazy_import(protocol):
 			working = self.app.app_root / 'Protocol' / protocol / 'Task' / 'Protocol.py'
-			mod_name = 'Protocol'
+			# Unique name so the top-level 'Protocol' package entry is not overwritten
+			mod_name = f'{protocol}.Protocol'
 			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
 			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
 			mod_spec.loader = mod_loader
