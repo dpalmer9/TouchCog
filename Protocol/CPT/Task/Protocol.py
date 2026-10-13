@@ -895,7 +895,7 @@ class ProtocolScreen(ProtocolBase):
 		# Instruction - Text Widget
 		self.section_instr_string = ''
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.58, 0.7}
+		self.section_instr_label.size_hint = (0.58, 0.7)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.35}
 		
 		# Instruction - Button Widget

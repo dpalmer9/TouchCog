@@ -470,11 +470,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.section_instr_string = self.instruction_label.text
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.9, 0.8}
+		self.section_instr_label.size_hint = (0.9, 0.8)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		self.stage_results_label = Label(text='', font_size='44sp', markup=True)
-		self.stage_results_label.size_hint = {0.9, 0.8}
+		self.stage_results_label.size_hint = (0.9, 0.8)
 		self.stage_results_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		

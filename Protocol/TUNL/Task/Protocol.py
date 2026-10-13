@@ -484,7 +484,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.section_instr_string = self.instruction_label.text
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.size_hint = (0.8, 0.5)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		# Instruction - Button Widget
@@ -778,7 +778,7 @@ class ProtocolScreen(ProtocolBase):
 			self._bind_instruction_button(self.end_task_pressed)
 			self.instruction_button.text = self.end_task_str
 
-		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.size_hint = (0.8, 0.5)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 
 		self.instruction_button.size_hint = self.text_button_size
