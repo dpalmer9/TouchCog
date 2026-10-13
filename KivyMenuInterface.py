@@ -365,6 +365,7 @@ class LanguageMenu(Screen):
 		self.manifest_path = 'https://touchscreencognition.org/uploads/manifest.json'
 
 		self.language_list = list()
+		self._manifest = None
 
 		# Prefer to load the available language names from the manifest first
 		# (manifest format contains a list of dicts under key 'languages').
@@ -372,6 +373,7 @@ class LanguageMenu(Screen):
 		# manifest is unavailable or doesn't supply any languages.
 		try:
 			manifest = self._fetch_manifest()
+			self._manifest = manifest
 			if isinstance(manifest, dict):
 				for lang_block in manifest.get('languages', []):
 					if isinstance(lang_block, dict):
@@ -424,8 +426,8 @@ class LanguageMenu(Screen):
 			self.manager.current = 'mainmenu'
 			return
 
-		# Fetch manifest (from web then fallback to local file)
-		manifest = self._fetch_manifest()
+		# Reuse the manifest fetched in __init__; only re-fetch if that failed
+		manifest = self._manifest if self._manifest is not None else self._fetch_manifest()
 		if manifest is None:
 			# Couldn't load manifest; proceed to main menu
 			self.app.language = self.config['language']['language']
