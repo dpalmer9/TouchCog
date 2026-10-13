@@ -271,7 +271,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
-		self.stimulus_mask_on_screen = True
+		self.stimulus_mask_on_screen = False
 		self.training_complete = False
 		self.premature_override = True
 		self.stage_screen_started = False
@@ -761,6 +761,9 @@ class ProtocolScreen(ProtocolBase):
 
 			if self.limhold_mask_type == 'noise':
 				self.stimulus_mask_path = str(self.noise_mask_paths[-1])
+			else:
+				# Only noise masks are implemented; fall back to the plain mask image
+				self.stimulus_mask_path = str(self.mask_image_path)
 
 			self.img_stimulus_C_mask = ImageButton(source=self.stimulus_mask_path)
 			self.img_stimulus_C_mask.size_hint = self.stimulus_mask_size
