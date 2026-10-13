@@ -1050,7 +1050,7 @@ class ProtocolBase(Screen):
 				image_name = str(image_file.stem)
 			
 			elif pathlib.Path(self.image_folder, str(image_file) + '.png').exists():
-				load_image = Loader.image((str(self.image_folder) + str(image_file) + '.png'))
+				load_image = Loader.image(str(self.image_folder / (str(image_file) + '.png')))
 				image_name = str(image_file)
 
 			else:
