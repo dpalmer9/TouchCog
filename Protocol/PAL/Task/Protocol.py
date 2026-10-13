@@ -104,11 +104,11 @@ class ProtocolScreen(ProtocolBase):
 
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 		
-		self.use_correction_trials = self.parameters_dict.get('correction_trials', 'True')
+		self.use_correction_trials = self._safe_get_bool('correction_trials', True)
 		
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
@@ -149,16 +149,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 		
-		if self.parameters_dict.get('training_task', 'False'):
+		if self._safe_get_bool('training_task', False):
 			self.stage_list.append('Training')
 		
-		if self.parameters_dict.get('dpal_probe', 'True'):
+		if self._safe_get_bool('dpal_probe', True):
 			self.stage_list.append('dPAL')
 		
-		if self.parameters_dict.get('spal_probe', 'True'):
+		if self._safe_get_bool('spal_probe', True):
 			self.stage_list.append('sPAL')
 		
-		if self.parameters_dict.get('recall_probe', 'True'):
+		if self._safe_get_bool('recall_probe', True):
 			self.stage_list.append('Recall')
 
 	def _load_task_variables(self):

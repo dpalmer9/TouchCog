@@ -87,9 +87,9 @@ class ProtocolScreen(ProtocolBase):
 
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
@@ -123,7 +123,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 
-		if self.parameters_dict.get('training_task', 'False'):
+		if self._safe_get_bool('training_task', False):
 			self.stage_list.append('Training')
 
 		self.stage_list.append('Test')

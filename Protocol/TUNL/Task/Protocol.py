@@ -98,7 +98,7 @@ class ProtocolScreen(ProtocolBase):
 	
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 		self.tutorial_video_duration = float(self.parameters_dict.get('tutorial_video_duration', '68.5'))
 
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
@@ -158,7 +158,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 
-		if self.parameters_dict.get('training_block', 'True'):
+		if self._safe_get_bool('training_block', True):
 			self.stage_list.append('Train')
 		
 		# if self.parameters_dict['space_probe']:
@@ -170,10 +170,10 @@ class ProtocolScreen(ProtocolBase):
 		# if len(self.stage_list) > 1:
 		# 	self.stage_list = self.constrained_shuffle(self.stage_list)
 
-		if self.parameters_dict.get('combined_probe', 'True'):
+		if self._safe_get_bool('combined_probe', True):
 			self.stage_list.append('Combo')
 
-		if self.parameters_dict.get('delay_probe', 'True'):
+		if self._safe_get_bool('delay_probe', True):
 			self.stage_list.append('Delay')
 
 
