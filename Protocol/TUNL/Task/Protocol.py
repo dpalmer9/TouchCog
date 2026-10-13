@@ -502,22 +502,6 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label.size_hint = (0.7, 0.3)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
 
-
-		# Instruction - Dictionary
-		
-		self.instruction_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Instructions.ini')
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		self.instruction_dict['Train'] = {}
-		self.instruction_dict['Combo'] = {}
-		self.instruction_dict['Delay'] = {}
-		
-		for stage in self.stage_list:
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']		
 	
 	# Initialization Functions
 	
