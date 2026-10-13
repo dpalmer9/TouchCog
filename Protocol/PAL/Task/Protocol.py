@@ -921,7 +921,9 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
 					self.start_stage_screen()
-				
+					# block_contingency sets up the next trial after the stage screen
+					return
+
 				elif (self.current_stage == 'Training') \
 					and (sum(self.response_tracking) >= self.training_block_max_correct):
 
@@ -930,8 +932,9 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
 					self.hold_button.bind(on_release=self.premature_response)
-					
+
 					self.block_contingency()
+					return
 
 				# elif (len(self.response_tracking) > 10) \
 				# 	and (sum(self.response_tracking[-10:]) >= 6) \
