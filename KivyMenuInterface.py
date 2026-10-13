@@ -1322,6 +1322,8 @@ class ProtocolBattery(Screen):
 		self.app.battery_configs = {}
 		self.app.battery_task_types = {}
 		self.app.battery_required_fields = {}
+		# Manual batteries have no upfront participant ID; clear any from a previous preset battery
+		self.app.participant_id = None
 
 		if self.app.battery_active:
 			# For manual batteries we must detect whether each selected protocol is

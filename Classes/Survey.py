@@ -688,7 +688,8 @@ class SurveyBase(Screen):
         self.end_survey()
 
     def run_survey(self, *args):
-        if not self.app.battery_active:
+        # Entry is only on screen when no battery participant ID was available
+        if self.participant_id_entry.parent is not None:
             self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
         folder_path = pathlib.Path(self.data_folder, self.participant_id)
         folder_path.mkdir(parents=True, exist_ok=True)
@@ -721,10 +722,12 @@ class SurveyBase(Screen):
         self.main_layout.clear_widgets()
         self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_label, 0.18))
         self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_description, 0.42))
-        if not self.app.battery_active:
-            self.main_layout.add_widget(self.participant_id_entry)
+        # Manual batteries collect IDs per task, so app.participant_id may be unset
+        battery_id = getattr(self.app, 'participant_id', None) if self.app.battery_active else None
+        if battery_id:
+            self.participant_id = battery_id
         else:
-            self.participant_id = self.app.participant_id
+            self.main_layout.add_widget(self.participant_id_entry)
         self.main_layout.add_widget(self.survey_button)
         self.survey_button.bind(on_press=self.run_survey)
 
