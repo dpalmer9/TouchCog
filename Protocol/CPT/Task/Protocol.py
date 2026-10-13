@@ -1847,7 +1847,7 @@ class ProtocolScreen(ProtocolBase):
 			].tolist()
 
 		if len(base_nontarget_image_list) < self.similarity_index_range:
-			base_nontarget_image_list = self.similarity_data.loc[0:(self.similarity_index_range - 1), 'Nontarget']
+			base_nontarget_image_list = self.similarity_data['Nontarget'].iloc[:self.similarity_index_range].tolist()
 
 		self.current_nontarget_image_list = base_nontarget_image_list[-self.similarity_index_range:]
 
@@ -2221,7 +2221,7 @@ class ProtocolScreen(ProtocolBase):
 					].tolist()
 
 				if len(base_nontarget_image_list) < self.similarity_index_range:
-					base_nontarget_image_list = self.similarity_data.loc[0:(self.similarity_index_range - 1), 'Nontarget']
+					base_nontarget_image_list = self.similarity_data['Nontarget'].iloc[:self.similarity_index_range].tolist()
 
 				self.current_nontarget_image_list = base_nontarget_image_list[-self.similarity_index_range:]
 
