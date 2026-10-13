@@ -404,7 +404,6 @@ class ProtocolScreen(ProtocolBase):
 		self.generate_output_files()
 		self.metadata_output_generation()
 
-		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
 		self.block_contingency()
 
 
@@ -430,6 +429,11 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
 
+	def _arm_no_response_timer(self):
+		# End the task after timeout_duration without a response; re-armed at each wait point
+		self.no_response_event.cancel()
+		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
+
 	def stimulus_presentation(self, *args): # Stimulus presentation
 		self.response_recorded = False
 		self.awaiting_restart = False
@@ -454,7 +458,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimulus_on_screen = True
 
-		Clock.schedule_once(self.no_response_event, self.timeout_duration)
+		self._arm_no_response_timer()
 	
 				
 	
@@ -682,6 +686,8 @@ class ProtocolScreen(ProtocolBase):
 				return
 			
 			else:
+
+				self._arm_no_response_timer()
 
 				if self.current_block == 1:
 					self.hold_button.bind(on_press=self.start_block)
