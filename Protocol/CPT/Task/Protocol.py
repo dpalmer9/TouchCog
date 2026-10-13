@@ -1727,7 +1727,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.trial_outcome == 1:
 			self.hit_tracking.append(1)
 			self.total_hit_tracking.append(1)
-			if self.response_latency != np.nan:
+			if not np.isnan(self.response_latency):
 				self.decision_point_tracking.append(self.response_latency)
 
 		elif self.trial_outcome == 2:
