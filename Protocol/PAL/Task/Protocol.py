@@ -284,6 +284,18 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_pa = [i % self.num_stimuli_pa for i in range(self.recall_trial_max)]
 		self.trial_list_index = 0
 
+	def _pick_target_images(self, set_name, image_set_list, available_images, count):
+		# Use the named set's images that exist on disk, then top up randomly so selection
+		# never stalls when the set is unknown or smaller than count ('rand' is all random)
+		chosen = list()
+		if set_name != 'rand':
+			for image_set in image_set_list:
+				if image_set['name'] == set_name:
+					chosen = [img for img in image_set['images'] if img in available_images][:count]
+		remaining = [img for img in available_images if img not in chosen]
+		chosen += random.sample(remaining, count - len(chosen))
+		return chosen
+
 	def _setup_image_widgets(self):
 		# Define Widgets - Image Paths
 
@@ -310,21 +322,8 @@ class ProtocolScreen(ProtocolBase):
 			if self.num_stimuli_pal > len(stimulus_image_list):
 				self.num_stimuli_pal = len(stimulus_image_list)
 			
-			self.target_image_list_pal = list()
-
-			if self.image_set_dspal == 'rand':
-
-				while len(self.target_image_list_pal) < self.num_stimuli_pal:
-					new_target = random.choice(stimulus_image_list)
-					self.target_image_list_pal.append(new_target)
-					stimulus_image_list.remove(new_target)
-			else:
-				for image_set in self.image_set_dspal_list:
-					if image_set['name'] == self.image_set_dspal:
-						while len(self.target_image_list_pal) < self.num_stimuli_pal:
-							for img in image_set['images']:
-								if img in stimulus_image_list and len(self.target_image_list_pal) < self.num_stimuli_pal:
-									self.target_image_list_pal.append(img)
+			self.target_image_list_pal = self._pick_target_images(
+				self.image_set_dspal, self.image_set_dspal_list, stimulus_image_list, self.num_stimuli_pal)
 
 
 		if 'Recall' in self.stage_list:
@@ -338,21 +337,8 @@ class ProtocolScreen(ProtocolBase):
 			if self.num_stimuli_pa > len(stimulus_image_list):
 				self.num_stimuli_pa = len(stimulus_image_list)
 			
-			self.target_image_list_pa = list()
-
-			if self.image_set_recall == 'rand':
-
-				while len(self.target_image_list_pa) < self.num_stimuli_pa:
-					new_target = random.choice(stimulus_image_list)
-					self.target_image_list_pa.append(new_target)
-					stimulus_image_list.remove(new_target)
-			else:
-				for image_set in self.image_set_recall_list:
-					if image_set['name'] == self.image_set_recall:
-						while len(self.target_image_list_pa) < self.num_stimuli_pa:
-							for img in image_set['images']:
-								if img in stimulus_image_list and len(self.target_image_list_pa) < self.num_stimuli_pa:
-									self.target_image_list_pa.append(img)
+			self.target_image_list_pa = self._pick_target_images(
+				self.image_set_recall, self.image_set_recall_list, stimulus_image_list, self.num_stimuli_pa)
 
 		self.total_image_list = self.stimulus_image_path_list
 
