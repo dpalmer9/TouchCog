@@ -184,10 +184,6 @@ class ProtocolScreen(ProtocolBase):
 		self.stimdur_frame_min = float(parameters_dict.get('stimdur_min_frames', '2'))
 		self.stimdur_seconds_max = float(parameters_dict.get('stimdur_max_seconds', '2.00'))
 
-		self.image_set = parameters_dict.get('image_set', 'rand')
-		if self.image_set == None:
-			self.image_set = 'rand'
-
 		self.cjb_image_set = parameters_dict.get('cjb_image_set', 'cjb_set1')
 		if self.cjb_image_set == None:
 			self.cjb_image_set = 'cjb_set1'
@@ -237,11 +233,16 @@ class ProtocolScreen(ProtocolBase):
 		if self._safe_get_bool('sart_probe', False):
 			self.stage_list.append('SART_Fixed_Probe')
 
-		self.image_set = parameters_dict.get('image_set', 'rand')
-		if self.image_set == None and 'Similarity_Staircase_Difficulty' not in self.stage_list:
+		# Image set: similarity stage expects an Fb2_* target ('set7'/'rand' = random);
+		# standard stages expect a name from image_set_list or 'rand'.
+		self.image_set = parameters_dict.get('image_set', None)
+		if 'Similarity_Staircase_Difficulty' in self.stage_list:
+			if self.image_set in ('set7', 'rand'):
+				self.image_set = 'rand'
+			elif not (isinstance(self.image_set, str) and self.image_set.startswith('Fb2_')):
+				self.image_set = 'Fb2_1132'
+		elif self.image_set not in [image_set['name'] for image_set in self.image_set_list] + ['rand']:
 			self.image_set = 'set1'
-		else:
-			self.image_set = 'Fb2_1132'
 	
 	def _load_task_variables(self):
 		# Set images
