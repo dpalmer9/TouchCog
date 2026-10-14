@@ -1,0 +1,612 @@
+{
+  "training": [
+    {
+      "id": "t01",
+      "type": "neutral",
+      "words": [
+        "apple",
+        "under",
+        "the",
+        "red",
+        "tasted",
+        "sweet"
+      ],
+      "solutions": {
+        "neutral": [
+          "the red apple tasted sweet"
+        ]
+      }
+    },
+    {
+      "id": "t02",
+      "type": "neutral",
+      "words": [
+        "drove",
+        "the",
+        "car",
+        "cup",
+        "away",
+        "blue"
+      ],
+      "solutions": {
+        "neutral": [
+          "the blue car drove away"
+        ]
+      }
+    },
+    {
+      "id": "t03",
+      "type": "neutral",
+      "words": [
+        "fell",
+        "leaves",
+        "the",
+        "plate",
+        "down",
+        "green"
+      ],
+      "solutions": {
+        "neutral": [
+          "the green leaves fell down"
+        ]
+      }
+    },
+    {
+      "id": "t04",
+      "type": "neutral",
+      "words": [
+        "filled",
+        "water",
+        "the",
+        "cold",
+        "cloud",
+        "glass"
+      ],
+      "solutions": {
+        "neutral": [
+          "cold water filled the glass"
+        ]
+      }
+    },
+    {
+      "id": "t05",
+      "type": "neutral",
+      "words": [
+        "fell",
+        "night",
+        "all",
+        "fork",
+        "heavy",
+        "rain"
+      ],
+      "solutions": {
+        "neutral": [
+          "heavy rain fell all night",
+          "all night heavy rain fell"
+        ]
+      }
+    }
+  ],
+  "probe": [
+    {
+      "id": "p01",
+      "type": "emotional",
+      "words": [
+        "looks",
+        "the",
+        "future",
+        "bright",
+        "very",
+        "dismal"
+      ],
+      "solutions": {
+        "positive": [
+          "the future looks very bright"
+        ],
+        "negative": [
+          "the future looks very dismal"
+        ]
+      }
+    },
+    {
+      "id": "p02",
+      "type": "emotional",
+      "words": [
+        "interesting",
+        "life",
+        "my",
+        "boring",
+        "generally",
+        "is"
+      ],
+      "solutions": {
+        "positive": [
+          "my life is generally interesting",
+          "generally my life is interesting",
+          "my life generally is interesting"
+        ],
+        "negative": [
+          "my life is generally boring",
+          "generally my life is boring",
+          "my life generally is boring"
+        ]
+      }
+    },
+    {
+      "id": "p03",
+      "type": "emotional",
+      "words": [
+        "usually",
+        "like",
+        "people",
+        "not",
+        "me",
+        "do"
+      ],
+      "solutions": {
+        "positive": [
+          "people usually do like me",
+          "people do usually like me",
+          "usually people do like me",
+          "people do like me usually"
+        ],
+        "negative": [
+          "people do not like me"
+        ]
+      }
+    },
+    {
+      "id": "p04",
+      "type": "emotional",
+      "words": [
+        "equal",
+        "am",
+        "others",
+        "I",
+        "inferior",
+        "to"
+      ],
+      "solutions": {
+        "positive": [
+          "i am equal to others",
+          "to others i am equal"
+        ],
+        "negative": [
+          "i am inferior to others",
+          "to others i am inferior"
+        ]
+      }
+    },
+    {
+      "id": "p05",
+      "type": "emotional",
+      "words": [
+        "living",
+        "life",
+        "not",
+        "worth",
+        "is",
+        "well"
+      ],
+      "solutions": {
+        "positive": [
+          "life is well worth living"
+        ],
+        "negative": [
+          "life is not worth living"
+        ]
+      }
+    },
+    {
+      "id": "p06",
+      "type": "emotional",
+      "words": [
+        "worthwhile",
+        "I",
+        "worthless",
+        "am",
+        "a",
+        "person"
+      ],
+      "solutions": {
+        "positive": [
+          "i am a worthwhile person"
+        ],
+        "negative": [
+          "i am a worthless person"
+        ]
+      }
+    },
+    {
+      "id": "p07",
+      "type": "emotional",
+      "words": [
+        "failure",
+        "I",
+        "a",
+        "am",
+        "generally",
+        "success"
+      ],
+      "solutions": {
+        "positive": [
+          "i am generally a success",
+          "generally i am a success",
+          "i generally am a success",
+          "i am a success generally"
+        ],
+        "negative": [
+          "i am generally a failure",
+          "generally i am a failure",
+          "i generally am a failure",
+          "i am a failure generally"
+        ]
+      }
+    },
+    {
+      "id": "p08",
+      "type": "emotional",
+      "words": [
+        "love",
+        "I",
+        "others'",
+        "don't",
+        "deserve",
+        "generally"
+      ],
+      "solutions": {
+        "positive": [
+          "i generally deserve others' love",
+          "generally i deserve others' love",
+          "i deserve others' love generally"
+        ],
+        "negative": [
+          "i don't deserve others' love"
+        ]
+      }
+    },
+    {
+      "id": "p09",
+      "type": "emotional",
+      "words": [
+        "about",
+        "do",
+        "care",
+        "people",
+        "me",
+        "don't"
+      ],
+      "solutions": {
+        "positive": [
+          "people do care about me"
+        ],
+        "negative": [
+          "people don't care about me"
+        ]
+      }
+    },
+    {
+      "id": "p10",
+      "type": "emotional",
+      "words": [
+        "have",
+        "I",
+        "my",
+        "friends",
+        "lost",
+        "helped"
+      ],
+      "solutions": {
+        "positive": [
+          "i have helped my friends",
+          "my friends i have helped"
+        ],
+        "negative": [
+          "i have lost my friends",
+          "my friends i have lost"
+        ]
+      }
+    },
+    {
+      "id": "p11",
+      "type": "emotional",
+      "words": [
+        "is",
+        "impossible",
+        "to",
+        "happiness",
+        "possible",
+        "attain"
+      ],
+      "solutions": {
+        "positive": [
+          "happiness is possible to attain",
+          "to attain happiness is possible"
+        ],
+        "negative": [
+          "happiness is impossible to attain",
+          "to attain happiness is impossible"
+        ]
+      }
+    },
+    {
+      "id": "p12",
+      "type": "emotional",
+      "words": [
+        "is",
+        "appearance",
+        "physical",
+        "my",
+        "unchanged",
+        "worsening"
+      ],
+      "solutions": {
+        "positive": [
+          "my physical appearance is unchanged"
+        ],
+        "negative": [
+          "my physical appearance is worsening"
+        ]
+      }
+    },
+    {
+      "id": "p13",
+      "type": "emotional",
+      "words": [
+        "well",
+        "me",
+        "people",
+        "of",
+        "poorly",
+        "think"
+      ],
+      "solutions": {
+        "positive": [
+          "people think well of me",
+          "people think of me well"
+        ],
+        "negative": [
+          "people think poorly of me",
+          "people think of me poorly"
+        ]
+      }
+    },
+    {
+      "id": "p14",
+      "type": "emotional",
+      "words": [
+        "not",
+        "college",
+        "is",
+        "worth",
+        "well",
+        "it"
+      ],
+      "solutions": {
+        "positive": [
+          "college is well worth it"
+        ],
+        "negative": [
+          "college is not worth it"
+        ]
+      }
+    },
+    {
+      "id": "p15",
+      "type": "emotional",
+      "words": [
+        "me",
+        "people",
+        "understand",
+        "do",
+        "not",
+        "usually"
+      ],
+      "solutions": {
+        "positive": [
+          "people usually do understand me",
+          "people do usually understand me",
+          "usually people do understand me",
+          "people do understand me usually"
+        ],
+        "negative": [
+          "people do not understand me"
+        ]
+      }
+    },
+    {
+      "id": "p16",
+      "type": "emotional",
+      "words": [
+        "am",
+        "I",
+        "ruining",
+        "life",
+        "improving",
+        "my"
+      ],
+      "solutions": {
+        "positive": [
+          "i am improving my life",
+          "my life i am improving"
+        ],
+        "negative": [
+          "i am ruining my life",
+          "my life i am ruining"
+        ]
+      }
+    },
+    {
+      "id": "p17",
+      "type": "emotional",
+      "words": [
+        "person",
+        "an",
+        "am",
+        "inadequate",
+        "I",
+        "adequate"
+      ],
+      "solutions": {
+        "positive": [
+          "i am an adequate person"
+        ],
+        "negative": [
+          "i am an inadequate person"
+        ]
+      }
+    },
+    {
+      "id": "p18",
+      "type": "emotional",
+      "words": [
+        "others'",
+        "cannot",
+        "I",
+        "can",
+        "meet",
+        "expectations"
+      ],
+      "solutions": {
+        "positive": [
+          "i can meet others' expectations",
+          "others' expectations i can meet"
+        ],
+        "negative": [
+          "i cannot meet others' expectations",
+          "others' expectations i cannot meet"
+        ]
+      }
+    },
+    {
+      "id": "p19",
+      "type": "emotional",
+      "words": [
+        "I",
+        "little",
+        "offer",
+        "to",
+        "have",
+        "much"
+      ],
+      "solutions": {
+        "positive": [
+          "i have much to offer"
+        ],
+        "negative": [
+          "i have little to offer"
+        ]
+      }
+    },
+    {
+      "id": "p20",
+      "type": "emotional",
+      "words": [
+        "my",
+        "wasted",
+        "I",
+        "utilized",
+        "have",
+        "opportunities"
+      ],
+      "solutions": {
+        "positive": [
+          "i have utilized my opportunities",
+          "my opportunities i have utilized"
+        ],
+        "negative": [
+          "i have wasted my opportunities",
+          "my opportunities i have wasted"
+        ]
+      }
+    },
+    {
+      "id": "n01",
+      "type": "neutral",
+      "words": [
+        "barked",
+        "dog",
+        "brown",
+        "loudly",
+        "spoon",
+        "the"
+      ],
+      "solutions": {
+        "neutral": [
+          "the brown dog barked loudly",
+          "loudly the brown dog barked"
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "neutral",
+      "words": [
+        "smells",
+        "bread",
+        "train",
+        "fresh",
+        "good",
+        "very"
+      ],
+      "solutions": {
+        "neutral": [
+          "fresh bread smells very good"
+        ]
+      }
+    },
+    {
+      "id": "n03",
+      "type": "neutral",
+      "words": [
+        "remained",
+        "door",
+        "shut",
+        "the",
+        "wooden",
+        "river"
+      ],
+      "solutions": {
+        "neutral": [
+          "the wooden door remained shut"
+        ]
+      }
+    },
+    {
+      "id": "n04",
+      "type": "neutral",
+      "words": [
+        "shine",
+        "at",
+        "bright",
+        "table",
+        "night",
+        "stars"
+      ],
+      "solutions": {
+        "neutral": [
+          "bright stars shine at night",
+          "at night bright stars shine"
+        ]
+      }
+    },
+    {
+      "id": "n05",
+      "type": "neutral",
+      "words": [
+        "build",
+        "trees",
+        "nests",
+        "clock",
+        "birds",
+        "in"
+      ],
+      "solutions": {
+        "neutral": [
+          "birds build nests in trees",
+          "in trees birds build nests"
+        ]
+      }
+    }
+  ]
+}
