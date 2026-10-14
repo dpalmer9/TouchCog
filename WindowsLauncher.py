@@ -36,8 +36,10 @@ class Windows_Launcher():
         self.launcher_window.mainloop()
     
     def settings_menu(self):
-        main_path = os.getcwd()
-        self.config_path = main_path + '/Screen.ini'
+        # Same per-user Config.ini that KivyMenuInterface reads; fall back to the packaged copy
+        self.config_path = os.path.join(os.path.expanduser('~'), 'Documents', 'TouchCog', 'Config.ini')
+        if not os.path.exists(self.config_path):
+            self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Config.ini')
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.config_path)
         self.x_dim = int(self.config_file['Screen']['x'])

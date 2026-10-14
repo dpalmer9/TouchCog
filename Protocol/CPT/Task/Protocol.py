@@ -7,6 +7,7 @@ import pathlib
 import random
 import statistics
 import time
+import traceback
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
@@ -121,9 +122,9 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.participant_id = parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 		
 		self.iti_fixed_or_range = parameters_dict.get('iti_fixed_or_range', 'range')
 
@@ -171,8 +172,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
-		self.display_stimulus_outline = int(parameters_dict.get('display_stimulus_outline', 'True'))
-		self.mask_during_limhold = int(parameters_dict.get('mask_during_limhold', 'True'))
+		self.display_stimulus_outline = int(self._safe_get_bool('display_stimulus_outline', True))
+		self.mask_during_limhold = int(self._safe_get_bool('mask_during_limhold', True))
 		self.limhold_mask_type = parameters_dict.get('limhold_mask_type', 'noise')
 
 		self.staircase_hr_criterion = float(parameters_dict.get('staircase_hit_rate_criterion', '0.80'))
@@ -183,10 +184,6 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimdur_frame_min = float(parameters_dict.get('stimdur_min_frames', '2'))
 		self.stimdur_seconds_max = float(parameters_dict.get('stimdur_max_seconds', '2.00'))
-
-		self.image_set = parameters_dict.get('image_set', 'rand')
-		if self.image_set == None:
-			self.image_set = 'rand'
 
 		self.cjb_image_set = parameters_dict.get('cjb_image_set', 'cjb_set1')
 		if self.cjb_image_set == None:
@@ -200,48 +197,53 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 
-		if parameters_dict.get('cjb_training_task', 'False'):
+		if self._safe_get_bool('cjb_training_task', False):
 			self.stage_list.append('CJB_Training')
-		
-		if parameters_dict.get('cjb_discrimination_task', 'False'):
+
+		if self._safe_get_bool('cjb_discrimination_task', False):
 			self.stage_list.append('CJB_Discrimination')
-		
-		if parameters_dict.get('cjb_probe_task', 'False'):
+
+		if self._safe_get_bool('cjb_probe_task', False):
 			self.stage_list.append('CJB_Probe')
 
 		# Check if one of the CJB tasks was appended to stage list. If so, set self.cjb_task to True
 		self.cjb_task = any(stage in ['CJB_Training', 'CJB_Discrimination', 'CJB_Probe'] for stage in self.stage_list)
 		
-		if parameters_dict.get('training_task', 'True'):
+		if self._safe_get_bool('training_task', True):
 			self.stage_list.append('Training')
 
 		# if parameters_dict['limhold_difficulty']:
 		# 	self.stage_list.append('LimHold_Staircase_Difficulty')
 
-		if parameters_dict.get('similarity_difficulty', 'True'):
+		if self._safe_get_bool('similarity_difficulty', True):
 			self.stage_list.append('Similarity_Staircase_Difficulty')
 			self.stimulus_family = 'Fb'
-		
+
 		else:
 			self.stimulus_family = parameters_dict.get('stimulus_family', 'Blues')
 
-		if parameters_dict.get('stimdur_probe', 'True'):
+		if self._safe_get_bool('stimdur_probe', True):
 			self.stage_list.append('StimDur_Staircase_Probe')
 
-		if parameters_dict.get('flanker_probe', 'True'):
+		if self._safe_get_bool('flanker_probe', True):
 			self.stage_list.append('Flanker_Fixed_Probe')
 
-		if parameters_dict.get('tarprob_probe', 'True'):
+		if self._safe_get_bool('tarprob_probe', True):
 			self.stage_list.append('TarProb_Fixed_Probe')
 
-		if parameters_dict.get('sart_probe', 'False'):
+		if self._safe_get_bool('sart_probe', False):
 			self.stage_list.append('SART_Fixed_Probe')
 
-		self.image_set = parameters_dict.get('image_set', 'rand')
-		if self.image_set == None and 'Similarity_Staircase_Difficulty' not in self.stage_list:
+		# Image set: similarity stage expects an Fb2_* target ('set7'/'rand' = random);
+		# standard stages expect a name from image_set_list or 'rand'.
+		self.image_set = parameters_dict.get('image_set', None)
+		if 'Similarity_Staircase_Difficulty' in self.stage_list:
+			if self.image_set in ('set7', 'rand'):
+				self.image_set = 'rand'
+			elif not (isinstance(self.image_set, str) and self.image_set.startswith('Fb2_')):
+				self.image_set = 'Fb2_1132'
+		elif self.image_set not in [image_set['name'] for image_set in self.image_set_list] + ['rand']:
 			self.image_set = 'set1'
-		else:
-			self.image_set = 'Fb2_1132'
 	
 	def _load_task_variables(self):
 		# Set images
@@ -270,7 +272,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
-		self.stimulus_mask_on_screen = True
+		self.stimulus_mask_on_screen = False
 		self.training_complete = False
 		self.premature_override = True
 		self.stage_screen_started = False
@@ -641,7 +643,7 @@ class ProtocolScreen(ProtocolBase):
 				self.current_nontarget_image_list = self.nontarget_images
 	
 
-		total_image_list = self.stimulus_image_path_list
+		total_image_list = list(self.stimulus_image_path_list)
 
 		# CJB Image Preparation
 		if 'CJB_Training' in self.stage_list or 'CJB_Discrimination' in self.stage_list or 'CJB_Probe' in self.stage_list:
@@ -760,6 +762,9 @@ class ProtocolScreen(ProtocolBase):
 
 			if self.limhold_mask_type == 'noise':
 				self.stimulus_mask_path = str(self.noise_mask_paths[-1])
+			else:
+				# Only noise masks are implemented; fall back to the plain mask image
+				self.stimulus_mask_path = str(self.mask_image_path)
 
 			self.img_stimulus_C_mask = ImageButton(source=self.stimulus_mask_path)
 			self.img_stimulus_C_mask.size_hint = self.stimulus_mask_size
@@ -891,7 +896,7 @@ class ProtocolScreen(ProtocolBase):
 		# Instruction - Text Widget
 		self.section_instr_string = ''
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.58, 0.7}
+		self.section_instr_label.size_hint = (0.58, 0.7)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.35}
 		
 		# Instruction - Button Widget
@@ -1113,8 +1118,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.add_widget(self.img_stimulus_R)
             
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 
 
 		if not self.forced_response:
@@ -1164,9 +1169,9 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 
 
 
@@ -1352,8 +1357,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 		
 		self.stimulus_on_screen = False
 		self.limhold_started = False
@@ -1501,8 +1506,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_L)
 			self.protocol_floatlayout.remove_widget(self.img_stimulus_R)
 			
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.img_stimulus_L)
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.img_stimulus_R)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Left', self.flanker_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Flanker', 'Right', self.flanker_image)
 		
 		self.stimulus_on_screen = False
 		self.limhold_started = False
@@ -1723,7 +1728,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.trial_outcome == 1:
 			self.hit_tracking.append(1)
 			self.total_hit_tracking.append(1)
-			if self.response_latency != np.nan:
+			if not np.isnan(self.response_latency):
 				self.decision_point_tracking.append(self.response_latency)
 
 		elif self.trial_outcome == 2:
@@ -1763,7 +1768,8 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'CJB Discrimination False Alarm Rate', np.nan)
 			self.protocol_floatlayout.add_stage_event('CJB Discrimination Failed Criteria')
 			self.protocol_floatlayout.add_stage_event('Block End')
-			self.stage_list.remove('CJB_Probe')
+			if 'CJB_Probe' in self.stage_list:
+				self.stage_list.remove('CJB_Probe')
 			self.current_block += 1
 			self.start_stage_screen()
 			return
@@ -1843,7 +1849,7 @@ class ProtocolScreen(ProtocolBase):
 			].tolist()
 
 		if len(base_nontarget_image_list) < self.similarity_index_range:
-			base_nontarget_image_list = self.similarity_data.loc[0:(self.similarity_index_range - 1), 'Nontarget']
+			base_nontarget_image_list = self.similarity_data['Nontarget'].iloc[:self.similarity_index_range].tolist()
 
 		self.current_nontarget_image_list = base_nontarget_image_list[-self.similarity_index_range:]
 
@@ -2171,7 +2177,7 @@ class ProtocolScreen(ProtocolBase):
 
 		# Session limit
 		if (self.current_trial > self.session_trial_max) \
-			or ((time.perf_counter() - self.start_time) >= self.session_length_max):
+			or ((time.perf_counter() - self.start_time) >= self.session_duration):
 
 			self.protocol_floatlayout.add_stage_event('Session End')
 			self.hold_button.unbind(on_release=self.stimulus_response)
@@ -2218,7 +2224,7 @@ class ProtocolScreen(ProtocolBase):
 					].tolist()
 
 				if len(base_nontarget_image_list) < self.similarity_index_range:
-					base_nontarget_image_list = self.similarity_data.loc[0:(self.similarity_index_range - 1), 'Nontarget']
+					base_nontarget_image_list = self.similarity_data['Nontarget'].iloc[:self.similarity_index_range].tolist()
 
 				self.current_nontarget_image_list = base_nontarget_image_list[-self.similarity_index_range:]
 
@@ -2285,9 +2291,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 
 			print('Error; program terminated by Trial Contingency.')
+			traceback.print_exc()
 			self.protocol_end()
 
 	def start_stage_screen(self, *args):
@@ -2674,7 +2681,7 @@ class ProtocolScreen(ProtocolBase):
 			for iTrial in range(round((self.trial_list_length_hilo * self.target_probability))):
 				self.trial_list.append('Nontarget')
 
-			for iTrial in range(len(self.trial_list_hilo), self.trial_list_length_hilo):
+			for iTrial in range(len(self.trial_list), self.trial_list_length_hilo):
 				self.trial_list.append('Target')
 			self.cjb_task = False
 			self.forced_response = False
@@ -2811,9 +2818,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 
-		except:
+		except Exception:
 
 			print('Error; program terminated from Block Contingency.')
+			traceback.print_exc()
 			self.protocol_end()
 		finally:
 			self.block_contingency_active = False

@@ -171,6 +171,15 @@ class FloatLayoutLog(FloatLayout):
 		self.active_touches = set()
 		self.multi_touch_active = False
 
+		# Stop any previous writer and give this layout its own queue, so events
+		# logged after a prior task ended cannot leak into this task's data.
+		previous_thread = getattr(self.app, 'event_writer_thread', None)
+		if previous_thread is not None and previous_thread.is_alive():
+			self.app.event_queue.put(None)
+			previous_thread.join(timeout=1.0)
+		self.event_queue = queue.Queue()
+		self.app.event_queue = self.event_queue
+
 		self._event_writer_thread = threading.Thread(target=self.event_writer, daemon=True)
 		self._event_writer_thread.start()
 		self.app.event_writer_thread = self._event_writer_thread
@@ -178,7 +187,7 @@ class FloatLayoutLog(FloatLayout):
 	def event_writer(self):
 		while True:
 			try:
-				event_row = self.app.event_queue.get()
+				event_row = self.event_queue.get()
 				if event_row is None: # Sentinel to stop the thread
 					break
 				self.app.event_list.append(event_row)
@@ -425,7 +434,7 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					new_row[self.app.event_columns[iCol]] = str(row[iCol])
 
-		self.app.event_queue.put(new_row)
+		self.event_queue.put(new_row)
 
 	def add_stage_event(self, stage_name):
 		self.add_event([
@@ -1041,7 +1050,7 @@ class ProtocolBase(Screen):
 				image_name = str(image_file.stem)
 			
 			elif pathlib.Path(self.image_folder, str(image_file) + '.png').exists():
-				load_image = Loader.image((str(self.image_folder) + str(image_file) + '.png'))
+				load_image = Loader.image(str(self.image_folder / (str(image_file) + '.png')))
 				image_name = str(image_file)
 
 			else:
@@ -1124,7 +1133,7 @@ class ProtocolBase(Screen):
 		if not stim_feedback_correct_str.endswith('.png'):
 			if stim_feedback_correct_color != '':
 				color_text = '[color=%s]' % stim_feedback_correct_color
-			stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
+				stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
 		
 		self.feedback_dict['correct'] = stim_feedback_correct_str
 		
@@ -1134,7 +1143,7 @@ class ProtocolBase(Screen):
 		if not stim_feedback_incorrect_str.endswith('.png'):
 			if stim_feedback_incorrect_color != '':
 				color_text = '[color=%s]' % stim_feedback_incorrect_color
-			stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
+				stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
 		
 		self.feedback_dict['incorrect'] = stim_feedback_incorrect_str
 		
@@ -1292,6 +1301,9 @@ class ProtocolBase(Screen):
 		else:
 			# Check if duration is already available (it should be, since we preloaded), otherwise wait briefly
 			if self.tutorial_video.duration is None:
+				# Re-read metadata; duration is only set once in PreloadedVideo.__init__
+				if self.tutorial_video.player is not None:
+					self.tutorial_video.duration = self.tutorial_video.player.get_metadata().get('duration')
 				# Wait briefly to allow the video to load and update its duration
 				Clock.schedule_once(self.present_tutorial_video, 0.1)
 				return
@@ -1480,12 +1492,7 @@ class ProtocolBase(Screen):
 			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
 			if hasattr(self.app, 'queue_dataframe_write'):
 				self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
-		if self.app.session_event_path:
-			self.app.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
-			if not self.app.session_event_data.empty:
-				self.app.session_event_data = self.app.session_event_data.sort_values(by=['Time'])
-			if hasattr(self.app, 'queue_dataframe_write'):
-				self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
+		# write_data() rewrites the sorted event file once
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
 		self.app.data_written = True
@@ -1607,8 +1614,10 @@ class ProtocolBase(Screen):
 			self.protocol_floatlayout.add_stage_event('ITI Start')
 
 			Clock.schedule_once(self.iti_end, self.iti_length)
-			if (time.perf_counter() - self.start_iti) > (time.perf_counter() - self.feedback_start_time) and self.feedback_on_screen:
-				Clock.schedule_once(self.remove_feedback, self.feedback_length - (time.perf_counter() - self.feedback_start_time))
+			if self.feedback_on_screen:
+				# Remove feedback once it has been shown for feedback_length in total
+				feedback_elapsed = time.perf_counter() - self.feedback_start_time
+				Clock.schedule_once(self.remove_feedback, max(0, self.feedback_length - feedback_elapsed))
 			else:
 				Clock.schedule_once(self.remove_feedback, self.feedback_length)			
 			return

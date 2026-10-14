@@ -85,9 +85,9 @@ class ProtocolScreen(ProtocolBase):
 	def _load_config_parameters(self, parameters_dict):
 		self.parameters_dict = parameters_dict
 		self.participant_id = self.parameters_dict.get('participant_id', '')
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
@@ -356,7 +356,7 @@ class ProtocolScreen(ProtocolBase):
 
 		x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
-		y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+		y_move = float(np.sqrt(max(self.main_move**2 - x_move**2, 0)))
 		y_pos = self.hold_button.pos_hint['center_y'] + y_move
 
 		while (y_pos < min(self.y_boundaries)) \
@@ -372,7 +372,7 @@ class ProtocolScreen(ProtocolBase):
 
 			x_move = (self.hold_button.pos_hint['center_x'] - x_pos) / self.width_adjust
 
-			y_move = float(np.sqrt(self.main_move**2 - x_move**2))
+			y_move = float(np.sqrt(max(self.main_move**2 - x_move**2, 0)))
 			y_pos = self.hold_button.pos_hint['center_y'] + y_move
 		
 		stimulus_pos = {'center_x': x_pos, 'center_y': y_pos}
@@ -404,7 +404,6 @@ class ProtocolScreen(ProtocolBase):
 		self.generate_output_files()
 		self.metadata_output_generation()
 
-		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
 		self.block_contingency()
 
 
@@ -430,6 +429,11 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Display', 'Text', 'Stage', 'Results')
 
 
+	def _arm_no_response_timer(self):
+		# End the task after timeout_duration without a response; re-armed at each wait point
+		self.no_response_event.cancel()
+		self.no_response_event = self.task_clock.schedule_once(self.protocol_end, self.timeout_duration)
+
 	def stimulus_presentation(self, *args): # Stimulus presentation
 		self.response_recorded = False
 		self.awaiting_restart = False
@@ -439,7 +443,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
 
-		self.stimulus_start_time = time.time()
+		self.stimulus_start_time = time.perf_counter()
 		self.protocol_floatlayout.add_stage_event('State Change')
 		if (self.current_block_trial % 2) != 1 \
 			and self.use_confirmation:
@@ -454,7 +458,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stimulus_on_screen = True
 
-		Clock.schedule_once(self.no_response_event, self.timeout_duration)
+		self._arm_no_response_timer()
 	
 				
 	
@@ -502,7 +506,7 @@ class ProtocolScreen(ProtocolBase):
 	
 		Clock.unschedule(self.no_response_event)
 
-		self.stimulus_press_time = time.time()
+		self.stimulus_press_time = time.perf_counter()
 		self.response_latency = self.stimulus_press_time - self.stimulus_start_time
 
 		self.protocol_floatlayout.add_stage_event('Target Pressed')
@@ -568,7 +572,7 @@ class ProtocolScreen(ProtocolBase):
 
 				self.hit_target = 2 ** self.response_level
 
-				self.block_end_time = time.time()
+				self.block_end_time = time.perf_counter()
 
 				self.protocol_floatlayout.add_stage_event('Block End')
 
@@ -641,7 +645,7 @@ class ProtocolScreen(ProtocolBase):
 		if self.current_block != 1:
 			self.protocol_floatlayout.remove_widget(self.reward_image)
 
-		self.block_start_time = time.time()
+		self.block_start_time = time.perf_counter()
 
 		self.hold_button.unbind(on_press=self.start_block)
 		self.hold_button.unbind(on_press=self.iti_start)
@@ -682,6 +686,8 @@ class ProtocolScreen(ProtocolBase):
 				return
 			
 			else:
+
+				self._arm_no_response_timer()
 
 				if self.current_block == 1:
 					self.hold_button.bind(on_press=self.start_block)

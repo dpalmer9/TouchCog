@@ -27,6 +27,7 @@ import pandas as pd
 import json
 import signal
 import threading
+import time
 import urllib.request
 import zipfile
 from datetime import datetime
@@ -364,6 +365,7 @@ class LanguageMenu(Screen):
 		self.manifest_path = 'https://touchscreencognition.org/uploads/manifest.json'
 
 		self.language_list = list()
+		self._manifest = None
 
 		# Prefer to load the available language names from the manifest first
 		# (manifest format contains a list of dicts under key 'languages').
@@ -371,6 +373,7 @@ class LanguageMenu(Screen):
 		# manifest is unavailable or doesn't supply any languages.
 		try:
 			manifest = self._fetch_manifest()
+			self._manifest = manifest
 			if isinstance(manifest, dict):
 				for lang_block in manifest.get('languages', []):
 					if isinstance(lang_block, dict):
@@ -423,8 +426,8 @@ class LanguageMenu(Screen):
 			self.manager.current = 'mainmenu'
 			return
 
-		# Fetch manifest (from web then fallback to local file)
-		manifest = self._fetch_manifest()
+		# Reuse the manifest fetched in __init__; only re-fetch if that failed
+		manifest = self._manifest if self._manifest is not None else self._fetch_manifest()
 		if manifest is None:
 			# Couldn't load manifest; proceed to main menu
 			self.app.language = self.config['language']['language']
@@ -1078,7 +1081,6 @@ class ProtocolBattery(Screen):
 		self.app = App.get_running_app()
 
 		self.protocol_battery_layout = FloatLayout()
-		self.protocol_configure_screen = MenuBase()
 		self.name = 'protocolbattery'
 		self.app.active_screen = self.name
 		
@@ -1320,6 +1322,8 @@ class ProtocolBattery(Screen):
 		self.app.battery_configs = {}
 		self.app.battery_task_types = {}
 		self.app.battery_required_fields = {}
+		# Manual batteries have no upfront participant ID; clear any from a previous preset battery
+		self.app.participant_id = None
 
 		if self.app.battery_active:
 			# For manual batteries we must detect whether each selected protocol is
@@ -1611,6 +1615,19 @@ class MenuApp(App):
 		except Exception:
 			pass
 
+	def _run_file_job(self, job, path):
+		action = job.get('action')
+		if action == 'write_header':
+			with open(path, 'w', newline='', encoding='utf-8') as output_file:
+				writer = csv.writer(output_file)
+				writer.writerow(job['columns'])
+		elif action == 'append_row':
+			with open(path, 'a', newline='', encoding='utf-8') as output_file:
+				writer = csv.writer(output_file)
+				writer.writerow(job['row'])
+		elif action == 'write_dataframe':
+			job['dataframe'].to_csv(path, index=job.get('index', False))
+
 	def _file_io_worker(self):
 		while True:
 			job = self.file_io_queue.get()
@@ -1618,19 +1635,28 @@ class MenuApp(App):
 				if job is None:
 					return
 
-				action = job.get('action')
-				if action == 'write_header':
-					with open(job['path'], 'w', newline='', encoding='utf-8') as output_file:
-						writer = csv.writer(output_file)
-						writer.writerow(job['columns'])
-				elif action == 'append_row':
-					with open(job['path'], 'a', newline='', encoding='utf-8') as output_file:
-						writer = csv.writer(output_file)
-						writer.writerow(job['row'])
-				elif action == 'write_dataframe':
-					job['dataframe'].to_csv(job['path'], index=job.get('index', False))
-			except (FileNotFoundError, OSError):
-				pass
+				# Retry briefly (e.g. file locked by Excel/OneDrive), then fall back to a
+				# sibling '_unsaved' file so trial data is never silently dropped.
+				last_error = None
+				for attempt in range(3):
+					try:
+						self._run_file_job(job, job['path'])
+						last_error = None
+						break
+					except OSError as e:
+						last_error = e
+						time.sleep(0.5)
+
+				if last_error is not None:
+					original_path = pathlib.Path(job['path'])
+					fallback_path = original_path.with_name(original_path.stem + '_unsaved' + original_path.suffix)
+					print(f"WARNING: Could not write {original_path} ({last_error}); writing to {fallback_path}")
+					try:
+						self._run_file_job(job, fallback_path)
+					except OSError as e:
+						print(f"ERROR: Could not write fallback file {fallback_path}: {e}")
+			except Exception as e:
+				print(f"ERROR: File write job failed: {e}")
 			finally:
 				self.file_io_queue.task_done()
 

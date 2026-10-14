@@ -104,11 +104,11 @@ class ProtocolScreen(ProtocolBase):
 
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 
-		self.block_change_on_duration = self.parameters_dict.get('block_change_on_duration_only', 'True')
+		self.block_change_on_duration = self._safe_get_bool('block_change_on_duration_only', True)
 		
-		self.use_correction_trials = self.parameters_dict.get('correction_trials', 'True')
+		self.use_correction_trials = self._safe_get_bool('correction_trials', True)
 		
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
 		
@@ -149,16 +149,16 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_list = list()
 		
-		if self.parameters_dict.get('training_task', 'False'):
+		if self._safe_get_bool('training_task', False):
 			self.stage_list.append('Training')
 		
-		if self.parameters_dict.get('dpal_probe', 'True'):
+		if self._safe_get_bool('dpal_probe', True):
 			self.stage_list.append('dPAL')
 		
-		if self.parameters_dict.get('spal_probe', 'True'):
+		if self._safe_get_bool('spal_probe', True):
 			self.stage_list.append('sPAL')
 		
-		if self.parameters_dict.get('recall_probe', 'True'):
+		if self._safe_get_bool('recall_probe', True):
 			self.stage_list.append('Recall')
 
 	def _load_task_variables(self):
@@ -284,6 +284,18 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_pa = [i % self.num_stimuli_pa for i in range(self.recall_trial_max)]
 		self.trial_list_index = 0
 
+	def _pick_target_images(self, set_name, image_set_list, available_images, count):
+		# Use the named set's images that exist on disk, then top up randomly so selection
+		# never stalls when the set is unknown or smaller than count ('rand' is all random)
+		chosen = list()
+		if set_name != 'rand':
+			for image_set in image_set_list:
+				if image_set['name'] == set_name:
+					chosen = [img for img in image_set['images'] if img in available_images][:count]
+		remaining = [img for img in available_images if img not in chosen]
+		chosen += random.sample(remaining, count - len(chosen))
+		return chosen
+
 	def _setup_image_widgets(self):
 		# Define Widgets - Image Paths
 
@@ -310,21 +322,8 @@ class ProtocolScreen(ProtocolBase):
 			if self.num_stimuli_pal > len(stimulus_image_list):
 				self.num_stimuli_pal = len(stimulus_image_list)
 			
-			self.target_image_list_pal = list()
-
-			if self.image_set_dspal == 'rand':
-
-				while len(self.target_image_list_pal) < self.num_stimuli_pal:
-					new_target = random.choice(stimulus_image_list)
-					self.target_image_list_pal.append(new_target)
-					stimulus_image_list.remove(new_target)
-			else:
-				for image_set in self.image_set_dspal_list:
-					if image_set['name'] == self.image_set_dspal:
-						while len(self.target_image_list_pal) < self.num_stimuli_pal:
-							for img in image_set['images']:
-								if img in stimulus_image_list and len(self.target_image_list_pal) < self.num_stimuli_pal:
-									self.target_image_list_pal.append(img)
+			self.target_image_list_pal = self._pick_target_images(
+				self.image_set_dspal, self.image_set_dspal_list, stimulus_image_list, self.num_stimuli_pal)
 
 
 		if 'Recall' in self.stage_list:
@@ -338,36 +337,15 @@ class ProtocolScreen(ProtocolBase):
 			if self.num_stimuli_pa > len(stimulus_image_list):
 				self.num_stimuli_pa = len(stimulus_image_list)
 			
-			self.target_image_list_pa = list()
+			self.target_image_list_pa = self._pick_target_images(
+				self.image_set_recall, self.image_set_recall_list, stimulus_image_list, self.num_stimuli_pa)
 
-			if self.image_set_recall == 'rand':
-
-				while len(self.target_image_list_pa) < self.num_stimuli_pa:
-					new_target = random.choice(stimulus_image_list)
-					self.target_image_list_pa.append(new_target)
-					stimulus_image_list.remove(new_target)
-			else:
-				for image_set in self.image_set_recall_list:
-					if image_set['name'] == self.image_set_recall:
-						while len(self.target_image_list_pa) < self.num_stimuli_pa:
-							for img in image_set['images']:
-								if img in stimulus_image_list and len(self.target_image_list_pa) < self.num_stimuli_pa:
-									self.target_image_list_pa.append(img)
-
-		self.total_image_list = self.stimulus_image_path_list
+		self.total_image_list = list(self.stimulus_image_path_list)
 
 		self.total_image_list += [self.hold_image_path, self.mask_image_path, self.outline_image_path, self.training_image_path]
 
 		self.load_images(self.total_image_list)
 
-		# Define Widgets - Images
-
-		self.recall_stimulus = ImageButton(
-			source = str(self.mask_image_path)
-			, size_hint = [0.3 * self.width_adjust, 0.3 * self.height_adjust]
-			, pos_hint = {"center_x": 0.5, "center_y": 0.85}
-			)
-		
 		self.hold_button.source = str(self.hold_image_path)
 		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
@@ -470,11 +448,11 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.section_instr_string = self.instruction_label.text
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.9, 0.8}
+		self.section_instr_label.size_hint = (0.9, 0.8)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		self.stage_results_label = Label(text='', font_size='44sp', markup=True)
-		self.stage_results_label.size_hint = {0.9, 0.8}
+		self.stage_results_label.size_hint = (0.9, 0.8)
 		self.stage_results_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		
@@ -507,8 +485,15 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.start_clock()
 		self._reset_tutorial_continue_button()
-		self.trigger_tutorial_screen()
-	
+		if self.tutorial_video is not None:
+			self.trigger_tutorial_screen()
+		else:
+			# No tutorial videos downloaded: fall back to text instructions like PRL
+			self.protocol_floatlayout.clear_widgets()
+			self.present_instructions()
+			self.start_button.unbind(on_press=self.start_protocol)
+			self.start_button.bind(on_press=self.start_protocol_from_tutorial)
+
 
 
 	# Protocol Staging	
@@ -599,6 +584,11 @@ class ProtocolScreen(ProtocolBase):
 		self.block_end()
 		return
 
+	def _is_final_block(self):
+		# Mirrors block_contingency: the stage advances once current_block reaches block_multiplier
+		return (self.stage_index >= len(self.stage_list) - 1) \
+			and (self.current_block >= self.block_multiplier)
+
 	def start_stage_screen(self, *args):
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.stage_screen_end)
@@ -614,7 +604,7 @@ class ProtocolScreen(ProtocolBase):
 			hit_accuracy = (sum(self.response_tracking)/len(self.response_tracking))
 			self.outcome_string = eval(f'f"""{self.outcome_dict.get("acc", "")}"""')
 
-		if self.stage_index < len(self.stage_list):
+		if not self._is_final_block():
 			self.stage_string = eval(f'f"""{self.staging_dict.get("continue", "")}"""')
 
 		else:
@@ -640,7 +630,7 @@ class ProtocolScreen(ProtocolBase):
 
 		self.stage_screen_started = False
 
-		if self.stage_index >= (len(self.stage_list)):
+		if self._is_final_block():
 			self.session_event.cancel()
 			self._prepare_stage_continue_button(ends_task=True)
 			self.stage_continue_button.text = 'End Task'
@@ -921,7 +911,9 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
 					self.start_stage_screen()
-				
+					# block_contingency sets up the next trial after the stage screen
+					return
+
 				elif (self.current_stage == 'Training') \
 					and (sum(self.response_tracking) >= self.training_block_max_correct):
 
@@ -930,8 +922,9 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_stage_event('Block End')
 					
 					self.hold_button.bind(on_release=self.premature_response)
-					
+
 					self.block_contingency()
+					return
 
 				# elif (len(self.response_tracking) > 10) \
 				# 	and (sum(self.response_tracking[-10:]) >= 6) \
@@ -1228,7 +1221,8 @@ class ProtocolScreen(ProtocolBase):
 				self._bind_instruction_button(self.section_start)
 
 				if self.current_stage == 'Recall':
-					self.tutorial_video.state = 'stop'
+					if self.tutorial_video is not None:
+						self.tutorial_video.state = 'stop'
 					self._bind_instruction_button(self.start_recall_target_screen)
 					self.instruction_button.text = self.image_recall_button_str
 					

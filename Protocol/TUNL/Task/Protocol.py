@@ -7,6 +7,7 @@ import pathlib
 import random
 import statistics
 import time
+import traceback
 
 from Classes.Protocol import ImageButton, ProtocolBase, PreloadedVideo
 
@@ -97,7 +98,7 @@ class ProtocolScreen(ProtocolBase):
 	
 		self.participant_id = self.parameters_dict.get('participant_id', '')
 
-		self.skip_tutorial_video = self.parameters_dict.get('skip_tutorial_video', 'False')
+		self.skip_tutorial_video = self._safe_get_bool('skip_tutorial_video', False)
 		self.tutorial_video_duration = float(self.parameters_dict.get('tutorial_video_duration', '68.5'))
 
 		self.iti_fixed_or_range = self.parameters_dict.get('iti_fixed_or_range', 'range')
@@ -157,7 +158,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.stage_list = list()
 
-		if self.parameters_dict.get('training_block', 'True'):
+		if self._safe_get_bool('training_block', True):
 			self.stage_list.append('Train')
 		
 		# if self.parameters_dict['space_probe']:
@@ -169,10 +170,10 @@ class ProtocolScreen(ProtocolBase):
 		# if len(self.stage_list) > 1:
 		# 	self.stage_list = self.constrained_shuffle(self.stage_list)
 
-		if self.parameters_dict.get('combined_probe', 'True'):
+		if self._safe_get_bool('combined_probe', True):
 			self.stage_list.append('Combo')
 
-		if self.parameters_dict.get('delay_probe', 'True'):
+		if self._safe_get_bool('delay_probe', True):
 			self.stage_list.append('Delay')
 
 
@@ -484,7 +485,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.section_instr_string = self.instruction_label.text
 		self.section_instr_label = Label(text=self.section_instr_string, font_size='44sp', markup=True)
-		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.size_hint = (0.8, 0.5)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 		
 		# Instruction - Button Widget
@@ -501,22 +502,6 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_label.size_hint = (0.7, 0.3)
 		self.feedback_label.pos_hint = {'center_x': 0.5, 'center_y': 0.55}
 
-
-		# Instruction - Dictionary
-		
-		self.instruction_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Instructions.ini')
-		
-		self.instruction_config = configparser.ConfigParser(allow_no_value = True)
-		self.instruction_config.read(self.instruction_path, encoding = 'utf-8')
-		
-		self.instruction_dict = {}
-		self.instruction_dict['Train'] = {}
-		self.instruction_dict['Combo'] = {}
-		self.instruction_dict['Delay'] = {}
-		
-		for stage in self.stage_list:
-			self.instruction_dict[stage]['train'] = self.instruction_config[stage]['train']
-			self.instruction_dict[stage]['task'] = self.instruction_config[stage]['task']		
 	
 	# Initialization Functions
 	
@@ -778,7 +763,7 @@ class ProtocolScreen(ProtocolBase):
 			self._bind_instruction_button(self.end_task_pressed)
 			self.instruction_button.text = self.end_task_str
 
-		self.section_instr_label.size_hint = {0.8, 0.5}
+		self.section_instr_label.size_hint = (0.8, 0.5)
 		self.section_instr_label.pos_hint = {'center_x': 0.5, 'center_y': 0.4}
 
 		self.instruction_button.size_hint = self.text_button_size
@@ -1221,7 +1206,11 @@ class ProtocolScreen(ProtocolBase):
 		self.write_trial()
 		
 		self.trial_contingency()
-		
+
+		# trial_contingency may have moved to the results screen or ended the task
+		if self.block_started or getattr(self, 'protocol_ended', False):
+			return
+
 		if self.hold_button_pressed:
 			self.iti_start()
 		else:
@@ -1296,6 +1285,7 @@ class ProtocolScreen(ProtocolBase):
 
 						self.current_block += 1
 						self.results_screen()
+						return
 
 
 				# Else, check for staircasing
@@ -1381,6 +1371,7 @@ class ProtocolScreen(ProtocolBase):
 
 									self.current_block += 1
 									self.results_screen()
+									return
 
 
 						# Else, if delay probe, check staircasing
@@ -1506,7 +1497,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Cue Position', self.cue_image.pos_hint)
 
 			# Variable change: Target Position
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Position', self.cue_image.pos_hint)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Position', self.target_image.pos_hint)
 
 			self.trial_end_time = time.perf_counter()
 		
@@ -1516,9 +1507,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 			
 			print('Error; program terminated.')
+			traceback.print_exc()
 			self.protocol_end()
 
 
@@ -1710,9 +1702,10 @@ class ProtocolScreen(ProtocolBase):
 			print('Program terminated by user.')
 			self.protocol_end()
 		
-		except:
+		except Exception:
 			
 			print('Error; program terminated.')
+			traceback.print_exc()
 			self.protocol_end()
 		finally:
 			self.block_contingency_active = False
