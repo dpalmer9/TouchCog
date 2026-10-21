@@ -15,6 +15,8 @@ from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Line, Color, Ellipse
 from kivy.core.window import Window
 from kivy.metrics import dp
+from kivy.logger import Logger
+import re
 import datetime
 import pandas as pd
 import json
@@ -38,14 +40,14 @@ class LikertScale(Widget):
             self.option_keys = list(options.keys())
             self.scale_min = 0
             self.scale_max = len(self.option_keys) - 1
-            self.current_value = 0
+            self.current_value = None
         else:
             # Old format: numeric range
             self.scale_min = scale_min if scale_min is not None else 0
             self.scale_max = scale_max if scale_max is not None else 5
             self.options = None
             self.option_keys = None
-            self.current_value = self.scale_min
+            self.current_value = None
 
         self.indicator_size = dp(40)
         self.padding = dp(40)
@@ -75,17 +77,18 @@ class LikertScale(Widget):
                 # Draw tick mark
                 Line(points=[tick_x, line_y - dp(10), tick_x, line_y + dp(10)], width=dp(2))
             
-            # Draw indicator circle with white border
-            indicator_x = self._get_indicator_x()
-            
-            # Draw blue circle (filled)
-            Color(0.2, 0.6, 0.8, 1)
-            Ellipse(pos=(indicator_x - self.indicator_size/2, line_y - self.indicator_size/2),
-                    size=(self.indicator_size, self.indicator_size))
-            
-            # Draw white border around circle
-            Color(1, 1, 1, 1)
-            Line(circle=(indicator_x, line_y, self.indicator_size/2), width=dp(2))
+            if self.current_value is not None:
+                # Draw indicator circle with white border
+                indicator_x = self._get_indicator_x()
+                
+                # Draw blue circle (filled)
+                Color(0.2, 0.6, 0.8, 1)
+                Ellipse(pos=(indicator_x - self.indicator_size/2, line_y - self.indicator_size/2),
+                        size=(self.indicator_size, self.indicator_size))
+                
+                # Draw white border around circle
+                Color(1, 1, 1, 1)
+                Line(circle=(indicator_x, line_y, self.indicator_size/2), width=dp(2))
     
     def _get_indicator_x(self):
         """Calculate the x position of the indicator based on current value."""
@@ -140,6 +143,8 @@ class LikertScale(Widget):
     
     def get_value(self):
         """Get the current Likert scale value."""
+        if self.current_value is None:
+            return ""
         if self.options is not None and self.option_keys is not None:
             # Return the option label corresponding to current value
             key = self.option_keys[self.current_value]
@@ -267,7 +272,7 @@ class SurveyBase(Screen):
         """
         Check if a condition (inclusion or exclusion) matches current survey responses.
         Condition structure: {
-            'question_index': int,
+            'question_index': int (1-based),
             'question': str (optional),
             'response_value': str (the expected response)
         }
@@ -281,20 +286,11 @@ class SurveyBase(Screen):
             if question_index is None or expected_value is None:
                 return False
             
-            # Look for matching question in survey_data by index order
-            # The question at question_index should have been recorded
-            if question_index < len(self.question_list):
-                # Get the question text from the question metadata
-                question_metadata = self.question_metadata_list[(question_index - 1) if question_index > 0 else 0]
-                question_text = question_metadata.get('text', '')
-                
-                # Find the response for this question in survey_data
-                matching_row = self.app.survey_data_list[question_index - 1]
-                recorded_response = matching_row[1]  # Get last recorded response
-                
-                return recorded_response == expected_value
+            if question_index < 1 or question_index > len(self.app.survey_data_list):
+                return False
             
-            return False
+            recorded = self.app.survey_data_list[question_index - 1][1]
+            return recorded == expected_value or expected_value in recorded.split(', ')
         except Exception:
             return False
 
@@ -305,6 +301,8 @@ class SurveyBase(Screen):
         self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
     def _return_to_main_menu(self, instance):
+        self.end_survey_button.unbind(on_press=self._return_to_main_menu)
+        self.end_survey_button.disabled = True
         self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
         if hasattr(self.app, 'queue_dataframe_write'):
             self.app.queue_dataframe_write(self.app.survey_data_path, self.app.survey_data, index=False)
@@ -313,14 +311,13 @@ class SurveyBase(Screen):
                 self.app.handle_task_completion(self.name)
                 return
         except Exception:
-			# best-effort: ignore failures here
-            pass
+            Logger.exception('Survey: handle_task_completion failed')
 
         try:
             self.manager.current = 'mainmenu'
             return
         except Exception:
-            pass
+            Logger.exception('Survey: return to main menu failed')
 
     def _create_multile_choice_question(self, layout, question_text, options):
         """
@@ -692,6 +689,7 @@ class SurveyBase(Screen):
         # Entry is only on screen when no battery participant ID was available
         if self.participant_id_entry.parent is not None:
             self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
+        self.participant_id = re.sub(r'[^\w\-]', '_', self.participant_id.strip()) or 'Default'
         folder_path = pathlib.Path(self.data_folder, self.participant_id)
         folder_path.mkdir(parents=True, exist_ok=True)
         # Date + index like task files so repeat sessions do not overwrite earlier responses
