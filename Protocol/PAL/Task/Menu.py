@@ -1,3 +1,4 @@
+"""Settings menu screen for the Paired Associates Learning (PAL) task."""
 # Imports #
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -7,7 +8,44 @@ from Classes.Menu import MenuBase, ImageSetDropdown, ImageSetItem
 
 
 class ConfigureScreen(MenuBase):
+    """Settings menu screen for the Paired Associates Learning task.
+
+    Builds the shared task settings grid from ``Protocol/PAL/Configuration.ini``
+    (``DebugParameters`` in debug mode, otherwise ``TaskParameters``).
+
+    Adds two image-set dropdowns (dsPAL and Recall) below the standard settings.
+
+    Attributes
+    ----------
+    protocol : str
+        Task folder name, ``'PAL'``.
+    protocol_name : str
+        Set to the display title ``'Paired Associates Learning'`` (shown in the title label), then reset
+        to ``'PAL'`` by ``menu_constructor``.
+    name : str
+        Screen name, ``'PAL_configscreen'``.
+    """
+
     def __init__(self,**kwargs):
+        """Build the PAL settings grid plus the dsPAL and Recall image-set dropdowns.
+
+        Defines ``image_set_dspal`` (options set1 and rand) and ``image_set_recall``
+        (options set1, set2, set3 and rand) as lists of ``{'label', 'images', 'value'}``
+        dicts, builds the standard grid with ``menu_constructor``, then appends two
+        label/dropdown pairs to ``setting_gridlayout`` (two extra rows). The ``rand``
+        options carry no images.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Passed to ``MenuBase``.
+
+        Notes
+        -----
+        The selections are read back with the rest of the grid by
+        ``read_grid_parameters`` under the normalized label keys
+        ``'dspal_image_set'`` and ``'recall_image_set'``.
+        """
         super(ConfigureScreen,self).__init__(**kwargs)
         self.app = App.get_running_app()
         self.protocol = 'PAL'

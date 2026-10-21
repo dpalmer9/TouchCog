@@ -1,3 +1,4 @@
+"""PRL protocol task screen, defining the trial flow, outcomes and data output."""
 # Imports #
 import configparser
 import numpy as np
@@ -16,8 +17,42 @@ from kivy.uix.video import Video
 
 
 class ProtocolScreen(ProtocolBase):
+	"""Screen implementing the Probabilistic Reversal Learning (PRL) task.
+
+	Extends :class:`Classes.Protocol.ProtocolBase` with PRL-specific configuration
+	loading, task variables, reward stages and summary data columns.
+
+	Attributes
+	----------
+	protocol_name : str
+		Name of the active protocol, ``'PRL'``.
+	name : str
+		Screen name, ``'PRL_protocolscreen'``.
+	data_cols : list of str
+		Column names of the trial summary data file.
+	metadata_cols : list of str
+		Column names of the metadata output file.
+	config_path : str
+		Path of the protocol's ``Configuration.ini``.
+	debug_mode : bool
+		Whether debug parameters are used.
+	parameters_dict : configparser.SectionProxy
+		Configuration section supplying the task parameter values.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the PRL protocol screen and load its configuration.
+
+		Sets the protocol name, screen name and data/metadata column names, reads
+		``Configuration.ini`` and selects the ``DebugParameters`` or
+		``TaskParameters`` section based on the ``debug_mode`` flag.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to
+			:class:`Classes.Protocol.ProtocolBase`.
+		"""
 
 		super(ProtocolScreen, self).__init__(**kwargs)
 		self.protocol_name = 'PRL'
@@ -83,6 +118,18 @@ class ProtocolScreen(ProtocolBase):
 			self.debug_mode = False
 
 	def _load_config_parameters(self, parameters_dict):
+		"""Load task parameters from a configuration section into instance state.
+
+		Reads participant, timing, block, reward-probability, reversal, image-set
+		and stage values from ``parameters_dict`` (using the given defaults), creates
+		the session-duration Clock trigger, loads the hold and mask image names, and
+		builds ``stage_list`` (optionally prepending ``'Training'``).
+
+		Parameters
+		----------
+		parameters_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		self.parameters_dict = parameters_dict
 
 		self.participant_id = self.parameters_dict.get('participant_id', '')
@@ -129,6 +176,13 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_list.append('Test')
 
 	def _load_task_variables(self):
+		"""Initialise the per-task state that drives the PRL trial flow.
+
+		Sets the language and image directory paths, timing values (seconds from
+		``time.perf_counter``), counters and Boolean flags, and the string state for
+		the current stage, target/nontarget images and their shuffled left/right
+		locations.
+		"""
 		# Define Paths
 
 		self.language_dir_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
@@ -196,6 +250,19 @@ class ProtocolScreen(ProtocolBase):
 		self.nontarget_loc = self.target_loc_list[self.nontarget_loc_index]
 
 	def _set_hold_button_callbacks(self, on_press=None, on_release=None):
+		"""Rebind the hold button's press and release callbacks.
+
+		Unbinds ``iti_start`` from ``on_press`` and ``premature_response`` and
+		``hold_remind`` from ``on_release``, then binds ``on_press`` and
+		``on_release`` when they are not None.
+
+		Parameters
+		----------
+		on_press : callable, optional
+			Callback bound to the button's press event. Defaults to None.
+		on_release : callable, optional
+			Callback bound to the button's release event. Defaults to None.
+		"""
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_release=self.premature_response)
 		self.hold_button.unbind(on_release=self.hold_remind)
@@ -206,6 +273,17 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.bind(on_release=on_release)
 
 	def _set_choice_callbacks(self, enabled):
+		"""Enable or disable the left and right stimulus press callbacks.
+
+		Unbinds ``left_pressed`` from the left stimulus button and
+		``right_pressed`` from the right one, and re-binds them only when ``enabled``
+		is True.
+
+		Parameters
+		----------
+		enabled : bool
+			Whether the choice callbacks should be bound.
+		"""
 		self.left_stimulus.unbind(on_press=self.left_pressed)
 		self.right_stimulus.unbind(on_press=self.right_pressed)
 		if enabled:
@@ -213,6 +291,17 @@ class ProtocolScreen(ProtocolBase):
 			self.right_stimulus.bind(on_press=self.right_pressed)
 
 	def end_protocol_pressed(self, *args):
+		"""End the protocol when the end-protocol button is pressed.
+
+		Ignores the call when ``end_protocol_active`` is set or the protocol has
+		already ended. Otherwise marks the protocol as ended, disables the button
+		and calls :meth:`protocol_end`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.end_protocol_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -221,6 +310,14 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_end()
 
 	def _setup_session_stages(self):
+		"""Build the shuffled per-trial reward assignment list for the session.
+
+		Sets ``nontarget_reward_probability`` to 1 minus
+		``target_reward_probability`` rounded to 2 decimals, then appends
+		``'Target'`` and ``'NonTarget'`` entries to ``trial_reward_list`` according
+		to each probability times ``block_trial_max``, and constrained-shuffles the
+		list with a maximum run of 5.
+		"""
 		self.nontarget_reward_probability = round(1 - self.target_reward_probability, 2)
 
 		self.trial_reward_list = list()
@@ -236,6 +333,14 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list, max_run=5)
 
 	def _setup_image_widgets(self):
+		"""Create the stimulus, hold and instruction widgets for the task.
+
+		Collects the stimulus PNGs from ``Targets/<image_set>``, sets the hold,
+		mask and training image paths, binds the hold-button and choice callbacks,
+		loads the images, builds the left and right stimulus buttons and the
+		instruction button, and sets ``stimulus_image_source`` to the single
+		stimulus file (or the mask path when there is more than one).
+		"""
 		# Define Widgets - Images
 
 		self.stimulus_path_list = list(self.image_dir_path.glob(str(pathlib.Path('Targets', self.image_set, '*.png'))))
@@ -290,6 +395,13 @@ class ProtocolScreen(ProtocolBase):
 		self.instruction_button.bind(on_press=self.section_start)
 
 	def _setup_language_localization(self):
+		"""Load the localised button texts and outcome and staging dictionaries.
+
+		Calls :meth:`set_language`, reads the end-task and begin-section button
+		strings from ``Button.ini``, and populates ``outcome_dict`` from each
+		``outcome_*.txt`` file (keyed by the part after ``outcome_``) and
+		``staging_dict`` from each ``staging_*.txt`` file similarly.
+		"""
 		self.set_language(self.language)
 
 		button_lang_path = self.lang_folder_path / 'Button.ini'
@@ -313,6 +425,14 @@ class ProtocolScreen(ProtocolBase):
 				self.staging_dict[key] = f.read()
 
 	def _load_video_and_instruction_components(self):
+		"""Load the tutorial video, feedback strings and instruction components.
+
+		Builds the feedback ``'points_awarded'`` markup string from
+		``Feedback.ini``, creates the tutorial :class:`PreloadedVideo` when a
+		``Tutorial_Video`` folder exists, wires the tutorial continue button, and
+		reads the Main train and task instructions from ``Instructions.ini`` plus the
+		initial score label.
+		"""
 		# Tutorial Import
 
 		self.lang_folder_path = self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language
@@ -361,6 +481,16 @@ class ProtocolScreen(ProtocolBase):
 		self.score_label.pos_hint = {'center_x': 0.5, 'center_y': 0.9}
 
 	def load_parameters(self,parameter_dict):
+		"""Load the protocol parameters and start the session clock.
+
+		Runs the config, task-variable, session-stage, image-widget, language and
+		video/instruction setup steps in turn, then starts the clock.
+
+		Parameters
+		----------
+		parameter_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		self._load_config_parameters(parameter_dict)
 		self._load_task_variables()
 		self._setup_session_stages()
@@ -384,6 +514,18 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stop_tutorial_video(self, *args):
+		"""Stop the tutorial video and begin the protocol.
+
+		Return early when the tutorial is already complete or the protocol has
+		ended. Otherwise marks the tutorial complete, disables and unbinds the
+		continue button, stops the video, logs the ``Remove``/``Video``/
+		``Section``/``Instructions`` event and calls ``self.start_protocol_from_tutorial``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.tutorial_completed or getattr(self, 'protocol_ended', False):
 			return
 
@@ -397,6 +539,18 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def start_protocol_from_tutorial(self, *args):
+		"""Begin the session from the tutorial screen.
+
+		Return early when already started from the tutorial or the protocol has
+		ended. Otherwise marks it started, clears the screen, logs the video
+		removal and ``Section Start`` stage events, then generates the output and
+		metadata files and calls ``self.block_contingency``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.protocol_started_from_tutorial or getattr(self, 'protocol_ended', False):
 			return
 
@@ -413,6 +567,19 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def section_start(self, *args):
+		"""Start a section by clearing the screen and ending the current block.
+
+		Return early when a section advance is already active or the protocol has
+		ended. Otherwise marks the advance active, disables the instruction
+		button, clears the screen, logs the ``Section Start`` stage event and the
+		instruction text/button ``Display`` object events (the widgets themselves
+		are not added here), then calls ``block_end``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.section_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -430,6 +597,18 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def final_results_screen(self, *args):
+		"""Build and show the final results screen.
+
+		Return early when already active or the protocol has ended. Sets the
+		active flags, creates the end-protocol button and the result label from
+		``self.outcome_dict['result']``, then logs the ``Display`` text/button and
+		``Task End`` stage events.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.final_results_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -457,6 +636,18 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation
+		"""Present the target and nontarget stimuli and record onset time.
+
+		Disables the response flags, sets the hold-button and choice callbacks,
+		swaps the hold button for the two stimulus widgets, records
+		``self.stimulus_start_time`` with ``time.perf_counter`` and logs the
+		``Object Display`` stage event plus both stimulus display events.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		self.trial_response_active = False
 		self.stimulus_on_screen = True
 		self._set_hold_button_callbacks()
@@ -478,6 +669,21 @@ class ProtocolScreen(ProtocolBase):
 	# Hold released too early
 	
 	def premature_response(self, *args):
+		"""Handle a hold button release before the stimulus onset.
+
+		Return early when a stimulus is on screen, a section advance is active, a
+		block has started or the protocol has ended. Otherwise stops the
+		scheduled ITI and feedback callbacks, clears the screen, records the
+		response latency as ``np.nan``, logs the ``Premature Response`` stage
+		event and the ``Outcome``/``Response Latency`` variable, assigns the wait
+		feedback when none is shown, rebinds the hold button to ``iti_start`` and
+		re-adds it.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		if self.stimulus_on_screen is True or self.section_advance_active or self.block_started or getattr(self, 'protocol_ended', False):
 			return
@@ -507,6 +713,19 @@ class ProtocolScreen(ProtocolBase):
 	# Left Stimulus Pressed
 	
 	def left_pressed(self, *args):
+		"""Handle a press on the left stimulus.
+
+		Return early when a response is active, no stimulus is on screen or the
+		protocol has ended. Records ``self.stimulus_press_time`` with
+		``time.perf_counter``, sets the response latency as the elapsed seconds
+		since ``self.stimulus_start_time``, stores ``self.side_chosen`` as 'Left',
+		logs the ``Left Stimulus Pressed`` stage event and evaluates outcomes.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.trial_response_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
 			return
 
@@ -523,6 +742,19 @@ class ProtocolScreen(ProtocolBase):
 	# Right Stimulus Pressed
 	
 	def right_pressed(self, *args):
+		"""Handle a press on the right stimulus.
+
+		Return early when a response is active, no stimulus is on screen or the
+		protocol has ended. Records ``self.stimulus_press_time`` with
+		``time.perf_counter``, sets the response latency as the elapsed seconds
+		since ``self.stimulus_start_time``, stores ``self.side_chosen`` as 'Right',
+		logs the ``Right Stimulus Pressed`` stage event and evaluates outcomes.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.trial_response_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
 			return
 
@@ -537,6 +769,35 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def trial_outcomes(self, *args):
+		"""Score the stimulus response and set up the next trial.
+
+		Marks the stimulus off screen and disables the choice callbacks. Compares
+		``self.side_chosen`` with the target and nontarget locations: a target
+		press sets ``last_response`` to 1, increments ``current_hits`` and sets
+		``choice_rewarded`` to ``target_rewarded``, while a nontarget press sets
+		``last_response`` to 0, resets ``current_hits`` to 0 and sets
+		``choice_rewarded`` to the opposite of ``target_rewarded``. A
+		rewarded choice adds 10 points (except in Training), logs ``Points
+		Collected`` and logs ``Choice Rewarded``; an unrewarded choice logs
+		``Choice Not Rewarded``. The outcome variables and removed stimulus
+		events are logged, the hold button is re-added bound to
+		``iti_start``/``premature_response``, feedback is assigned when the
+		outcome has a label, and the trial is written and its contingency
+		evaluated.
+
+		Notes
+		-----
+		Outcome codes written to the summary (``Correct`` column): ``last_response`` is
+		1 for a target press and 0 for a nontarget press. ``response_latency`` is
+		seconds from stimulus onset to the press. The points (10 per rewarded
+		non-training choice) appear only in the event log as the ``Points`` outcome
+		variable, not in the summary row.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.stimulus_on_screen = False
 		self._set_choice_callbacks(False)
 
@@ -612,6 +873,23 @@ class ProtocolScreen(ProtocolBase):
 	# Data Saving Function
 	
 	def write_trial(self):
+		"""Write the current trial's summary row to the summary data file.
+
+		Collects the trial outcome and timing values into a row and passes it to
+		``self.write_summary_file``.
+
+		Notes
+		-----
+		The row has 13 fields in the order of ``self.data_cols`` (``TrialNo``,
+		``Stage``, ``ReversalNo``, ``TargetImage``, ``TargetLoc``,
+		``NontargetImage``, ``NontargetLoc``, ``TargetReward``,
+		``NontargetReward``, ``SideChosen``, ``Correct``, ``Rewarded``,
+		``ResponseLat``). ``Correct`` holds ``last_response`` (1 target chosen, 0
+		nontarget chosen) and ``Rewarded`` holds ``choice_rewarded``.
+		``ResponseLat`` is ``response_latency``, in seconds from stimulus onset to
+		the press (``time.perf_counter``). Only stimulus responses are written;
+		premature responses write no row.
+		"""
 		trial_data = [
 			self.current_trial
 			, self.current_stage
@@ -635,6 +913,38 @@ class ProtocolScreen(ProtocolBase):
 	# Trial Contingency Functions
 	
 	def trial_contingency(self, *args):
+		"""Evaluate trial outcomes, handle reversal and set up the next trial.
+
+		Run inside a try/except that calls ``self.protocol_end`` on errors. Resets
+		the response flags, appends ``self.last_response`` to
+		``self.response_tracking`` and checks whether the block has ended (by
+		duration, by trial count, or for training by reaching
+		``training_block_max_correct``); if so it calls ``self.block_contingency``.
+		Otherwise it resets the trial state, increments ``current_trial`` and
+		``current_block_trial``, picks the next ITI length in seconds (fixed
+		choice or a uniform draw within ``self.iti_range``), advances the reversal
+		index and shifts the target/nontarget locations when ``current_hits``
+		reaches ``reversal_threshold``, and sets the reward contingency for the
+		next trial. Logs the matching ``Parameter`` events. Finalises with
+		``self.trial_end_time`` from ``time.perf_counter``.
+
+		Notes
+		-----
+		Training stages always reward the target; otherwise the rewarded side is
+		taken from ``trial_reward_list`` (reshuffled with ``constrained_shuffle``
+		``max_run=5``). A reversal swaps the target/nontarget location indices
+		once ``current_hits`` (consecutive target choices) reaches
+		``reversal_threshold``; if that pushes ``current_reversal`` past
+		``max_reversals`` the block is advanced through ``block_contingency``
+		instead. The block ends on ``block_duration`` seconds, ``block_trial_max``
+		trials, or (Training only) when the number of target choices reaches
+		``training_block_max_correct``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		
 		try:
 			self.trial_response_active = False
@@ -748,6 +1058,33 @@ class ProtocolScreen(ProtocolBase):
 	# Block Contingency Function
 	
 	def block_contingency(self, *args):
+		"""Advance to the next block or stage and set up its parameters.
+
+		Return early when a block change is already active or the protocol has
+		ended. Otherwise, inside a try/finally that clears the active flag, it
+		unschedules pending callbacks, clears the screen and increments
+		``current_block``; when it exceeds ``block_multiplier`` (or is 0) the stage
+		index advances and ``current_block`` is reset to 1. If all stages are complete it cancels the session event
+		and shows the final results screen; otherwise it sets ``current_stage``,
+		resets the next block's counters, chooses the images and logs the
+		block/stage/parameter events. Training uses the training target and
+		nontarget images; with a single-image list both stimuli use that image and
+		the location indices shift; otherwise the image indices advance and the
+		reward list is reshuffled and its first entry sets which side is rewarded.
+		For the first block of a stage it configures the instruction text
+		and calls ``self.section_start``; otherwise it calls ``self.block_screen``.
+		Finally it calls ``self.trial_contingency`` to continue the flow.
+
+		Notes
+		-----
+		Runs ``self.protocol_end`` on ``KeyboardInterrupt``/``Exception`` and resets
+		``block_contingency_active`` in a ``finally`` block.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.block_contingency_active or getattr(self, 'protocol_ended', False):
 			return
 

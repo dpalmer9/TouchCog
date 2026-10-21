@@ -1,3 +1,5 @@
+"""CPT protocol task screen: continuous performance task trial flow and outcomes."""
+
 # Imports #
 
 import configparser
@@ -18,8 +20,53 @@ from kivy.uix.effectwidget import EffectWidget, HorizontalBlurEffect, VerticalBl
 
 
 class ProtocolScreen(ProtocolBase):
+	"""CPT task screen implementing trial presentation, hold-button contingencies and logging.
+
+	Extends :class:`Classes.Protocol.ProtocolBase` with the CPT trial flow: configuring
+	stages and image sets, presenting stimuli, recording hold-release and center-press
+	responses, assigning trial outcomes/contingencies, and writing trial, stage and
+	outcome events to the logging layout.
+
+	Attributes
+	----------
+	protocol_name : str
+		Protocol name ``'CPT'``.
+	name : str
+		Screen name ``'CPT_protocolscreen'``.
+	data_cols : list of str
+		Column names of the trial summary output file.
+	metadata_cols : list of str
+		Column names of the metadata output file.
+	config_path : pathlib.Path
+		Path of the CPT ``Configuration.ini`` file.
+	parameters_dict : configparser.SectionProxy
+		Active configuration section (``TaskParameters`` or ``DebugParameters``).
+	debug_mode : bool
+		Whether ``DebugParameters`` are being used.
+	image_set_list : list of dict
+		Standard stimulus image sets with target and nontarget names.
+	cjb_image_set_list : list of dict
+		CJB image sets with target, nontarget and neutral image names.
+	stage_list : list of str
+		Ordered names of the active task stages.
+	cjb_task : bool
+		Whether the running stage is a CJB stage; initially whether the first stage in
+		``stage_list`` is a CJB stage, then set per stage by ``block_contingency``.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the CPT protocol screen, columns, config and image sets.
+
+		Calls the base initialiser, sets the protocol and screen names, registers the
+		data and metadata column lists, reads the CPT configuration file into
+		``parameters_dict`` (``DebugParameters`` when debug mode is enabled, otherwise
+		``TaskParameters``), and defines the standard and CJB image sets.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Passed to :class:`Classes.Protocol.ProtocolBase`.
+		"""
 
 		super(ProtocolScreen, self).__init__(**kwargs)
 		self.protocol_name = 'CPT'
@@ -119,6 +166,18 @@ class ProtocolScreen(ProtocolBase):
 									'neutrals': ['left 22.5', 'vert', 'right 22.5']}]
 	
 	def _load_config_parameters(self, parameters_dict):
+		"""Read the parameter values from the configuration section into attributes.
+
+		Loads participant, timing, block, staircasing, trial-list and image parameters
+		from ``parameters_dict`` using the stored defaults, then builds ``stage_list``
+		from the enabled-task flags, selects the stimulus family and image set, and
+		creates the session-end Clock trigger from ``session_duration``.
+
+		Parameters
+		----------
+		parameters_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		
 		self.participant_id = parameters_dict.get('participant_id', '')
 
@@ -246,6 +305,25 @@ class ProtocolScreen(ProtocolBase):
 			self.image_set = 'set1'
 	
 	def _load_task_variables(self):
+		"""Reset the task state: image names, flags, counters, staircase trackers and timing.
+		
+		Creates an empty ``similarity_data`` frame and blank target/CJB image names,
+		loads the language, clears the stage-flow flags (stimulus/limited-hold/response,
+		tutorial and section advance, premature handling, forced response), sets
+		``current_block`` to -1, ``stage_index`` to -1, ``block_trial_max`` and
+		``block_duration`` from the config values and ``cjb_task`` from the first entry
+		of ``stage_list``. Initialises the staircase tracking lists and values (blur,
+		noise mask, stimulus duration, similarity, hit and false-alarm tracking) and
+		the timing values (``frame_duration`` is ``1/self.maxfps`` seconds, latencies 0.0).
+		
+		Notes
+		-----
+		Trial outcome codes (from the comment in the code): 0-Premature, 1-Hit, 2-Miss,
+		3-False Alarm, 4-Correct Rejection, 5-Correct no center tap, 6-Incorrect no
+		center tap, 7-Trial abort (lift and press the hold button during stimulus
+		display), 8-CJB Neutral. ``trial_outcome``, ``contingency`` and ``response``
+		start at 0.
+		"""
 		# Set images
 
 		self.similarity_data = pd.DataFrame({})
@@ -384,6 +462,20 @@ class ProtocolScreen(ProtocolBase):
 		self.cjb_nontarget_feedback = False
 
 	def _set_hold_button_callbacks(self, on_press=None, on_release=None):
+		"""Rebind the hold button press and release callbacks.
+		
+		Unbinds ``iti_start``, ``premature_resolved`` and ``response_cancelled`` from
+		``on_press`` and ``premature_response``, ``stimulus_response`` and
+		``hold_remind`` from ``on_release``, then binds the given callbacks when they
+		are not None.
+		
+		Parameters
+		----------
+		on_press : callable, optional
+			Callback bound to the hold button's press. Defaults to None (none bound).
+		on_release : callable, optional
+			Callback bound to the hold button's release. Defaults to None (none bound).
+		"""
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_press=self.premature_resolved)
 		self.hold_button.unbind(on_press=self.response_cancelled)
@@ -397,6 +489,11 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.bind(on_release=on_release)
 
 	def _reset_tutorial_controls(self):
+		"""Re-enable the tutorial continue button bound to ``tutorial_video_stop``.
+		
+		Clears ``tutorial_advance_active`` and, if the button exists, enables it and
+		rebinds its press to :meth:`tutorial_video_stop`.
+		"""
 		self.tutorial_advance_active = False
 		if hasattr(self, 'tutorial_continue_button'):
 			self.tutorial_continue_button.disabled = False
@@ -405,6 +502,12 @@ class ProtocolScreen(ProtocolBase):
 			self.tutorial_continue_button.bind(on_press=self.tutorial_video_stop)
 
 	def _reset_section_controls(self):
+		"""Re-enable the section start and instruction buttons bound to ``section_start``.
+		
+		Clears ``section_advance_active`` and, for each of ``tutorial_start_button`` and
+		``instruction_button`` that exists, enables it and rebinds its press to
+		:meth:`section_start`.
+		"""
 		self.section_advance_active = False
 		if hasattr(self, 'tutorial_start_button'):
 			self.tutorial_start_button.disabled = False
@@ -416,6 +519,11 @@ class ProtocolScreen(ProtocolBase):
 			self.instruction_button.bind(on_press=self.section_start)
 
 	def _reset_stage_continue_button(self):
+		"""Re-enable the stage continue button bound to ``stage_continue_pressed``.
+		
+		Clears ``stage_continue_active`` and, if the button exists, enables it and
+		rebinds its release to :meth:`stage_continue_pressed`.
+		"""
 		self.stage_continue_active = False
 		if hasattr(self, 'stage_continue_button'):
 			self.stage_continue_button.disabled = False
@@ -424,6 +532,16 @@ class ProtocolScreen(ProtocolBase):
 			self.stage_continue_button.bind(on_release=self.stage_continue_pressed)
 
 	def stage_continue_pressed(self, *args):
+		"""Advance to the next block when the stage continue button is released.
+		
+		Ignored while a press is already being handled or once the protocol has ended.
+		Otherwise disables the button and calls :meth:`block_contingency`.
+		
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.stage_continue_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -432,6 +550,16 @@ class ProtocolScreen(ProtocolBase):
 		self.block_contingency()
 
 	def end_session_pressed(self, *args):
+		"""End the protocol when the session end button is pressed.
+		
+		Ignored while already ending or once the protocol has ended. Otherwise disables
+		``session_end_button`` and calls :meth:`protocol_end`.
+		
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.end_session_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -440,6 +568,19 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_end()
 
 	def _load_staircase_variables(self):
+		"""Convert the timing parameters to frame-based values for staircasing.
+		
+		Converts the ITI range to a descending list of whole frames
+		(``iti_frame_range``) and sets ``iti_length`` (seconds) to its first value;
+		converts the stimulus durations to a descending frame list
+		(``stimdur_frame_list``, adding 1 when any rounds to 0 frames) and sets
+		``stimdur_frames``, ``stimdur_seconds``, ``stimdur_base`` and ``stimdur_change``
+		(half the starting frames) from its first entry; raises ``stimdur_frame_min`` to
+		at least 1; sets ``limhold_seconds`` and ``limhold_base`` from the limited hold
+		and caps ``stimdur_seconds_max`` at the limited hold; derives
+		``stimdur_frame_max`` and sets ``stimdur_use_steps`` True. Frame lengths use
+		``frame_duration`` (seconds per frame).
+		"""
 
 		self.iti_temp = [float(iNum) for iNum in self.iti_temp]
 		self.iti_frame_range = sorted((np.array(self.iti_temp) // self.frame_duration).tolist(), reverse=True)
@@ -477,6 +618,19 @@ class ProtocolScreen(ProtocolBase):
 
 		
 	def _setup_session_stages(self):
+		"""Build the trial lists for the base, CJB and flanker stages.
+		
+		Creates ``trial_list_base`` with ``round(trial_list_length_base *
+		target_prob_base)`` ``'Target'`` entries and the rest ``'Nontarget'``, the CJB
+		discrimination list (``'Target'``/``'Nontarget'`` by ``cjb_target_prob``), and the
+		CJB probe list (``'Target'``, ``'Nontarget'``, ``'Neutral-Target'``,
+		``'Neutral-Nontarget'`` and ``'Neutral-True'``) with matching shuffled
+		target/nontarget feedback lists (feedback probability 0.5, max run 3). Shuffles
+		``trial_list`` from ``trial_list_base`` with ``trial_list_max_run_base``, sets up
+		``target_prob_hilo`` and, when ``Flanker_Fixed_Probe`` is in ``stage_list``, a
+		shuffled ``flanker_stage_list`` (``non``, ``con``, ``inc`` twice each) and one
+		shuffled trial list per flanker type.
+		"""
 		# General properties
 		self.trial_list_base = list()
 		self.staircase_min_target_trials = round((self.trial_list_length_base * self.target_prob_base))
@@ -557,6 +711,23 @@ class ProtocolScreen(ProtocolBase):
 			self.trial_list_flanker_index_dict = {'non': 0, 'con': 0, 'inc': 0}
 	
 	def _setup_image_widgets(self):
+		"""Select the stimulus images and build the stimulus, mask and outline widgets.
+		
+		Loads the Fribble image list for ``stimulus_family``. For the similarity
+		stage it reads the SSIM data CSV for the target (random when ``image_set`` is
+		``'rand'``), sorts nontargets by similarity to the target, sets the
+		``similarity_index_min``/``similarity_index_max`` window from the initial
+		percentile and range and ``current_similarity`` to 1.0. Otherwise it takes the
+		target and nontargets from the named set in ``image_set_list`` or, for
+		``'rand'``, a random target plus nontargets from distinct subfamilies. Adds the
+		CJB images when a CJB stage is active, loads the noise masks (``noise_mask_value``
+		is the first), computes widget sizes and positions, loads all images and
+		creates the center/left/right stimulus, noise-mask and outline
+		:class:`Classes.Protocol.ImageButton` widgets (center ones bound to
+		:meth:`center_pressed`), the limited-hold mask widget when ``mask_during_limhold``
+		is 1, and the blur effect widget when a blur stage is listed. Rebinds the hold
+		button to ``iti_start`` on press and ``premature_response`` on release.
+		"""
 		# Set images
 		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 
@@ -779,6 +950,13 @@ class ProtocolScreen(ProtocolBase):
 	
 
 	def _setup_language_localization(self):		
+		"""Load the localized button texts, outcome and staging messages.
+
+		Calls :meth:`set_language`, resets the stage instructions, reads
+		``Button.ini`` for the continue, end-session and training-block button
+		texts, and populates ``outcome_dict`` from ``outcome_*.txt`` files and
+		``staging_dict`` from ``staging_*.txt`` files.
+		"""
 		self.set_language(self.language)
 		self.stage_instructions = ''
 
@@ -806,6 +984,16 @@ class ProtocolScreen(ProtocolBase):
 		
 
 	def _load_video_and_instruction_components(self):
+		"""Load the tutorial video and language instruction components.
+
+		Sets ``lang_folder_path``, loading the tutorial and stage-specific video
+		paths and a ``PreloadedVideo`` when a ``Tutorial_Video`` folder exists (the
+		CJB training video for a CJB task, else the CPT tutorial). Reads
+		``Instructions.ini`` (``train`` and ``task`` text per stage, empty when
+		absent) and the ``too_slow`` and ``miss`` feedback strings with their optional
+		colours from ``Feedback.ini``, then creates the tutorial, instruction, stage
+		results and stage-continue/session-end widgets and clears the layout.
+		"""
 
 		# Instruction Import
 
@@ -937,6 +1125,25 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.clear_widgets()
 
 	def _constrained_shuffle_cjb(self, trial_list, max_run=3):
+		"""Shuffle trials: constrained-shuffle the target/nontarget trials and interleave the rest.
+
+		Partitions the trial list into target/nontarget trials and all others, applies
+		:meth:`constrained_shuffle` with ``max_run`` to the first group and
+		``random.shuffle`` to the others, then inserts the others at random positions
+		no earlier than index ``min(10, number of target/nontarget trials)``.
+
+		Parameters
+		----------
+		trial_list : list of str
+			The trial names to shuffle (including 'Target', 'Nontarget' and others).
+		max_run : int, optional
+			Maximum consecutive target/nontarget repeats allowed. Defaults to 3.
+
+		Returns
+		-------
+		list of str
+			The final shuffled trial list.
+		"""
 		# Create copy of trial list only containing target and nontarget trials
 		target_nontarget_trials = [trial for trial in trial_list if trial in ['Target', 'Nontarget']]
 		other_trials = [trial for trial in trial_list if trial not in ['Target', 'Nontarget']]
@@ -965,6 +1172,18 @@ class ProtocolScreen(ProtocolBase):
 		return final_shuffled_trials
 
 	def load_parameters(self, parameters_dict):
+		"""Load the CPT configuration parameters and set up the task components.
+
+		Stores the parameters, runs the config, task-variable, staircase and session
+		loading, sets up images and language localization, generates the output and
+		metadata files, starts the clock, and shows the tutorial video screen when a
+		``Tutorial_Video`` folder exists, otherwise the text tutorial.
+
+		Parameters
+		----------
+		parameters_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		self.parameters_dict = parameters_dict
 		self._load_config_parameters(self.parameters_dict)
 		self._load_task_variables()
@@ -992,6 +1211,19 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def present_tutorial_text(self, *args):
+		"""Show the text-only tutorial instructions and their continue button.
+
+		Resets the tutorial controls, clears the layout, positions the instruction
+		label and continue button, fills the label from
+		``instruction_config['Main']['no_video']``, and logs the
+		``'Instruction Presentation'`` and ``'Object Display'`` stage events plus a
+		``'Task Instruction'`` text-displayed event.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 
 		self._reset_tutorial_controls()
 		self.protocol_floatlayout.clear_widgets()
@@ -1011,6 +1243,17 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def tutorial_video_stop(self, *args):
+		"""Stop the tutorial video and advance to the target-presentation screen.
+
+		Returns early when a tutorial advance is already active or the protocol has
+		ended. Disables the continue button, stops the tutorial video, logs a
+		video-remove object event, and calls :meth:`tutorial_target_present_screen`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.tutorial_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -1025,6 +1268,19 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def tutorial_target_present_screen(self, *args):
+		"""Show the tutorial target stimulus and outline with the start button.
+
+		Returns early when the layout is missing or the protocol has ended. Clears
+		the layout, resets the section controls, sets the tutorial stimulus source to
+		the target image (from the ``CJB`` subfolder for a CJB task, otherwise the
+		fribble folder), and adds the checkmark, stimulus, outline and start-button
+		widgets.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.protocol_floatlayout is None or getattr(self, 'protocol_ended', False):
 			return
 
@@ -1046,6 +1302,18 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def start_protocol_from_tutorial(self, *args):
+		"""Start the task from the tutorial screen, generating the data files if needed.
+
+		Returns early when a section advance is active or the protocol has ended.
+		Clears the layout; when the data file has not been generated, generates the
+		output and metadata files and marks the data file as generated. Then calls
+		:meth:`block_contingency`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.section_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -1064,6 +1332,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def blur_preload_start(self, *args):
+		"""Preload the blur stimulus texture, then immediately start the trial contingency.
+
+		Assigns the mask image texture to the blur stimulus, adds the blur widget
+		with the stimulus to the layout, and calls :meth:`blur_preload_end`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 
 		self.img_stimulus_C.texture = self.image_dict[self.mask_image].image.texture
 
@@ -1075,6 +1353,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def blur_preload_end(self, *args):
+		"""Remove the blur preload widget and start the trial contingency.
+
+		Removes the blur widget and its stimulus child, then calls
+		:meth:`trial_contingency`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		self.protocol_floatlayout.remove_widget(self.blur_widget)
 		self.blur_widget.remove_widget(self.img_stimulus_C)
 
@@ -1083,6 +1371,22 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_present(self, *args): # Present stimulus
+		"""Display the current stimulus with its masks, outline and flankers, and start timing.
+
+		For blur staircase stages the stimulus is added inside the blur widget,
+		otherwise it is added directly. A noise mask is added for noise staircase
+		stages, an outline when ``display_stimulus_outline == 1``, and flanker
+		stimuli for ``Flanker_Fixed_Probe``. Records ``stimulus_start_time`` from
+		:func:`time.perf_counter` and sets ``stimulus_on_screen``. When not a forced
+		response, schedules ``stimulus_end`` after ``stimdur_seconds`` and
+		``center_notpressed`` after ``limhold_seconds``, and logs the display object
+		events.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if 'Blur_Staircase_Difficulty' in self.stage_list \
 			or self.current_stage == 'Blur_Staircase_Probe':
 
@@ -1130,6 +1434,20 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_end(self, *args): # Remove stimulus
+		"""Remove the stimulus at the end of its display and finalise presentation timing.
+
+		Removes the blur widget and stimulus for blur stages and the noise mask for
+		noise stages, records ``stimdur_actual`` as the elapsed :func:`time.perf_counter`
+		time since ``stimulus_start_time`` and sets ``limhold_started``. For
+		``StimDur_Staircase_Probe`` with ``mask_during_limhold``, swaps in the masked
+		stimulus; for ``Flanker_Fixed_Probe`` removes the flanker stimuli. Logs the
+		corresponding remove object and stage events.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 
 		if 'Blur_Staircase_Difficulty' in self.stage_list \
 			or self.current_stage == 'Blur_Staircase_Probe':
@@ -1176,6 +1494,17 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def stimulus_presentation(self, *args): # Stimulus presentation by frame
+		"""Present the stimulus, wiring the hold release to :meth:`stimulus_response`.
+
+		When the stimulus is not on screen and the limited hold has not started,
+		clears the premature-response flag, marks the hold button as pressed, binds
+		the hold release to :meth:`stimulus_response`, and calls :meth:`stimulus_present`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		
 		if not self.stimulus_on_screen \
 			and not self.limhold_started:
@@ -1191,6 +1520,21 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def premature_response(self, *args): # Trial Outcomes: 0-Premature
+		"""Handle a premature response (releasing the hold before the stimulus appears); outcome 0.
+
+		Returns early when a premature response is active, the protocol has ended, a
+		stimulus is on screen, or the stage/block has started. Unsets the hold press,
+		cancels the ITI and feedback clocks, and sets contingency 3, response 1,
+		trial outcome 0 and NaN latencies. Logs the outcome variable events and a
+		``'Premature Response'`` stage event, writes the trial row, assigns
+		``'wait'`` feedback when none is shown, and rebinds the hold press to
+		:meth:`premature_resolved`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.premature_response_active or getattr(self, 'protocol_ended', False):
 			return None
 
@@ -1236,6 +1580,18 @@ class ProtocolScreen(ProtocolBase):
 		self._set_hold_button_callbacks(on_press=self.premature_resolved)
 
 	def premature_resolved(self, *args):
+		"""Resolve a premature response: clear it and start the ITI.
+
+		Returns early when no premature response is active or the protocol has ended.
+		Clears the premature flag, cancels and removes the feedback, marks the hold
+		button as pressed, rebinds the hold press to :meth:`iti_start` and release to
+		:meth:`premature_response`, and calls :meth:`iti_start`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if (not self.premature_response_active) or getattr(self, 'protocol_ended', False):
 			return
 
@@ -1252,6 +1608,30 @@ class ProtocolScreen(ProtocolBase):
 	# Contingency Stages #
 	# Tracks contingencies and outcomes based on removal of hold from hold_button
 	def stimulus_response(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display)
+		"""Record the hold release during stimulus display and set the response outcome.
+
+		Returns early when a response was already made or the protocol has ended.
+		Records ``response_time`` and ``response_latency`` from :func:`time.perf_counter`
+		relative to ``stimulus_start_time``, marks the response made, unsets the hold
+		press, sets ``response = 1`` and logs a ``'Stimulus Response'`` stage event.
+
+		Notes
+		-----
+		Contingency 2 means the hold was released but the stimulus was not (yet)
+		pressed; the response latency is the seconds from ``stimulus_start_time`` to
+		the release. For ``SART_Fixed_Probe``: contingency 2 and outcome 5 when the center image is
+		in the nontarget list, otherwise outcome 6. Otherwise contingency 2 and
+		outcome 5 when the center image is the target image, otherwise outcome 6 (the
+		``'too_slow'`` label chosen for ``LimHold_Staircase_Difficulty`` is stored in an unused
+		local variable and is not displayed). There is no CJB-specific branch here.
+		Logs the response, contingency, outcome and latency variable events, then
+		rebinds the hold press to :meth:`response_cancelled`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 										# Contingencies: 0: Incorrect; 1: Correct; 2: Response, no center touch; 3: Premature response
 		if self.response_made or getattr(self, 'protocol_ended', False):
 			return
@@ -1304,6 +1684,39 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Tracks contingencies based on responses direectly to the stimulus image
 	def center_pressed(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm
+		"""Record a direct press on the stimulus image and set the trial outcome.
+
+		Returns early when no stimulus or stimulus mask is on screen or the protocol
+		has ended. Unschedules the stimulus-end and no-press callbacks, records
+		``stimulus_press_latency`` (from :func:`time.perf_counter` relative to
+		``stimulus_start_time``) and ``movement_latency`` (stimulus press latency
+		minus ``response_latency``), removes the displayed stimulus/mask widgets and
+		resets ``stimulus_on_screen``, ``limhold_started`` and ``response_made``.
+		Then sets contingency and outcome, adds the outcome variable events, assigns
+		feedback when requested, writes the trial row, rebinds the hold press to
+		:meth:`iti_start` and release to :meth:`premature_response`, and advances via
+		:meth:`blur_preload_start` or :meth:`trial_contingency`.
+
+		Notes
+		-----
+		For ``SART_Fixed_Probe`` (not CJB): nontarget gives contingency 1, outcome
+		1 and ``'correct'`` (block 0 only); target gives contingency 0, outcome 3 and
+		``'incorrect'`` (block 0 only). For CJB: ``cjb_target_image`` gives
+		contingency 1, outcome 1 and ``'correct'``; ``cjb_nontarget_image`` gives
+		contingency 0, outcome 3 and ``'incorrect'``; the neutral images give
+		contingency 0, outcome 8. Otherwise target gives contingency 1, outcome 1,
+		``current_hits += 1`` and ``'correct'``; nontarget gives contingency 0,
+		outcome 3, ``block_false_alarms += 1`` and ``'incorrect'``. In the CJB_Probe
+		stage the next True/False entry of the target or nontarget feedback list decides
+		whether the 'correct'/'incorrect' feedback is shown (logged as ``CJB Target
+		Feedback`` / ``CJB Nontarget Feedback``); each list is reshuffled with
+		``max_run=2`` once exhausted.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if ((not self.stimulus_on_screen) and (not self.stimulus_mask_on_screen)) \
 			or getattr(self, 'protocol_ended', False):
 			return
@@ -1462,6 +1875,38 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def center_notpressed(self, *args):
+		"""Record that no direct press on the stimulus occurred before the limited hold ended.
+
+		Returns early when no stimulus or stimulus mask is on screen or the protocol
+		has ended. Removes the displayed stimulus/mask widgets, sets
+		``stimulus_press_time``, ``stimulus_press_latency`` and ``movement_latency``
+		to NaN, and resets ``stimulus_on_screen`` and ``limhold_started``. Then sets
+		response and outcome, adds the outcome variable events, assigns feedback when
+		requested, writes the trial row, rebinds the hold press to :meth:`iti_start`
+		and release to :meth:`premature_response`, and advances via
+		:meth:`blur_preload_start` or :meth:`trial_contingency`.
+
+		Notes
+		-----
+		If the hold was already released (``response_made`` True) the contingency (2)
+		and outcome (5 or 6, or 7 after :meth:`response_cancelled`) set earlier are
+		kept and only the stimulus press latencies are NaN. When no response was
+		made: ``response = 0`` and ``response_latency = np.nan``.
+		For ``SART_Fixed_Probe`` (not CJB): target gives contingency 1, outcome 4,
+		``current_hits += 1`` and ``'correct'``; nontarget gives contingency 0,
+		outcome 2. For CJB: ``cjb_target_image`` gives contingency 0, outcome 2 and
+		``'miss'`` (``CJB_Training`` only); ``cjb_nontarget_image`` gives
+		contingency 1, outcome 4; the neutral images give contingency 0, outcome 8.
+		Otherwise: target gives contingency 0, outcome 2 and ``'miss'`` (``Training``
+		only); nontarget gives contingency 1, outcome 4. The hold release
+		:meth:`stimulus_response` is unbound when no response was made,
+		:meth:`response_cancelled` otherwise, and ``response_made`` is reset to False.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if ((not self.stimulus_on_screen) and (not self.stimulus_mask_on_screen)) \
 			or getattr(self, 'protocol_ended', False):
 			return
@@ -1599,6 +2044,25 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def response_cancelled(self, *args):
+		"""Record a trial abort and pass control to :meth:`center_notpressed`.
+
+		Returns early when no response was made or the protocol has ended. Chooses
+		feedback as ``'miss'`` when ``trial_outcome == 5`` and ``'abort'``
+		otherwise, unschedules the stimulus-end and no-press callbacks, sets
+		``trial_outcome`` to 7 and ``hold_button_pressed`` to True, then calls
+		:meth:`center_notpressed`.
+
+		Notes
+		-----
+		The chosen feedback string is assigned to the local ``outcome_feedback`` and is
+		not displayed; the outcome is set to 7 (Trial abort) while the contingency set
+		by :meth:`stimulus_response` (2) is left unchanged.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if (not self.response_made) or getattr(self, 'protocol_ended', False):
 			return
 		
@@ -1619,6 +2083,20 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def section_start(self, *args):
+		"""Start the current section, clearing the layout and ending the block.
+
+		Returns early when a section advance is already active or the protocol has
+		ended. Disables the tutorial start and instruction buttons, clears the block
+		and video flags, removes all widgets from the layout, logs a ``'Section Start'``
+		stage event and remove events for the instructions and continue button, records
+		``trial_end_time`` from :func:`time.perf_counter`, and calls
+		:meth:`block_contingency` then :meth:`block_end`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.section_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -1646,6 +2124,31 @@ class ProtocolScreen(ProtocolBase):
 	# Data Saving Functions #
 
 	def write_trial(self, *args):		
+		"""Write the current trial's summary row to the summary data file.
+
+		Passes a 19-value row to :meth:`write_summary_file`, which appends it to
+		``self.app.trial_summary_data`` and queues it for the summary CSV.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+
+		Notes
+		-----
+		Row columns (``self.data_cols``): TrialNo (``current_trial``), Stage,
+		Substage (flanker type or empty), TarProb (``target_probability``), Block,
+		BlockTrial, Stimulus (``center_image``), StimFrames and StimSeconds (stimulus
+		duration setting), LimHold (``limhold_seconds``), Similarity
+		(``current_similarity``), BlurLevel, NoiseMaskValue, Response (1 hold released,
+		0 not), Contingency (0 incorrect, 1 correct, 2 response with no center touch,
+		3 premature), Outcome (``trial_outcome``: 0 premature, 1 hit, 2 miss, 3 false
+		alarm, 4 correct rejection, 5 hit no center press, 6 false alarm no center
+		press, 7 trial abort, 8 CJB neutral), ResponseLatency (hold release, seconds
+		from ``stimulus_start_time``), StimulusPressLatency (center press, seconds from
+		``stimulus_start_time``) and MovementLatency (press latency minus response
+		latency). Latencies are NaN where the event did not occur.
+		"""
 		trial_data = [
 			self.current_trial
 			, self.current_stage
@@ -1678,7 +2181,18 @@ class ProtocolScreen(ProtocolBase):
 	# --- Helpers extracted from trial_contingency ---
 
 	def _encode_last_response(self):
-		"""Set self.last_response (-1/0/1) based on previous trial outcome and current stage."""
+		"""Encode the finished trial's ``trial_outcome`` as ``last_response`` (-1, 0 or 1).
+
+		The coding depends on the stage. Training stage or block 0: 1 for a hit
+		(outcome 1), else 0. ``Similarity_Staircase_Difficulty``: 1 for a correct
+		rejection (outcome 4, which also appends ``current_similarity`` to
+		``similarity_tracking``), -1 for outcome 2 or 3, else 0. ``StimDur_Staircase_Probe``:
+		1 for outcome 1 or 5 (which also appends ``stimdur_frames`` to
+		``stimdur_frame_tracking``), -1 for outcome 2, 3 or 6, else 0. SART stage or the
+		high-target-probability TarProb block: 1 for outcome 4, -1 for outcome 3 or 6, else
+		0. All other cases: 1 for outcome 1, -1 for outcome 3 or 6, else 0. Logs the value
+		as the ``Outcome`` / ``Last Response`` variable event.
+		"""
 
 		if (self.current_stage == 'Training') or (self.current_block == 0):
 			self.last_response = 1 if self.trial_outcome == 1 else 0
@@ -1723,7 +2237,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _update_hit_false_alarm_tracking(self):
-		"""Append current trial outcome to rolling hit/FA tracking lists."""
+		"""Append the finished trial to the hit and false-alarm tracking lists.
+
+		Outcome 1 (hit) appends 1 to ``hit_tracking`` and ``total_hit_tracking`` and the
+		response latency (when not NaN) to ``decision_point_tracking``; outcome 2 (miss)
+		appends 0 to both hit lists; outcome 3 (false alarm) appends 1 and outcome 4
+		(correct rejection) appends 0 to ``false_alarm_tracking`` and
+		``total_false_alarm_tracking``, and both record the nontarget's index in
+		``nontarget_images`` in ``staircase_index_tracking`` (``len + 1`` for a CJB task).
+		Updates the CJB discrimination history for the ``CJB_Discrimination`` stage.
+		"""
 
 		if self.trial_outcome == 1:
 			self.hit_tracking.append(1)
@@ -1756,7 +2279,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _update_cjb_discrimination_history(self):
-		"""Keep a rolling window of the most recent CJB discrimination trials."""
+		"""Keep a rolling window of the most recent CJB discrimination trials.
+
+		When ``cjb_discrimination_count`` reaches three times ``len(trial_list)`` the
+		criterion is treated as failed: the failure is logged, ``CJB_Probe`` is removed from
+		``stage_list``, the block is advanced and the stage screen is shown. Otherwise a
+		Target trial is recorded as ``('Target', 1 if outcome 1 else 0)`` and a Nontarget
+		trial as ``('Nontarget', 1 if outcome 3 else 0)`` (other trial types are ignored),
+		the window is trimmed to ``cjb_discrimination_trials`` entries and the count is
+		incremented.
+		"""
 
 		if (self.trial_index < 0) or (self.trial_index >= len(self.trial_list)):
 			return
@@ -1792,7 +2324,22 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _run_cjb_discrimination_staircase(self):
-		"""Advance CJB discrimination once the rolling trial window meets criterion."""
+		"""Advance past CJB discrimination once the rolling window meets the criterion.
+
+		Needs a full window of ``cjb_discrimination_trials`` trials with at least one
+		Target and one Nontarget. The hit rate is the mean of the Target records and the
+		false-alarm rate the mean of the Nontarget records, both logged as ``Parameter``
+		variable events. When the hit rate is at least ``staircase_hr_criterion`` and the
+		false-alarm rate is below ``staircase_far_criterion`` the block ends: the hold
+		button is disabled and removed, ``contingency``, ``trial_outcome`` and
+		``last_response`` are set to 0, ``current_block`` is incremented and the stage
+		screen is shown.
+
+		Returns
+		-------
+		bool
+			True when the block was ended, otherwise False.
+		"""
 
 		if len(self.cjb_discrimination_history) < self.cjb_discrimination_trials:
 			return False
@@ -1833,7 +2380,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _build_similarity_baseline(self):
-		"""Compute outcome_value and derive the baseline nontarget image list for similarity stages."""
+		"""Compute ``outcome_value`` and rebuild the baseline nontarget list for similarity stages.
+
+		``outcome_value`` is the highest similarity at which a correct rejection occurred
+		(``max(similarity_tracking)``), or the similarity of the last nontarget in the
+		current list when none occurred. The baseline list is the nontargets whose
+		similarity to the target is at most ``outcome_value`` (or the first
+		``similarity_index_range`` nontargets when fewer qualify), and
+		``current_nontarget_image_list`` becomes its last ``similarity_index_range``
+		entries.
+		"""
 
 		if len(self.similarity_tracking) > 0:
 			self.outcome_value = max(self.similarity_tracking)
@@ -1855,7 +2411,18 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _run_similarity_staircase(self):
-		"""Adjust similarity window based on staircase_flag; end block when oscillation or limit reached."""
+		"""Move the similarity window up or down according to ``staircase_flag``.
+
+		For a positive flag the window moves to more similar nontargets (starting above the
+		highest index among the last ``staircase_min_nontarget_trials`` nontarget trials);
+		for a negative flag it moves to less similar ones (ending at the lowest such index).
+		If the direction reverses relative to the previous staircase step, or the window
+		hits the top or bottom of the similarity-sorted list, the baseline list is built
+		(:meth:`_build_similarity_baseline`), baseline min/max similarity events are logged,
+		the block is ended, ``current_block`` is incremented and the stage screen is shown.
+		The window's min/max similarity is logged as a ``Parameter`` event and
+		``last_staircase`` is updated.
+		"""
 
 		if self.staircase_flag > 0:
 
@@ -1928,7 +2495,16 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _run_stimdur_staircase(self):
-		"""Adjust stimulus duration using binary search based on staircase_flag."""
+		"""Adjust the stimulus duration by a binary search according to ``staircase_flag``.
+
+		The block ends (``outcome_value`` set to ``stimdur_frames``, ``current_block``
+		incremented, stage screen shown) when the step size is 1 frame or the duration is at
+		least the limited hold. Otherwise a positive flag shortens the stimulus (sets the
+		upper bound to the current frames, subtracts half the range, not below
+		``stimdur_frame_min``), and a negative flag lengthens it (sets the lower bound to
+		the current frames and adds half the range, not above the limited hold in frames).
+		``stimdur_seconds`` is recomputed from ``frame_duration`` and logged.
+		"""
 
 		# End block when binary search has converged or duration equals/exceeds limited hold
 		if (self.stimdur_frame_change == 1) \
@@ -1969,7 +2545,23 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _run_staircase(self):
-		"""Evaluate staircasing criteria and adjust parameters if thresholds are met."""
+		"""Evaluate the staircase criteria and adjust the stage parameters.
+
+		For ``CJB_Discrimination`` it defers to :meth:`_run_cjb_discrimination_staircase`.
+		Stages without ``'Staircase'`` in their name do nothing. Otherwise, once at least
+		``staircase_min_target_trials`` hits and ``staircase_min_nontarget_trials`` false
+		alarm records exist, the hit rate and false-alarm rate over those recent trials set
+		``staircase_flag``: +1 when the hit rate is at least ``staircase_hr_criterion`` and
+		the false-alarm rate is below ``staircase_far_criterion``; -1 when the hit rate is
+		below and the false-alarm rate at or above their criteria; -2 when exactly one of
+		the two criteria fails over the last two windows. A non-zero flag clears the
+		tracking lists and runs the similarity or stimulus-duration staircase.
+
+		Returns
+		-------
+		bool
+			The CJB discrimination result (True if the block ended); False otherwise.
+		"""
 
 		if self.current_stage == 'CJB_Discrimination':
 			return self._run_cjb_discrimination_staircase()
@@ -2011,7 +2603,14 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _advance_trial_counters_and_iti(self):
-		"""Increment trial/block-trial counters and sample a new ITI length."""
+		"""Increment the trial counters and sample the next ITI.
+
+		Increments ``current_trial`` and ``current_block_trial`` and logs them. When
+		``iti_frame_range`` has more than one value the ITI is a random choice (``'fixed'``)
+		or a random whole-frame value between its minimum and maximum (otherwise), converted
+		to seconds with ``frame_duration`` and logged. In block 0 the stimulus duration is
+		reset to ``stimdur_base`` frames and logged.
+		"""
 
 		self.current_trial += 1
 		self.current_block_trial += 1
@@ -2034,7 +2633,12 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _select_nontarget_image(self):
-		"""Pick a nontarget image and record its similarity value if applicable."""
+		"""Pick a random nontarget image and record its similarity to the target.
+
+		Sets ``center_image`` to a random entry of ``current_nontarget_image_list``. When the
+		similarity stage is in ``stage_list`` it sets ``current_similarity`` to that image's
+		similarity to the target from ``similarity_data`` (NaN if missing).
+		"""
 
 		self.center_image = random.choice(self.current_nontarget_image_list)
 
@@ -2047,7 +2651,15 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _select_flanker_stimulus(self):
-		"""Choose the center image and flanker images for a Flanker_Fixed_Probe trial."""
+		"""Choose the center image and flanker images for a flanker trial.
+
+		Takes the next flanker type (``non``, ``con``, ``inc``) from ``flanker_stage_list``
+		and the next Target/Nontarget trial type from that type's shuffled list, setting
+		the center image (and ``current_similarity``). The flankers are the black image
+		(``non``), the center image (``con``) or the opposite kind of image (``inc``:
+		a nontarget for a target center, the target for a nontarget center). Logs the
+		stimulus and flanker events and sets the flanker textures.
+		"""
 
 		if self.flanker_stage_index >= len(self.flanker_stage_list):
 			self.flanker_stage_list = self.constrained_shuffle(self.flanker_stage_list, max_run=3)
@@ -2093,7 +2705,14 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _select_standard_stimulus(self):
-		"""Advance the trial list index and choose the center image for standard stages."""
+		"""Advance the trial list index and choose the center image.
+
+		Increments ``trial_index`` (reshuffling the list when exhausted, using the CJB
+		shuffle for ``CJB_Probe``), logs the trial index and type, and sets
+		``center_image`` and ``current_similarity`` from the trial type: the target
+		(similarity 1.0) or a nontarget; for CJB tasks the CJB target (1.0), nontarget (0.0),
+		or neutral target (0.75), neutral nontarget (0.25) and neutral true (0.50) images.
+		"""
 
 		self.trial_index += 1
 
@@ -2135,7 +2754,13 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _select_next_stimulus(self):
-		"""Choose the stimulus (and flankers) for the upcoming trial."""
+		"""Choose the stimulus (and flankers) for the upcoming trial.
+
+		A SART trial that was a miss (contingency 0 with no response) and a premature trial
+		(contingency 3) keep the same stimulus and log it; otherwise a flanker trial uses
+		:meth:`_select_flanker_stimulus` and every other stage uses
+		:meth:`_select_standard_stimulus`.
+		"""
 
 		# SART miss correction — keep same stimulus
 		if (self.contingency == 0) \
@@ -2156,7 +2781,24 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _check_end_conditions(self):
-		"""Check training/session/block exit criteria. Returns True if the trial loop should exit."""
+		"""Check the training, session and block end criteria.
+
+		Counts the upcoming trial toward ``block_target_total`` if it is a Target. Ends the
+		Training block when the hits reach ``training_block_max_correct``; ends the session
+		when ``current_trial`` exceeds ``session_trial_max`` or ``session_duration`` has
+		elapsed since ``start_time``; ends the block when ``current_block_trial`` exceeds
+		``block_trial_max`` or ``block_duration`` has elapsed since ``block_start`` (a
+		failed ``CJB_Discrimination`` block instead restarts). Ending a block sets
+		``contingency``, ``trial_outcome`` and ``last_response`` to 0, records the
+		similarity or stimulus-duration outcome for those staircase stages, removes the hold
+		button, increments ``current_block`` and calls :meth:`block_contingency` (Training)
+		or :meth:`start_stage_screen`.
+
+		Returns
+		-------
+		bool
+			True if the trial loop should exit (an end condition fired), otherwise False.
+		"""
 
 		if self.trial_list[self.trial_index] == 'Target':
 			self.block_target_total += 1
@@ -2258,6 +2900,32 @@ class ProtocolScreen(ProtocolBase):
 	# --- End helpers ---
 
 	def trial_contingency(self, *args):
+		"""Score the finished trial, advance the trial state and start the next trial.
+
+		For every trial after the first of a block it encodes ``last_response``,
+		updates the hit and false-alarm tracking lists and runs the staircase (a staircase
+		that ends the block returns here). It then increments the trial counters and
+		samples the ITI, selects the next stimulus, resets ``last_response`` and
+		``trial_outcome`` to 0 and checks the end conditions (training criterion, session
+		limit, block limit). Otherwise it records ``trial_end_time`` with
+		``time.perf_counter`` and, if the block is running, starts the ITI when the hold
+		button is pressed, returns while the stage screen is showing, or schedules the hold
+		reminder after 2.0 seconds.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+
+		Notes
+		-----
+		Contingency codes: 0 incorrect, 1 correct, 2 response with no center touch, 3
+		premature. Outcome codes: 0 premature, 1 hit, 2 miss, 3 false alarm, 4 correct
+		rejection, 5 hit no center press, 6 false alarm no center press, 7 trial abort
+		(hold lifted and pressed again during stimulus display). ``KeyboardInterrupt`` or
+		any other exception is caught, printed and ends the protocol via
+		:meth:`protocol_end`.
+		"""
 		# Trial Contingencies: 0-Incorrect; 1-Correct; 2-Response, no center touch; 3-Premature
 		# Trial Outcomes: 0-Premature,1-Hit,2-Miss,3-False Alarm,4-Correct Rejection,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display)
 		try:
@@ -2298,6 +2966,25 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_end()
 
 	def start_stage_screen(self, *args):
+		"""Show the stage results screen and schedule the continue button.
+
+		Logs a ``'Stage End'`` stage event, clears the in-progress flags (ITI, stimulus,
+		limited hold, feedback, hold press, response), sets ``stage_screen_started`` and
+		``block_started``, disables the hold button, unbinds its callbacks, cancels the
+		pending trial timers, clears the layout and builds ``outcome_string`` from the
+		stage's ``outcome_*.txt`` text (SSDiff, blur, noise, limhold, stimdur; a hit
+		accuracy ``probe`` text for TarProb/Flanker, else ``gj``). The staging text is
+		``continue`` while stages or blocks remain, otherwise ``end`` with the session
+		end button shown. The results label is added, a ``('Display', 'Text', 'Stage',
+		'Results')`` object event is logged and ``stage_screen_time`` is recorded with
+		``time.perf_counter``. :meth:`stage_screen_end` is scheduled after 1.0 s when more
+		stages or blocks remain; otherwise ``stage_screen_started`` is cleared.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		self.protocol_floatlayout.add_stage_event('Stage End')
 		self.stage_continue_active = False
 		self.end_session_active = False
@@ -2385,6 +3072,18 @@ class ProtocolScreen(ProtocolBase):
 			self.stage_screen_started = False
 
 	def stage_screen_end(self, *args):
+		"""Finalise the stage screen, showing the stage continue button and restoring hold callbacks.
+
+		Resets the stage continue button, adds it to the layout, re-enables the
+		hold button and rebinds its press/release callbacks to :meth:`iti_start`
+		and :meth:`premature_response`, and logs a ``('Display', 'Button', 'Stage',
+		'Continue')`` object event.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (dt).
+		"""
 
 		self._reset_stage_continue_button()
 		self.protocol_floatlayout.add_widget(self.stage_continue_button)
@@ -2456,6 +3155,26 @@ class ProtocolScreen(ProtocolBase):
 		screen is triggered.
 
 		Returns True if the video was triggered (block_contingency should return).
+
+		Parameters
+		----------
+		stage_name : str
+			Stage name that the video belongs to.
+		video_path_attr : str
+			Name of the attribute holding the video file path.
+		played_flag_attr : str
+			Name of the boolean attribute recording that the video was already shown;
+			set to True when the video is triggered.
+		stop_after_load : bool, optional
+			Whether to set the new video's state to ``'stop'`` straight after
+			creating it. Defaults to False.
+
+		Returns
+		-------
+		bool
+			True if the video was loaded and the tutorial screen triggered (the stage
+			index is stepped back and ``current_block`` set to -1 so the stage is
+			re-entered afterwards), otherwise False.
 		"""
 		video_dir = (
 			self.app.app_root / 'Protocol' / self.protocol_name
@@ -2772,6 +3491,30 @@ class ProtocolScreen(ProtocolBase):
 	# --- End block_contingency helpers ---
 
 	def block_contingency(self, *args):
+		"""Set up and start the next block, advancing the stage or ending the protocol.
+
+		Returns immediately if a block change is already running or the protocol has
+		ended. Otherwise logs a ``'Block Contingency'`` stage event, clears the screen
+		(``_block_init_screen``), advances the stage when the block count for the stage
+		is used up or ``current_block`` is -1 (``_block_advance_stage``, which ends the
+		protocol after the last stage), and shows the tutorial video for the stage on
+		first entry (similarity, stimulus-duration, target-probability, or the
+		Training video for CJB sessions) instead of starting the block. Otherwise it
+		sets the block parameters (``_block_setup_block_parameters``) and resets the
+		per-block trial state and starts the first trial
+		(``_block_reset_and_start_trial``).
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance or dt).
+
+		Notes
+		-----
+		``KeyboardInterrupt`` or any other exception is caught, reported and ends the
+		protocol through :meth:`protocol_end`; ``block_contingency_active`` is always
+		cleared in a ``finally`` block.
+		"""
 		if self.block_contingency_active or getattr(self, 'protocol_ended', False):
 			return
 

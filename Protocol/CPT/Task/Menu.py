@@ -1,3 +1,4 @@
+"""Settings menu screen for the Continuous Performance Task (CPT)."""
 from Classes.Menu import MenuBase, ImageSetDropdown, ImageSetItem, dp
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -5,7 +6,54 @@ from kivy.uix.dropdown import DropDown
 from kivy.uix.checkbox import CheckBox
 
 class ConfigureScreen(MenuBase):
+    """Settings menu screen for the Continuous Performance Task (CPT).
+
+    Builds the shared settings grid from ``Protocol/CPT/Configuration.ini`` and
+    appends two image-set dropdowns: ``Image Set`` (whose options switch between the
+    similarity-target set and the standard sets according to the
+    ``similarity_difficulty`` checkbox) and ``CJB Image Set`` (enabled only while a
+    CJB task parameter is on).
+
+    Attributes
+    ----------
+    protocol : str
+        Task folder name, ``'CPT'``.
+    name : str
+        Screen name, ``'CPT_configscreen'``.
+    image_set_similarity_targets : list of dict
+        Options used when ``similarity_difficulty`` is on: six single-image targets
+        (values ``Fb2_1132``, ``Fb2_1211``, ``Fb2_1221``, ``Fb2_1312``, ``Fb2_1322``,
+        ``Fb2_1332``) plus ``Random`` (value ``set7``).
+    image_set_standard : list of dict
+        Options used otherwise: ``Image Set 1`` to ``Image Set 3`` (values ``set1`` to
+        ``set3``, each six Fribble images plus ``black.png``) plus ``Random`` (value ``rand``).
+    cjb_image_set : list of dict
+        The single ``CJB Set 1`` option (value ``cjb_set1``, five oriented CJB images).
+    image_select_label, image_selector : kivy.uix.label.Label, ImageSetDropdown
+        Label and dropdown for the main image set.
+    cjb_select_label, cjb_image_selector : kivy.uix.label.Label, ImageSetDropdown
+        Label and dropdown for the CJB image set.
+    """
+
     def __init__(self, **kwargs):
+        """Build the CPT settings grid, add the image-set dropdowns and bind their toggles.
+
+        Sets the title and screen name, defines the three option lists, runs
+        ``menu_constructor`` and then finds the ``similarity_difficulty`` checkbox
+        in the grid (outside battery mode; in battery mode the widgets do not
+        exist, so the configured ``similarity_difficulty`` value is used). The
+        main dropdown starts with the similarity targets when that setting is on
+        and the standard sets otherwise. The CJB dropdown is disabled when none
+        of ``cjb_training_task``, ``cjb_discrimination_task`` and ``cjb_probe_task``
+        is on in the configuration. Outside battery mode the similarity checkbox
+        is bound to swap the dropdown options and the CJB task checkboxes are
+        bound to enable or disable the CJB dropdown.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Passed to ``MenuBase``.
+        """
         super(ConfigureScreen, self).__init__(**kwargs)
 
         self.protocol = 'CPT'
@@ -110,6 +158,7 @@ class ConfigureScreen(MenuBase):
         # If the similarity checkbox exists, bind to changes to update the dropdown options
         if sim_checkbox is not None:
             def _on_similarity_toggle(instance, value):
+                """Swap the image-set options to match the similarity checkbox and reset the selection."""
                 new_opts = self.image_set_similarity_targets if value else self.image_set_standard
                 # replace options and rebuild dropdown items
                 self.image_selector.options = new_opts
@@ -137,6 +186,7 @@ class ConfigureScreen(MenuBase):
             self.cjb_image_selector.disabled = True
             
         def _on_cjb_task_toggle(instance, value):
+            """Enable the CJB dropdown when a CJB task is turned on, disable it when none remain on."""
             if value:
                 # Make cjb image selector active if any CJB task is active
                 self.cjb_image_selector.disabled = False
@@ -163,6 +213,14 @@ class ConfigureScreen(MenuBase):
 
 
     def update_image_widget(self):
+        """Rebuild the main image-set dropdown for the current similarity setting.
+
+        Chooses the similarity-target options when the ``similarity_difficulty``
+        checkbox is active (or, in battery mode, when the configured value is
+        true) and the standard options otherwise, replaces the dropdown items,
+        clears the selection (``selected_value`` None) and resets the button text
+        to ``'Select...'``.
+        """
          # Try to find the similarity_difficulty checkbox that was created by menu_constructor if not in battery mode
         if not self.app.battery_active:
             sim_checkbox = None

@@ -1,3 +1,5 @@
+"""Protocol screen implementing the Paired-Associate Learning (PAL) task."""
+
 # Imports #
 
 import configparser
@@ -21,8 +23,43 @@ from kivy.uix.video import Video
 
 
 class ProtocolScreen(ProtocolBase):
+	"""Kivy screen running the PAL protocol stages, building on ProtocolBase.
+
+	Loads the PAL configuration and task variables, wires the hold-button and
+	instruction callbacks, and drives stage progression between Training, dPAL,
+	sPAL and Recall.
+
+	Attributes
+	----------
+	protocol_name : str
+		Protocol name ``'PAL'``.
+	data_cols : list of str
+		Column names of the trial summary data file.
+	metadata_cols : list of str
+		Column names of the metadata output file.
+	config_file : configparser.ConfigParser
+		Parser for the PAL ``Configuration.ini``.
+	parameters_dict : configparser.SectionProxy
+		The active parameter section (Debug or Task).
+	debug_mode : bool
+		Whether debug parameters are in use.
+	"""
 
 	def __init__(self,**kwargs):
+		"""Initialise the PAL protocol screen and its configuration.
+
+		Sets the protocol name and screen name, calls :meth:`update_task`, defines
+		the trial summary and metadata column names, and reads the PAL
+		``Configuration.ini``. When the ``DebugParameters`` section has
+		``debug_mode`` set, that section is used as ``parameters_dict`` and
+		``debug_mode`` is True; otherwise the ``TaskParameters`` section is used.
+		Declares the hard-coded dPAL and recall image-set lists.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`ProtocolBase`.
+		"""
 
 		super(ProtocolScreen,self).__init__(**kwargs)
 		self.protocol_name = 'PAL'
@@ -100,6 +137,21 @@ class ProtocolScreen(ProtocolBase):
 
 
 	def _load_config_parameters(self, parameters_dict):
+		"""Read the PAL parameters from a configuration section into attributes.
+
+		Stores ``parameters_dict`` and reads participant id, booleans (tutorial
+		skip, block-change-on-duration, correction trials), ITI settings, feedback
+		and block durations, session duration, block multiplier, trial maxima
+		(dPAL 90, sPAL 30, recall 90), training block max correct (3), recall
+		target present duration (3), stimulus counts, image sets and hold/mask
+		images. Appends the enabled stages to ``stage_list``: Training when
+		``training_task``, then dPAL, sPAL and Recall.
+
+		Parameters
+		----------
+		parameters_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		self.parameters_dict = parameters_dict
 
 		self.participant_id = self.parameters_dict.get('participant_id', '')
@@ -162,6 +214,14 @@ class ProtocolScreen(ProtocolBase):
 			self.stage_list.append('Recall')
 
 	def _load_task_variables(self):
+		"""Initialise the per-task timing, counter and string state.
+
+		Resets timing values (stimulus/press times, response latency, trial end,
+		tutorial duration, ITI range, recall target screen start), numeric
+		counters (blocks, trials, correction trials, stage index, recall image
+		index), block trial maximum (120), last response (-1), stimulus locations
+		and strings (target/nontarget/blank/recall images, current stage).
+		"""
 		# Define Variables - Time
 
 		self.stimulus_start_time = 0.0
@@ -226,6 +286,19 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 
 	def _set_hold_button_callbacks(self, on_press=None, on_release=None):
+		"""Unbind default hold-button handlers and bind the supplied ones.
+
+		Unbinds ``iti_start``, ``start_recall_block``, ``premature_response`` and
+		``hold_remind`` from the hold button, then binds the given ``on_press``
+		and ``on_release`` callbacks when provided.
+
+		Parameters
+		----------
+		on_press : callable, optional
+			Callback for the hold-button press. Defaults to None.
+		on_release : callable, optional
+			Callback for the hold-button release. Defaults to None.
+		"""
 		self.hold_button.unbind(on_press=self.iti_start)
 		self.hold_button.unbind(on_press=self.start_recall_block)
 		self.hold_button.unbind(on_release=self.premature_response)
@@ -237,23 +310,47 @@ class ProtocolScreen(ProtocolBase):
 			self.hold_button.bind(on_release=on_release)
 
 	def _clear_grid_press_bindings(self):
+		"""Unbind the target and nontarget press callbacks from each grid stimulus."""
 		for stimulus in self.stimulus_grid_list:
 			stimulus.unbind(on_press=self.target_pressed)
 			stimulus.unbind(on_press=self.nontarget_pressed)
 
 	def _bind_instruction_button(self, callback):
+		"""Unbind the section and recall instruction callbacks, then bind the given one.
+
+		Unbinds ``section_start`` and ``start_recall_target_screen`` from the
+		instruction button, enables it, and binds the supplied callback.
+
+		Parameters
+		----------
+		callback : callable
+			Callback to bind to the instruction button's press.
+		"""
 		self.instruction_button.unbind(on_press=self.section_start)
 		self.instruction_button.unbind(on_press=self.start_recall_target_screen)
 		self.instruction_button.disabled = False
 		self.instruction_button.bind(on_press=callback)
 
 	def _reset_tutorial_continue_button(self):
+		"""Reset the tutorial continue button to the stop-tutorial callback."""
 		self.tutorial_advance_active = False
 		self.tutorial_continue_button.disabled = False
 		self.tutorial_continue_button.unbind(on_press=self.stop_tutorial_video)
 		self.tutorial_continue_button.bind(on_press=self.stop_tutorial_video)
 
 	def _prepare_stage_continue_button(self, ends_task=False):
+		"""Prepare the stage continue button to advance the task.
+
+		Clears ``stage_continue_active``, sets ``stage_continue_ends_task`` to
+		``ends_task``, enables the button, and rebinds its
+		press to ``stage_continue_pressed`` (unbinding ``block_contingency``,
+		``protocol_end`` and ``stage_continue_pressed`` first).
+
+		Parameters
+		----------
+		ends_task : bool, optional
+			Whether pressing continues to end the task. Defaults to False.
+		"""
 		self.stage_continue_active = False
 		self.stage_continue_ends_task = ends_task
 		self.stage_continue_button.disabled = False
@@ -263,6 +360,17 @@ class ProtocolScreen(ProtocolBase):
 		self.stage_continue_button.bind(on_press=self.stage_continue_pressed)
 
 	def stage_continue_pressed(self, *args):
+		"""Handle a press of the stage continue button.
+
+		Ignores the press when already active or the protocol has ended. Otherwise
+		marks the press active, disables the button, and calls ``protocol_end``
+		when ``stage_continue_ends_task`` is set, else ``block_contingency``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (the button instance).
+		"""
 		if self.stage_continue_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -277,6 +385,14 @@ class ProtocolScreen(ProtocolBase):
 	# Initialization Functions #
 
 	def _setup_session_stages(self):
+		"""Build the session trial lists and ITI values.
+
+		Converts ``iti_import`` strings to floats in ``iti_range`` and sets
+		``iti_length`` to the first value. Builds ``trial_list_pal`` as the index
+		modulo ``num_stimuli_pal`` over ``range(dpal_trial_max)`` and
+		``trial_list_pa`` analogously from ``num_stimuli_pa`` and
+		``recall_trial_max``, then resets ``trial_list`` and ``trial_list_index``.
+		"""
 		self.iti_range = [float(iNum) for iNum in self.iti_import]
 		self.iti_length = self.iti_range[0]
 		self.trial_list = list()
@@ -285,6 +401,30 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_index = 0
 
 	def _pick_target_images(self, set_name, image_set_list, available_images, count):
+		"""Choose ``count`` target images from an image set, topped up randomly.
+
+		When ``set_name`` is not ``'rand'``, the named set's images that exist on
+		disk are taken first (up to ``count``). Remaining slots are filled by
+		``random.sample`` from the images of ``available_images`` not already
+		chosen, so the selection never stalls when the set is unknown or smaller
+		than ``count``; ``'rand'`` selects entirely at random.
+
+		Parameters
+		----------
+		set_name : str
+			Name of the image set to use, or ``'rand'`` for all-random.
+		image_set_list : list of dict
+			Each dict has ``name`` and ``images`` keys.
+		available_images : list of str
+			Image names available on disk.
+		count : int
+			Number of images to select.
+
+		Returns
+		-------
+		list of str
+			The chosen image names.
+		"""
 		# Use the named set's images that exist on disk, then top up randomly so selection
 		# never stalls when the set is unknown or smaller than count ('rand' is all random)
 		chosen = list()
@@ -297,6 +437,15 @@ class ProtocolScreen(ProtocolBase):
 		return chosen
 
 	def _setup_image_widgets(self):
+		"""Build the image path lists, target lists and the stimulus grid.
+
+		Sets the image and target folders and the hold/mask/outline/training image
+		paths. For dPAL, sPAL and Training stages globs ``PAL-Targets``; for Recall
+		globs ``PA-Targets``; clamping the stimulus counts and picking the target
+		image lists. Loads all images, sets the hold-button source and callbacks,
+		derives the grid layout constants, computes stimulus positions and builds
+		``stimulus_grid_list``, then creates the ``recall_stimulus`` widget.
+		"""
 		# Define Widgets - Image Paths
 
 		self.image_folder = self.protocol_path / 'Image'
@@ -383,6 +532,13 @@ class ProtocolScreen(ProtocolBase):
 		self.recall_stimulus = ImageButton()
 
 	def _setup_language_localization(self):
+		"""Load localised button text and build the outcome and staging dictionaries.
+
+		Calls :meth:`set_language`, then reads ``Button.ini`` for the instruction
+		and continue button labels. Reads each ``outcome_*.txt`` and
+		``staging_*.txt`` file in the language folder into ``outcome_dict`` and
+		``staging_dict`` keyed by the part of the file stem after the prefix.
+		"""
 		self.set_language(self.language)
 
 		button_lang_path = self.lang_folder_path / 'Button.ini'
@@ -408,6 +564,14 @@ class ProtocolScreen(ProtocolBase):
 				self.staging_dict[key] = f.read()
 
 	def _load_video_and_instruction_components(self):
+		"""Load the instruction text, tutorial video and stage control widgets.
+
+		Reads ``Instructions.ini`` into ``instruction_dict`` for each stage in
+		``stage_list``. If a ``Tutorial_Video`` folder exists, sets the tutorial
+		video paths and creates a paused :class:`PreloadedVideo` for the dPAL
+		video. Creates the section instruction/results labels, the instruction
+		button (bound to ``section_start``) and the stage continue button.
+		"""
 		# Define Widgets - Instructions
 		
 		self.instruction_path = str(self.app.app_root / 'Protocol' / self.protocol_name / 'Language' / self.language / 'Instructions.ini')
@@ -471,6 +635,21 @@ class ProtocolScreen(ProtocolBase):
 		self._reset_tutorial_continue_button()
 
 	def load_parameters(self,parameter_dict):
+		"""Run the full parameter and widget setup for the PAL protocol.
+
+		Calls the config, task-variable, session-stage, image-widget,
+		video/instruction and language-setup helpers, then adds the stimulus grid
+		and recall stimulus widgets, starts the clock and resets the tutorial
+		continue button. When a tutorial video is available ``trigger_tutorial_screen``
+		is called; otherwise the layout is cleared, the text instructions are
+		presented with ``present_instructions`` and the start button is rebound
+		to ``start_protocol_from_tutorial``.
+
+		Parameters
+		----------
+		parameter_dict : dict
+			Parameter name to value mapping, as built by the settings menu (a configuration section also works).
+		"""
 		self._load_config_parameters(parameter_dict)
 		self._load_task_variables()
 		self._setup_session_stages()
@@ -499,6 +678,17 @@ class ProtocolScreen(ProtocolBase):
 	# Protocol Staging	
 	
 	def start_protocol_from_tutorial(self, *args):
+		"""Begin the protocol from the tutorial's Continue press.
+
+		Clears the layout and stops the tutorial video, then generates the output
+		files and metadata before starting the first block. Does nothing while a
+		block contingency is active or once the protocol has ended.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.block_contingency_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -517,6 +707,22 @@ class ProtocolScreen(ProtocolBase):
 			, num_rows = 1
 			, grid_gap = 0.1
 			):
+		"""Build a grid of mask image buttons laid out across the stimulus positions.
+
+		Parameters
+		----------
+		grid_x_pos_list : list of float
+			X centre positions for each column.
+		num_rows : int, optional
+			Number of rows of grid cells. Defaults to 1.
+		grid_gap : float, optional
+			Fraction of each cell left blank between cells. Defaults to 0.1.
+
+		Returns
+		-------
+		list of Classes.Protocol.ImageButton
+			The grid cells, each showing the mask image and bound to ``nontarget_pressed``.
+		"""
 		
 		grid_square_dim = (max(grid_x_pos_list) - min(grid_x_pos_list)) / (len(grid_x_pos_list) - 1)
 		grid_square_fill = [(grid_square_dim * self.width_adjust) * (1 - grid_gap), (grid_square_dim * self.height_adjust) * (1 - grid_gap)]
@@ -549,6 +755,19 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stop_tutorial_video(self, *args):
+		"""Stop and unload the tutorial video when it finishes or is skipped.
+
+		Disables the continue button, stops and unloads the tutorial video and logs the
+		video removal event.
+		When ``stage_index`` is below 0 the protocol starts from the tutorial,
+		otherwise the block contingency is begun. Does nothing while tutorial
+		advancing is active or once the protocol has ended.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.tutorial_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -567,6 +786,18 @@ class ProtocolScreen(ProtocolBase):
 			self.block_contingency()
 
 	def section_start(self, *args):
+		"""Begin a section, clearing the screen and advancing to the block end.
+
+		Sets the section-advancing flag, clears the layout, logs the section start
+		and removes the section instruction text and button, then calls
+		:meth:`block_end`. Does nothing while a section is already advancing or
+		once the protocol has ended.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.section_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -585,11 +816,35 @@ class ProtocolScreen(ProtocolBase):
 		return
 
 	def _is_final_block(self):
+		"""Return whether the current stage and block are the protocol's last.
+
+		Mirrors the block-contingency rule: the stage advances once
+		``current_block`` reaches ``block_multiplier`` on the final stage.
+
+		Returns
+		-------
+		bool
+			True when on the last stage with ``current_block`` at ``block_multiplier``.
+		"""
 		# Mirrors block_contingency: the stage advances once current_block reaches block_multiplier
 		return (self.stage_index >= len(self.stage_list) - 1) \
 			and (self.current_block >= self.block_multiplier)
 
 	def start_stage_screen(self, *args):
+		"""Show the stage-end summary text and schedule the stage continue screen.
+
+		Logs the section end, clears the layout and builds a results string from
+		``response_tracking`` (the ``gj`` template when no responses were tracked,
+		else the ``acc`` template), combined with the ``continue`` or ``end`` staging
+		text depending on ``_is_final_block``. Displays the results label, records
+		``stage_screen_time`` from ``time.perf_counter`` and schedules
+		:meth:`stage_screen_end` after 1.0 s.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		Clock.unschedule(self.iti_end)
 		Clock.unschedule(self.stage_screen_end)
 
@@ -625,6 +880,18 @@ class ProtocolScreen(ProtocolBase):
 		Clock.schedule_once(self.stage_screen_end, 1.0)
 
 	def stage_screen_end(self, *args):
+		"""Advance from the stage summary to the stage continue button.
+
+		For the final block the session trigger is cancelled, the continue button is
+		prepared as ``'End Task'`` and a ``Task End`` stage event is logged;
+		otherwise the continue button is prepared normally. The continue button is
+		then added and its display logged.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if not self.stage_screen_started and self.stage_continue_button.parent is not None:
 			return
 
@@ -644,6 +911,17 @@ class ProtocolScreen(ProtocolBase):
 		self.protocol_floatlayout.add_object_event('Display', 'Button', 'Stage', 'Continue')
 
 	def start_recall_target_screen(self, *args):
+		"""Show the recall target at its grid position and begin the preview.
+
+		Guards against re-entry and, on first display, clears the grid press
+		bindings and layout, sets the first target image, logs the display events and
+		calls :meth:`present_recall_stimuli`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.recall_preview_active or self.recall_instruction_target_display_started or getattr(self, 'protocol_ended', False):
 			return
 
@@ -670,6 +948,19 @@ class ProtocolScreen(ProtocolBase):
 			self.present_recall_stimuli(0)
 
 	def present_recall_stimuli(self, *args):
+		"""Present the next recall target image, or all targets for the full preview.
+
+		When all targets have been individually shown, shows every target together if
+		the full preview has not yet started, then schedules
+		:meth:`remove_recall_stimuli` after ``recall_target_present_duration``
+		seconds; otherwise the current target is displayed and its removal scheduled.
+		Ends the recall screen once both previews have run.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if (self.recall_img_index >= self.num_stimuli) and self.recall_full_preview_started:
 			self.end_recall_screen()
 			return
@@ -688,6 +979,17 @@ class ProtocolScreen(ProtocolBase):
 			Clock.schedule_once(self.remove_recall_stimuli, self.recall_target_present_duration)
 
 	def remove_recall_stimuli(self, *args):
+		"""Hide the shown recall target(s), advance the index and present the next.
+
+		After the full preview every target is replaced by the outline and removed;
+		otherwise only the current target is. ``recall_img_index`` is incremented and
+		:meth:`present_recall_stimuli` is called again.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.recall_full_preview_started:
 			for iLoc in list(range(0, self.num_stimuli)):
 					self.stimulus_grid_list[iLoc].texture = self.image_dict[self.outline_image].image.texture
@@ -699,6 +1001,18 @@ class ProtocolScreen(ProtocolBase):
 		self.present_recall_stimuli()
 
 	def end_recall_screen(self, *args):
+		"""End the recall preview and rebind each grid cell for the task.
+
+		Clears the press bindings, resets every cell to the outline image, rebinds
+		the target cell to :meth:`target_pressed` and the rest to
+		:meth:`nontarget_pressed`, then rebinds the hold button to
+		:meth:`iti_start` and calls :meth:`section_start`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		self.recall_preview_active = False
 		self._clear_grid_press_bindings()
 
@@ -720,6 +1034,18 @@ class ProtocolScreen(ProtocolBase):
 		self.section_start()
 	
 	def start_recall_block(self, *args):
+		"""Start the recall block contingency and trial flow.
+
+		Rebinds the hold button to :meth:`iti_start`, removes the hold button from
+		the layout, logs the section start and begins the first trial via
+		:meth:`trial_contingency`. Does nothing while a section is already advancing
+		or once the protocol has ended.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.section_advance_active or getattr(self, 'protocol_ended', False):
 			return
 
@@ -734,6 +1060,20 @@ class ProtocolScreen(ProtocolBase):
 	
 	
 	def stimulus_presentation(self, *args): # Stimulus presentation
+
+		"""Present the stimulus grid and begin timing the trial response.
+
+		Rebinds the hold-button callbacks with no arguments, resets the response
+		flag, lays out the recall stimulus and grid, records ``stimulus_start_time``
+		with :func:`time.perf_counter` and logs the ``Object Display`` stage event
+		plus the ``Display`` object events for the target (and the nontarget for
+		``dPAL``/``sPAL``, or the recall location for ``Recall``).
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 
 		self._set_hold_button_callbacks()
 		self.trial_response_active = False
@@ -765,6 +1105,20 @@ class ProtocolScreen(ProtocolBase):
 	# Hold released too early
 	
 	def premature_response(self, *args):
+		"""Handle a hold release that occurs before the stimulus is presented.
+
+		Does nothing while the stimulus is on screen, a section or stage screen is
+		active, a block has started, or the protocol has ended. Otherwise cancels
+		the ITI, logs a ``Premature Response`` stage event, sets
+		``response_latency`` to ``numpy.nan`` and logs it, clears ``iti_active``,
+		assigns the ``wait`` feedback when none is shown, and rebinds the hold
+		button to ``iti_start`` on press and back to this method on release.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.stimulus_on_screen is True or self.section_advance_active or self.stage_screen_started or self.block_started or getattr(self, 'protocol_ended', False):
 			return
 		
@@ -786,6 +1140,21 @@ class ProtocolScreen(ProtocolBase):
 	# Target Pressed
 	
 	def target_pressed(self, *args):
+		"""Handle a press on the target stimulus.
+
+		Does nothing while a response is already active, the stimulus is off screen,
+		or the protocol has ended. Otherwise marks the response active, unbinds the
+		grid presses, logs a ``Correct Response`` stage event, sets
+		``last_response`` to 1 and ``response_latency`` to the
+		:func:`time.perf_counter` seconds since ``stimulus_start_time``, logs them,
+		removes the stimuli, rebinds the hold button, assigns the ``correct``
+		feedback, and calls :meth:`write_trial` and :meth:`trial_contingency`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (the button instance).
+		"""
 		if self.trial_response_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
 			return
 
@@ -826,6 +1195,21 @@ class ProtocolScreen(ProtocolBase):
 	# Nontarget Pressed
 	
 	def nontarget_pressed(self, *args):
+		"""Handle a press on a nontarget stimulus.
+
+		Does nothing while a response is already active, the stimulus is off screen,
+		or the protocol has ended. Otherwise marks the response active, unbinds the
+		grid presses, logs an ``Incorrect Response`` stage event, sets
+		``last_response`` to 0 and ``response_latency`` to the
+		:func:`time.perf_counter` seconds since ``stimulus_start_time``, logs them,
+		removes the stimuli, rebinds the hold button, assigns the ``incorrect``
+		feedback, and calls :meth:`write_trial` and :meth:`trial_contingency`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (the button instance).
+		"""
 		if self.trial_response_active or (not self.stimulus_on_screen) or getattr(self, 'protocol_ended', False):
 			return
 
@@ -869,6 +1253,29 @@ class ProtocolScreen(ProtocolBase):
 	
 	def write_trial(self, *args):
 
+		"""Build and queue the summary row for the current trial.
+
+		Sets the nontarget image and location strings to the actual values for
+		``dPAL``/``sPAL``, or ``'Mask'`` and ``'-1'`` otherwise, assembles the
+		trial data row and passes it to :meth:`write_summary_file`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+
+		Notes
+		-----
+		Row columns (``self.data_cols``): TrialNo, CurrentStage,
+		CurrentBlock, BlockTrial, CorrectionTrial, TargetImage, TargetLoc,
+		NontargetImage, NontargetLoc, Correct (``last_response``: 1 target pressed, 0
+		nontarget pressed) and ResponseLat (``response_latency``, seconds from
+		stimulus onset to the press). ``CorrectionTrial`` is
+		``current_correction_trial`` (1 on a repeated dPAL trial). In ``Recall``
+		``TargetImage`` is ``target_image``, which is the outline image name (the
+		remembered image is ``recall_image``).
+		"""
+
 		if self.current_stage in ['dPAL', 'sPAL']:
 			self.nontarget_image_string = self.nontarget_image
 			self.nontarget_loc_string = self.nontarget_loc
@@ -896,6 +1303,41 @@ class ProtocolScreen(ProtocolBase):
 	# Trial Contingency
 
 	def trial_contingency(self, *args):
+		"""Set up the next trial, or end the current block.
+
+		Resets ``trial_response_active`` and ``stimulus_on_screen``, then, when a
+		trial has already run, appends the last response to ``response_tracking``
+		and ends the block when it has reached its trial or duration limit (logging a
+		``Block End`` stage event) or, in the ``Training`` stage, when the running
+		correct count reaches ``training_block_max_correct``; otherwise the hold
+		button is re-added. The next trial then clears the grid press bindings,
+		increments ``current_trial``/``current_block_trial`` (undone for a dPAL
+		correction trial), sets the ITI from ``iti_range`` and the target/nontarget
+		stimuli for the stage (retained on a correction trial), binds the grid
+		cells, resets the last-response/block flags and records ``trial_end_time``
+		with :func:`time.perf_counter`. Parameter variable events are logged to the
+		session event CSV, with the stimulus events logged for dPAL, sPAL and Recall
+		but not Training. Any error calls :meth:`protocol_end`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+
+		Notes
+		-----
+		Stimulus selection: ``Training`` shows the training image at a random grid
+		cell with no nontarget (``nontarget_loc`` NaN). In ``dPAL`` and ``sPAL`` the
+		target location comes from the shuffled ``trial_list``; the nontarget
+		location is another cell and its image is the image belonging to a third
+		cell, or, in ``sPAL``, the target's own image location. ``Recall`` shows the
+		outline image everywhere and the remembered target image in ``recall_stimulus``
+		(``nontarget_loc`` -1). Correction trials (``dPAL`` only, when
+		``correction_trials`` is on): after an incorrect response (``last_response``
+		0) the previous stimuli are retained, the trial counters are left unchanged
+		and ``current_correction_trial`` is set to 1; otherwise it is 0.
+		``last_response`` is reset to 0 at the end for the new trial.
+		"""
 		try:
 			self.trial_response_active = False
 			self.stimulus_on_screen = False
@@ -1072,6 +1514,36 @@ class ProtocolScreen(ProtocolBase):
 	# Block Contingency
 
 	def block_contingency(self, *args):
+		"""Set up and advance to the next block, configuring its stimulus set.
+
+		Does nothing while a block contingency is already active or once the
+		protocol has ended. Otherwise flags the block as started, resets the
+		section/stage/recall flags, dismisses feedback, clears the widgets, logs the
+		``Block Contingency``, ``Screen Cleared`` and ``Block Change`` stage events
+		plus a ``Current Block`` variable event, advances the block, then either
+		ends the task when the last stage is done, shows the sPAL or Recall
+		tutorial video on its first presentation, or configures the next stage's
+		stimulus set and trial lists and calls :meth:`trial_contingency` and,
+		except for ``Recall``, :meth:`section_start`.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+
+		Notes
+		-----
+		The block index is incremented, and ``stage_index`` is advanced with
+		``current_block`` reset to 0 when ``current_block >= block_multiplier`` or
+		equals -1 before the increment. Variable events logged with ``Parameter``
+		category: ``Current Block``, ``Current Stage``, ``Stimulus Number``,
+		``Target Image List``, ``Trial List`` and ``Block Trial Max`` (the last
+		four with ``current_stage`` as their value). When all stages are done, the
+		``Task End`` stage event is logged, the session Clock event is cancelled and
+		:meth:`protocol_end` is called. On ``KeyboardInterrupt`` or any other
+		exception the error is printed and :meth:`protocol_end` is called;
+		``block_contingency_active`` is always cleared in a ``finally`` block.
+		"""
 		if self.block_contingency_active or getattr(self, 'protocol_ended', False):
 			return
 
