@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
 from kivy_deps import sdl2, glew
 
 block_cipher = None
@@ -24,7 +25,29 @@ a = Analysis(['C:\\Users\\MOUSETRAP-DAN\\Documents\\TouchCog\\TouchCog\\KivyMenu
                 'kivy.deps.gstreamer',
                 'ffpyplayer.player',
                 'ffpyplayer.tools',
-                'pandas'
+                'pandas',
+                # Protocol task modules are loaded at runtime by file path from the bundled
+                # Protocol/ data folder, so what they import must be bundled explicitly.
+                'numpy',
+                'random',
+                'statistics',
+                'traceback',
+                'gc',
+                'math',
+                'collections',
+                'importlib.util',
+                'Classes.DataFiles',
+                'kivy.effects.scroll',
+                'kivy.graphics.texture',
+                'kivy.loader',
+                'kivy.metrics',
+                'kivy.uix.behaviors',
+                'kivy.uix.checkbox',
+                'kivy.uix.effectwidget',
+                'kivy.uix.image',
+                'kivy.uix.togglebutton',
+                'kivy.uix.video',
+                'kivy.uix.widget'
              ],
              hookspath=[],
              runtime_hooks=[],
