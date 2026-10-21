@@ -1,3 +1,4 @@
+"""Survey protocol screens for collecting Likert, choice and text responses."""
 # Imports
 from kivy.uix.screenmanager import Screen
 from kivy.app import App
@@ -22,11 +23,38 @@ import pathlib
 # Survey Class
 
 class LikertScale(Widget):
+	"""A custom Likert scale widget with a horizontal draggable indicator.
+
+	Supports both numeric ranges and labeled option dicts.
+
+	Attributes
+	----------
+	options : dict or None
+		Maps option keys to their labels, or None for a numeric range.
+	option_keys : list or None
+		Keys of ``options`` in insertion order, or None for a numeric range.
+	scale_min : int
+		Lowest scale value.
+	scale_max : int
+		Highest scale value.
+	current_value : int or None
+		Currently selected value, or None before any selection.
 	"""
-    A custom Likert scale widget with a horizontal draggable indicator.
-    Supports both numeric ranges and labeled options.
-    """
 	def __init__(self, options=None, scale_min=None, scale_max=None, **kwargs):
+		"""Initialise the scale in either labeled-option or numeric-range mode.
+
+		Parameters
+		----------
+		options : dict, optional
+			Maps option keys to labels; when given, the scale ranges over the option
+			keys. Defaults to None.
+		scale_min : int, optional
+			Lowest value for numeric mode. Defaults to 0.
+		scale_max : int, optional
+			Highest value for numeric mode. Defaults to 5.
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.widget.Widget`.
+		"""
 		super(LikertScale, self).__init__(**kwargs)
 		
 		# Handle both old format (scale_min, scale_max) and new format (options dict)
@@ -52,7 +80,13 @@ class LikertScale(Widget):
 		self.update_canvas()
 		
 	def update_canvas(self, *args):
-		"""Update the scale display with lines and labels."""
+		"""Redraw the scale line, tick marks and indicator circle.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy when the position or size changes.
+		"""
 		self.canvas.clear()
 		
 		with self.canvas:
@@ -87,7 +121,13 @@ class LikertScale(Widget):
 				Line(circle=(indicator_x, line_y, self.indicator_size/2), width=dp(2))
 	
 	def _get_indicator_x(self):
-		"""Calculate the x position of the indicator based on current value."""
+		"""Return the x position of the indicator for the current value.
+
+		Returns
+		-------
+		float
+			The indicator's horizontal position in widget coordinates.
+		"""
 		line_x_start = self.x + self.padding
 		line_x_end = self.x + self.width - self.padding
 		num_points = self.scale_max - self.scale_min + 1
@@ -99,7 +139,21 @@ class LikertScale(Widget):
 		return line_x_start + value_ratio * (line_x_end - line_x_start)
 	
 	def on_touch_down(self, touch):
-		"""Handle touch down on the scale."""
+		"""Handle a touch down on the scale.
+
+		When the touch lands on the widget the value is updated and the touch is
+		grabbed; otherwise the event is ignored.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event.
+
+		Returns
+		-------
+		bool
+			True if the touch was consumed (grabbed), False otherwise.
+		"""
 		if not self.collide_point(*touch.pos):
 			return False
 		
@@ -108,21 +162,52 @@ class LikertScale(Widget):
 		return True
 	
 	def on_touch_move(self, touch):
-		"""Handle touch movement on the scale."""
+		"""Update the value while a grabbed touch moves across the scale.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event.
+
+		Returns
+		-------
+		bool
+			True if the touch was consumed, False otherwise.
+		"""
 		if touch.grab_current is self:
 			self._update_value_from_touch(touch.x)
 			return True
 		return False
 	
 	def on_touch_up(self, touch):
-		"""Handle touch release."""
+		"""Release a grabbed touch and stop tracking it.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event.
+
+		Returns
+		-------
+		bool
+			True if the touch was consumed (ungrabbed), False otherwise.
+		"""
 		if touch.grab_current is self:
 			touch.ungrab(self)
 			return True
 		return False
 	
 	def _update_value_from_touch(self, touch_x):
-		"""Update the current value based on touch x position."""
+		"""Set the current value from a touch x position on the scale.
+
+		The touch x is clamped to the line and converted to the nearest scale
+		value, then the canvas is redrawn.
+
+		Parameters
+		----------
+		touch_x : float
+			The touch x position.
+		"""
 		line_x_start = self.x + self.padding
 		line_x_end = self.x + self.width - self.padding
 		
@@ -138,7 +223,14 @@ class LikertScale(Widget):
 		self.update_canvas()
 	
 	def get_value(self):
-		"""Get the current Likert scale value."""
+		"""Return the current scale value as a label or a number.
+
+		Returns
+		-------
+		int or str
+			The option label for the current value in labeled mode, the numeric value
+			for a numeric range, or an empty string before any selection.
+		"""
 		if self.current_value is None:
 			return ""
 		if self.options is not None and self.option_keys is not None:
@@ -149,8 +241,42 @@ class LikertScale(Widget):
 
 
 class SurveyBase(Screen):
+	"""Base screen for building and running participant surveys.
+
+	Builds question widgets of several types, collects responses into an app-level
+	survey data list, applies question visibility logic, and writes the finished
+	responses to a CSV file when the survey ends.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'surveyscreen'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	language : str
+		Language folder name used to load survey text.
+	survey_data : pandas.DataFrame
+		DataFrame with ``question`` and ``response`` columns, linked to ``app.survey_data``.
+	participant_id : str
+		Sanitized participant identifier used in the data folder name.
+	question_list : list
+		Built question layouts in order.
+	question_metadata_list : list of dict
+		Per-question metadata (text, type, options, visible, inclusions, exclusions).
+	question_index : int
+		Index of the current question within the survey.
+	data_folder : pathlib.Path
+		Root data folder under which participant folders are created.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the survey screen and its shared widgets and state.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		super(SurveyBase, self).__init__(**kwargs)
 
 		self.name = "surveyscreen"
@@ -191,13 +317,24 @@ class SurveyBase(Screen):
 		self.data_folder.mkdir(parents=True, exist_ok=True)
 
 	def _configure_multiline_label(self, label, min_height=dp(60), horizontal_padding=dp(20)):
+		"""Make a label wrap its text and grow its height to fit the content.
+
+		The nested handler updates the label's wrapped text size and height whenever
+		its width or text changes.
+
+		Parameters
+		----------
+		label : kivy.uix.label.Label
+			The label to configure.
+		min_height : int, optional
+			Minimum label height. Defaults to ``dp(60)``.
+		horizontal_padding : int, optional
+			Horizontal padding subtracted from the wrap width. Defaults to ``dp(20)``.
 		"""
-        Configure a label so its text wraps within the available width and
-        its height grows to fit the wrapped content.
-        """
 		label.size_hint_y = None
 
 		def _update_label_bounds(instance, *args):
+			"""Update the label's wrapped text size and height."""
 			available_width = max(instance.width - horizontal_padding, dp(100))
 			instance.text_size = (available_width, None)
 			instance.texture_update()
@@ -207,10 +344,23 @@ class SurveyBase(Screen):
 		_update_label_bounds(label)
 
 	def _build_label_scrollview(self, label, size_hint_y):
+		"""Wrap a label in a vertically scrollable view.
+
+		Keeps long label content on-screen while allowing vertical scrolling when the
+		wrapped text becomes taller than the available area.
+
+		Parameters
+		----------
+		label : kivy.uix.label.Label
+			The label to wrap.
+		size_hint_y : float
+			Vertical size hint of the returned scroll view.
+
+		Returns
+		-------
+		kivy.uix.scrollview.ScrollView
+			The scroll view containing the label.
 		"""
-        Keep long label content on-screen while allowing vertical scrolling
-        when wrapped text becomes taller than the available area.
-        """
 		scroll_view = ScrollView(
 			size_hint=(1, size_hint_y),
 			do_scroll_x=False,
@@ -221,10 +371,19 @@ class SurveyBase(Screen):
 		return scroll_view
 
 	def _record_response(self, question_text, response):
+		"""Append a question/response row to the app survey data list.
+
+		The response is coerced to a string (an empty string when None) and appended
+		as a ``[question_text, response]`` row to ``self.app.survey_data_list``.
+		Failures are logged via ``Logger``.
+
+		Parameters
+		----------
+		question_text : str
+			The question text.
+		response : str or None
+			The response value to record.
 		"""
-        Append a response row to self.survey_data.
-        response should be a string (or will be coerced to one).
-        """
 		try:
 			# Coerce to string (empty string if None)
 			new_row = [question_text, "" if response is None else str(response)]
@@ -233,19 +392,22 @@ class SurveyBase(Screen):
 			Logger.exception('TouchCog: survey response not recorded')
 
 	def _should_question_be_visible(self, question_metadata):
+		"""Decide whether a question should be shown given its metadata.
+
+		Uses the metadata's ``visible``, ``inclusions`` and ``exclusions`` values:
+		any matching inclusion makes the question visible, any matching exclusion
+		hides it, and otherwise the ``visible`` flag is returned.
+
+		Parameters
+		----------
+		question_metadata : dict
+			Metadata for the question.
+
+		Returns
+		-------
+		bool
+			True if the question should be displayed, False otherwise.
 		"""
-        Determine if a question should be visible based on:
-        - visible: boolean flag (default behavior)
-        - inclusions: list of conditions that make question visible if matched
-        - exclusions: list of conditions that hide question if matched
-        
-        Logic:
-        - If visible is false and inclusions match any condition, show the question
-        - If visible is true but exclusions match any condition, hide the question
-        - Otherwise, follow the visible flag
-        
-        Returns True if question should be displayed, False otherwise.
-        """
 		visible = question_metadata.get('visible', True)
 		inclusions = question_metadata.get('inclusions', [])
 		exclusions = question_metadata.get('exclusions', [])
@@ -264,16 +426,23 @@ class SurveyBase(Screen):
 		return visible
 
 	def _condition_matches(self, condition):
+		"""Check whether an inclusion or exclusion condition matches responses.
+
+		Compares the condition's ``response_value`` with the recorded response at the
+		given 1-based ``question_index``, either exactly or as one element of a
+		``', '``-separated list. Returns False for any invalid condition or exception.
+
+		Parameters
+		----------
+		condition : dict
+			Dict with ``question_index`` (1-based int), ``question`` (optional str)
+			and ``response_value`` (expected response str).
+
+		Returns
+		-------
+		bool
+			True if the condition matches, False otherwise.
 		"""
-        Check if a condition (inclusion or exclusion) matches current survey responses.
-        Condition structure: {
-            'question_index': int (1-based),
-            'question': str (optional),
-            'response_value': str (the expected response)
-        }
-        
-        Returns True if the condition matches, False otherwise.
-        """
 		try:
 			question_index = condition.get('question_index')
 			expected_value = condition.get('response_value')
@@ -290,12 +459,25 @@ class SurveyBase(Screen):
 			return False
 
 	def _load_end_survey_text(self):
+		"""Create the end-survey label and button widgets."""
 		self.end_survey_text = "Thank you for completing the survey!"
 		self.end_survey_label = Label(text=self.end_survey_text, font_size='32sp', halign='center', valign='middle')
 		self._configure_multiline_label(self.end_survey_label, min_height=dp(90))
 		self.end_survey_button = Button(text="Continue", size_hint=(0.5, 0.2), pos_hint={'center_x': 0.5}, font_size='30sp')
 
 	def _return_to_main_menu(self, instance):
+		"""Finalize the survey, write the data and return to the main menu.
+
+		Disables the end button, rebuilds ``app.survey_data`` as a DataFrame with
+		``question`` and ``response`` columns from the collected list, queues a CSV
+		write to ``app.survey_data_path``, then completes the task or switches to
+		the ``'mainmenu'`` screen.
+
+		Parameters
+		----------
+		instance : kivy.uix.button.Button
+			The end-survey button instance.
+		"""
 		self.end_survey_button.unbind(on_press=self._return_to_main_menu)
 		self.end_survey_button.disabled = True
 		self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
@@ -313,10 +495,25 @@ class SurveyBase(Screen):
 			Logger.exception('Survey: return to main menu failed')
 
 	def _create_multile_choice_question(self, layout, question_text, options):
+		"""Create a multiple choice question with the given text and options.
+
+		Builds a scrollable set of ToggleButtons; an "Other" option includes a text
+		entry. The selected choice is stored on the layout and recorded on pressing Next.
+
+		Parameters
+		----------
+		layout : kivy.uix.boxlayout.BoxLayout
+			The layout to populate.
+		question_text : str
+			The question text.
+		options : iterable of str
+			The option labels.
+
+		Returns
+		-------
+		kivy.uix.boxlayout.BoxLayout
+			The populated layout.
 		"""
-        Create a multiple choice question with given text and options.
-        Handles "Other" option with text entry.
-        """
 		question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
 		question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
 		question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
@@ -346,6 +543,7 @@ class SurveyBase(Screen):
 				other_text_input.hint_text = "Specify other"
 				# mark selection as 'Other' when toggle goes down
 				def _mark_other(toggle, state, _layout=layout):
+					"""Mark the layout's selected choice as 'Other' when the toggle goes down."""
 					if state == 'down':
 						_layout.selected_choice = 'Other'
 				other_toggle.bind(on_state=_mark_other)
@@ -356,6 +554,7 @@ class SurveyBase(Screen):
 				option_toggle = ToggleButton(text=option, group=group_name, size_hint_y=None, height=dp(50), font_size='24sp')
 				# when toggled down, record this option label
 				def _mark_choice(toggle, state, opt=option, _layout=layout):
+					"""Record the toggle's option label as the selected choice when it goes down."""
 					if state == 'down':
 						_layout.selected_choice = opt
 				option_toggle.bind(on_state=_mark_choice)
@@ -367,6 +566,7 @@ class SurveyBase(Screen):
 		survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
 		# custom handler: find the ToggleButton in the options_container that is down
 		def _on_next(instance, qtext=question_text, _container=options_container, _other_input=other_text_input):
+			"""Record the selected choice and advance the survey."""
 			selected_text = ""
 			try:
 				# options_container children may be ToggleButtons (for normal options) or BoxLayouts (for 'Other' rows)
@@ -400,9 +600,23 @@ class SurveyBase(Screen):
 		return layout
 
 	def _create_text_input_question(self, layout, question_text):
+		"""Create a text input question with the given text.
+
+		Adds the question label, a single-line text input and a Next button that
+		records the entered text.
+
+		Parameters
+		----------
+		layout : kivy.uix.boxlayout.BoxLayout
+			The layout to populate.
+		question_text : str
+			The question text.
+
+		Returns
+		-------
+		kivy.uix.boxlayout.BoxLayout
+			The populated layout.
 		"""
-        Create a text input question with given text.
-        """
 		question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
 		question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
 		question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
@@ -424,6 +638,7 @@ class SurveyBase(Screen):
 		survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
 		# custom handler: record the text value
 		def _on_next_text(instance, qtext=question_text, _input=text_input):
+			"""Record the entered text and advance the survey."""
 			response = _input.text if _input is not None else ""
 			self._record_response(qtext, response)
 			self.advance_survey()
@@ -433,10 +648,26 @@ class SurveyBase(Screen):
 		return layout
 
 	def _create_multi_response_question(self, layout, question_text, options):
+		"""Create a multi-response question with checkboxes for the given text and options.
+
+		Each option becomes a checkbox in its own row; the "Other" option is replaced
+		by a text entry. Pressing Next collects the checked labels (and entered text)
+		as a ``', '``-joined response.
+
+		Parameters
+		----------
+		layout : kivy.uix.boxlayout.BoxLayout
+			The layout to populate.
+		question_text : str
+			The question text.
+		options : iterable of str
+			The option labels.
+
+		Returns
+		-------
+		kivy.uix.boxlayout.BoxLayout
+			The populated layout.
 		"""
-        Create a multi-response question with checkboxes for given text and options.
-        Handles "Other" option with text entry instead of label.
-        """
 		question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
 		question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
 		question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
@@ -474,6 +705,7 @@ class SurveyBase(Screen):
 		survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
 		# custom handler: iterate through rows and collect checked labels / text inputs
 		def _on_next_multi(instance, qtext=question_text, _container=options_container):
+			"""Collect the checked responses and advance the survey."""
 			selected = []
 			# options_container children are added top->bottom, but Kivy lays them out; iterate through children
 			for row in _container.children:
@@ -506,10 +738,25 @@ class SurveyBase(Screen):
 		return layout
 
 	def _create_rating_scale_question(self, layout, question_text, options):
+		"""Create a Likert scale question with a draggable horizontal indicator.
+
+		Options may be a dict mapping keys to labels or a ``(min, max)`` tuple for a
+		numeric range. Pressing Next records the scale's current value.
+
+		Parameters
+		----------
+		layout : kivy.uix.boxlayout.BoxLayout
+			The layout to populate.
+		question_text : str
+			The question text.
+		options : dict or tuple
+			Option labels keyed by value, or a ``(min, max)`` numeric range.
+
+		Returns
+		-------
+		kivy.uix.boxlayout.BoxLayout
+			The populated layout.
 		"""
-        Create a Likert scale question with a draggable horizontal indicator.
-        Options can be either a dict {key: label, ...} or a tuple (min, max).
-        """
 		question_label = Label(text=question_text, size_hint_y=None, font_size='32sp', halign='center', valign='top')
 		question_label.bind(width=lambda *x: question_label.setter('text_size')(question_label, (question_label.width, None)))
 		question_label.bind(texture_size=lambda *x: question_label.setter('height')(question_label, question_label.texture_size[1]))
@@ -557,6 +804,7 @@ class SurveyBase(Screen):
 		survey_continue_button = Button(text="Next", size_hint_y=None, height=dp(100), font_size='30sp')
 		# custom handler: read likert_scale value (label for dicts, numeric for ranges)
 		def _on_next_scale(instance, qtext=question_text, _scale=likert_scale):
+			"""Record the scale's value and advance the survey."""
 			try:
 				response = _scale.get_value()
 			except Exception:
@@ -569,9 +817,23 @@ class SurveyBase(Screen):
 		return layout
 
 	def create_question(self, question_text, options=None, question_type="multiple_choice"):
+		"""Create a survey question with the given text and options.
+
+		Builds the appropriate question widget for ``question_type`` and appends it to
+		``self.question_list``. ``multiple_choice`` and ``multi_response`` accept a
+		dict of options.
+
+		Parameters
+		----------
+		question_text : str
+			The question text.
+		options : dict, optional
+			Option keys and labels for ``multiple_choice`` and ``multi_response``
+			questions; passed directly for ``rating_scale``. Defaults to None.
+		question_type : str, optional
+			One of ``'multiple_choice'``, ``'text_input'``, ``'multi_response'`` or
+			``'rating_scale'``. Defaults to ``'multiple_choice'``.
 		"""
-        Create a survey question with given text and options.
-        """
 		question_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10), size_hint_y=None)
 		question_layout.bind(minimum_height=question_layout.setter('height'))
 		
@@ -590,15 +852,17 @@ class SurveyBase(Screen):
 		self.question_list.append(question_layout)
 
 	def remove_question(self):
-		"""
-        Remove the current question from the layout.
-        """
+		"""Remove the current question by clearing the main layout."""
 		self.main_layout.clear_widgets()
 
 	def load_text(self):
+		"""Load survey title, description and button text from the language files.
+
+		Reads the ``Screen`` entries (``survey_name``, ``end_survey_text``,
+		``survey_button``, ``end_survey_button``) from ``startscreen.ini`` in the
+		protocol's ``Language/<language>`` folder and the free-text
+		``description.txt``, then updates the corresponding labels and buttons.
 		"""
-        Load survey text from language files.
-        """
 		language_path = self.app.app_root / 'Protocol' / self.name / 'Language' / self.language / 'startscreen.ini'
 		language_description_path = self.app.app_root / 'Protocol' / self.name / 'Language' / self.language / 'description.txt'
 		# Load texts from files
@@ -618,10 +882,16 @@ class SurveyBase(Screen):
 		self.end_survey_button.text = self.end_survey_button_text
 
 	def load_survey(self, survey_json):
+		"""Load survey questions from a JSON structure.
+
+		Stores per-question metadata (text, type, options, visible, inclusions,
+		exclusions) in ``self.question_metadata_list`` and builds each question's UI.
+
+		Parameters
+		----------
+		survey_json : dict
+			The survey structure with a ``questions`` list of question dicts.
 		"""
-        Load survey questions from a JSON structure.
-        Stores metadata including visible, inclusions, and exclusions for each question.
-        """
 		self._load_end_survey_text()
 		self.survey_json = survey_json
 		for question in survey_json['questions']:
@@ -650,10 +920,17 @@ class SurveyBase(Screen):
 
 	
 	def advance_survey(self, *args):
+		"""Advance to the next visible question in the survey.
+
+		Clears the current question and increments the question index, skipping
+		hidden questions and recording an empty response for each skipped one. When
+		no questions remain, ends the survey.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
 		"""
-        Advance to the next question in the survey.
-        Handles visibility logic: skips hidden questions and adds empty responses for them.
-        """
 		self.remove_question()
 		self.question_index += 1
 		
@@ -676,6 +953,18 @@ class SurveyBase(Screen):
 		self.end_survey()
 
 	def run_survey(self, *args):
+		"""Start the survey and set up the participant output file.
+
+		Clears the layout and sets ``question_index`` to -1 so the first
+		``advance_survey`` moves to question 0. The participant ID is sanitised and a
+		CSV output path ``<id>_<screen name>_<date>_<n>.csv`` (first free ``n``) is
+		set in ``app.survey_data_path`` under the participant's data folder.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		# Entry is only on screen when no battery participant ID was available
 		if self.participant_id_entry.parent is not None:
 			self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
@@ -694,9 +983,16 @@ class SurveyBase(Screen):
 
 	
 	def _display_question(self, question_layout):
+		"""Display a question centered in the middle of the screen.
+
+		Wraps the question layout in a :class:`kivy.uix.floatlayout.FloatLayout` and
+		adds it to the main layout.
+
+		Parameters
+		----------
+		question_layout : kivy.uix.boxlayout.BoxLayout
+			The question layout to display.
 		"""
-        Display a question centered in the middle of the screen.
-        """
 		from kivy.uix.floatlayout import FloatLayout
 		
 		# Create a centered container
@@ -710,6 +1006,12 @@ class SurveyBase(Screen):
 		self.main_layout.add_widget(container)
 
 	def start_screen(self):
+		"""Build the survey start screen with title, description and start button.
+
+		Clears the main layout and adds the title and description scrollviews plus a
+		participant ID entry unless a battery participant ID is available, and the
+		survey start button.
+		"""
 		self.main_layout.clear_widgets()
 		self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_label, 0.18))
 		self.main_layout.add_widget(self._build_label_scrollview(self.survey_title_description, 0.42))
@@ -723,6 +1025,7 @@ class SurveyBase(Screen):
 		self.survey_button.bind(on_press=self.run_survey)
 
 	def end_survey(self):
+		"""Show the end-survey label and Continue button, bound to finalization."""
 		self.main_layout.clear_widgets()
 		self.main_layout.add_widget(self._build_label_scrollview(self.end_survey_label, 0.7))
 		self.main_layout.add_widget(self.end_survey_button)

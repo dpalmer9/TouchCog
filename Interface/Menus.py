@@ -1,3 +1,4 @@
+"""Kivy menus for the TouchCog launcher: language selection, main menu and protocol screens."""
 # Part of the TouchCog Kivy launcher interface (split out of KivyMenuInterface.py).
 
 # Interface.Startup must be imported first: it configures Kivy before kivy.core.window loads.
@@ -38,8 +39,43 @@ from Interface.Battery import BatteryMenu
 # Class Task Selection #
 
 class LanguageMenu(Screen):
+	"""Kivy screen that lets the user pick a language and download its updates.
+
+	The screen builds a language dropdown from the local ``Language/``
+	directory and augments it from a remote manifest fetched in a background
+	thread. Once a language is selected the screen downloads any required
+	language, video and battery files before handing control to the main menu.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'languagemenu'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	config : configparser.ConfigParser
+		The shared TouchCog configuration.
+	manifest_path : str
+		URL of the remote manifest JSON.
+	language_list : list of str
+		Names of languages found in the local ``Language/`` directory.
+	_manifest : dict or None
+		The last manifest loaded from remote or local JSON.
+	start_button : kivy.uix.button.Button
+		The Start button, enabled once the manifest fetch completes.
+	"""
 	
 	def __init__(self, **kwargs):
+		"""Initialise the language menu and build its widgets.
+
+		Builds the language dropdown from the local ``Language/`` directory,
+		creates the Start button (initially disabled) and launches a daemon
+		thread to fetch the remote manifest.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		
 		super(LanguageMenu, self).__init__(**kwargs)
 		self.name = 'languagemenu'
@@ -85,15 +121,34 @@ class LanguageMenu(Screen):
 		threading.Thread(target=self._load_manifest_async, daemon=True).start()
 
 	def _add_language_button(self, language):
+		"""Add a button for the given language to the language dropdown.
+
+		Parameters
+		----------
+		language : str
+			Name of the language to add.
+		"""
 		btn = Button(text=language, size_hint_y=None, height=44)
 		btn.bind(on_release=lambda btn: self.language_dropdown.select(btn.text))
 		self.language_dropdown.add_widget(btn)
 
 	def _load_manifest_async(self):
+		"""Fetch the manifest (background thread) and schedule its application on the Kivy Clock."""
 		manifest = self._fetch_manifest()
 		Clock.schedule_once(lambda dt: self._apply_manifest(manifest))
 
 	def _apply_manifest(self, manifest):
+		"""Apply the fetched manifest, adding any new languages to the dropdown.
+
+		Walks ``manifest['languages']`` and appends any language names not
+		already in ``self.language_list`` as new dropdown buttons, then enables
+		the Start button.
+
+		Parameters
+		----------
+		manifest : dict
+			The manifest whose ``languages`` list is read.
+		"""
 		self._manifest = manifest
 		# Manifest format: a list of dicts under 'languages', each mapping a language name to its entries
 		if isinstance(manifest, dict):
@@ -106,6 +161,22 @@ class LanguageMenu(Screen):
 		self.start_button.disabled = False
 
 	def start_touchcog(self, *args):
+		"""Start TouchCog with the selected language, downloading any updates.
+
+		If no language was chosen or no manifest was loaded, navigates to the
+		main menu using the configured language. Otherwise writes the selected
+		language to the user-local ``Config.ini``, ensures the ``bin`` folder
+		exists and collects language, video and battery download candidates from
+		the manifest, downloading those that are missing or older than the
+		manifest date. If nothing needs downloading it goes straight to the main
+		menu; otherwise it opens a download popup with a progress bar and label
+		and starts a background download thread.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.app.language = self.language_drop_button.text
 		# If no language selected, just go to main menu
 		if self.app.language == 'Select Language' or not self.app.language:
@@ -213,6 +284,18 @@ class LanguageMenu(Screen):
 
 
 	def _fetch_manifest(self):
+		"""Return the remote manifest JSON, falling back to the local manifest.
+
+		Tries to load and parse ``self.manifest_path`` over HTTP with a 10 second
+		timeout, sanitising the text if strict JSON parsing fails. On any error it
+		falls back to ``app_root/manifest.json`` and returns None if that cannot
+		be parsed either.
+
+		Returns
+		-------
+		dict or None
+			The parsed manifest, or None if neither remote nor local could be read.
+		"""
 		# Try to fetch JSON from manifest_path; fallback to local manifest.json
 		try:
 			with urllib.request.urlopen(self.manifest_path, timeout=10) as resp:
@@ -251,11 +334,22 @@ class LanguageMenu(Screen):
 	def _sanitize_json_text(self, text):
 		"""Return a least-effort sanitized JSON string.
 
-		This attempts to fix common formatting mistakes in manually-edited
-		JSON files such as trailing commas before closing array/object tokens
-		(e.g. [1,2,] or {"a": 1,}). This is carefully scoped: it does not try
-		to implement a full tolerant parser, but it helps with the manifest's
-		most-common issue (trailing commas).
+		Fixes common formatting mistakes in manually-edited JSON files such as
+		trailing commas before closing array/object tokens (e.g. ``[1,2,]`` or
+		``{"a": 1,}``). It does not implement a full tolerant parser but handles
+		the manifest's most-common issue (trailing commas).
+
+		Parameters
+		----------
+		text : str
+			The JSON text to sanitize.
+
+		Returns
+		-------
+		str
+			The input with a leading byte-order mark stripped and any commas
+			directly before a closing ``]`` or ``}`` removed; the original
+			``text`` is returned unchanged if it is not a string.
 		"""
 		if not isinstance(text, str):
 			return text
@@ -271,6 +365,18 @@ class LanguageMenu(Screen):
 
 
 	def _ensure_destination(self, destination_path):
+		"""Ensure the application ``bin`` folder exists, creating it if needed.
+
+		Parameters
+		----------
+		destination_path : str or None
+			Unused; retained for compatibility.
+
+		Returns
+		-------
+		pathlib.Path
+			The ``bin`` folder path.
+		"""
 		# Ensure bin folder exists
 		bin_path = app_root / 'bin'
 		if not bin_path.exists():
@@ -279,6 +385,20 @@ class LanguageMenu(Screen):
 
 
 	def _download_files_thread(self, file_list):
+		"""Download, extract and process the given files in the background.
+
+		For each entry in ``file_list`` downloads ``entry['server_path']`` into
+		``app_root/bin`` in 8192-byte chunks, updating the popup label and
+		progress bar on the Kivy Clock. ZIP archives are extracted into the app
+		root after checking no member path escapes it; any partial file is
+		removed on failure. When finished the popup is dismissed and the main
+		menu is opened.
+
+		Parameters
+		----------
+		file_list : list of dict
+			Manifest entries, each with ``filename`` and ``server_path`` keys.
+		"""
 		total = len(file_list)
 		completed = 0
 		bin_path = app_root / 'bin'
@@ -346,6 +466,13 @@ class LanguageMenu(Screen):
 
 
 	def _open_main_menu(self, *args):
+		"""Set the configured language and open the main menu screen.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		self.app.language = self.config['language']['language']
 		self.main_menu = MainMenu()
 		self.app.replace_screen(self.main_menu)
@@ -353,8 +480,35 @@ class LanguageMenu(Screen):
 
 
 class MainMenu(Screen):
+	"""Kivy screen showing the main menu launch, battery and exit buttons.
+
+	The screen reads button labels from the language-specific ``mainmenu.ini``
+	file and wires each button to its navigation or exit handler.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'mainmenu'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	Menu_Layout : kivy.uix.floatlayout.FloatLayout
+		Root layout holding the main menu buttons.
+	protocol_window : str
+		Name of the currently configured secondary screen.
+	language : str
+		Language folder name (e.g. ``'English'``) used to locate the menu config.
+	menu_config : configparser.ConfigParser
+		Parsed ``mainmenu.ini`` config supplying button text.
+	"""
 	
 	def __init__(self, **kwargs):
+		"""Initialise the main menu screen and build its buttons.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		
 		super(MainMenu, self).__init__(**kwargs)
 		self.name = 'mainmenu'
@@ -385,6 +539,17 @@ class MainMenu(Screen):
 	
 
 	def load_protocol_menu(self, *args):
+		"""Open the protocol selection screen, building it if not yet created.
+
+		If ``self.protocol_window`` is already a :class:`ProtocolMenu` the
+		manager switches to it directly; otherwise a new :class:`ProtocolMenu`
+		is created, installed with ``app.replace_screen``, and is then shown.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		if isinstance(self.protocol_window, ProtocolMenu):
 			self.manager.current = 'protocolmenu'
@@ -395,6 +560,17 @@ class MainMenu(Screen):
 			self.manager.current = 'protocolmenu'
 	
 	def load_battery_menu(self, *args):
+		"""Open the battery menu screen, building it if not yet created.
+
+		If ``self.protocol_window`` is already a :class:`BatteryMenu` the
+		manager switches to it directly; otherwise a new :class:`BatteryMenu`
+		is created, installed with ``app.replace_screen``, and is then shown.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		if isinstance(self.protocol_window, BatteryMenu):
 			self.manager.current = 'batterymenu'
@@ -405,6 +581,13 @@ class MainMenu(Screen):
 			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
+		"""Stop the running app and close the application window.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		App.get_running_app().stop()
 		Window.close()
@@ -415,8 +598,38 @@ class MainMenu(Screen):
 # Class Protocol Selection #
 
 class ProtocolMenu(Screen):
+	"""Kivy screen listing the available protocols for selection.
+
+	The screen reads button labels from the language-specific
+	``protocolmenu.ini`` file and builds one button per protocol returned by
+	:func:`search_protocols` so the user can pick which protocol to launch.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'protocolmenu'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	Protocol_Layout : kivy.uix.floatlayout.FloatLayout
+		Root layout holding the protocol list and cancel button.
+	Protocol_Configure_Screen : kivy.uix.screenmanager.Screen or None
+		Configure screen built for the most recently selected protocol.
+	language : str
+		Language folder name (e.g. ``'English'``) used to locate the menu config.
+	menu_config : configparser.ConfigParser
+		Parsed ``protocolmenu.ini`` config supplying button text.
+	Protocol_List : kivy.uix.gridlayout.GridLayout
+		Grid with one button per available protocol.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the protocol menu and build its protocol list.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 
 		super(ProtocolMenu, self).__init__(**kwargs)
 		
@@ -455,6 +668,21 @@ class ProtocolMenu(Screen):
 	
 	
 	def set_protocol(self, label, *args):
+		"""Build and present the configure screen for the chosen protocol.
+
+		Removes any previously built configure screen, then loads the protocol's
+		``Task`` ``Menu.py`` module (:class:`ConfigureScreen`) when that file
+		exists or the ``Protocol`` module (:class:`SurveyProtocol`) otherwise. The
+		built screen replaces the current one and is shown either as a task screen
+		or as the active screen.
+
+		Parameters
+		----------
+		label : str
+			Name of the selected protocol.
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		if isinstance(self.Protocol_Configure_Screen, MenuBase):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
@@ -480,5 +708,12 @@ class ProtocolMenu(Screen):
 	
 	
 	def cancel_protocol(self, *args):
+		"""Return to the main menu screen.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		self.manager.current = 'mainmenu'

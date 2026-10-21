@@ -1,3 +1,4 @@
+"""Base classes and widgets shared by all protocol task screens."""
 # Import
 
 import configparser
@@ -33,8 +34,37 @@ from Classes.DataFiles import DATA_FOLDER, next_free_path, sanitize_participant_
 
 
 class ImageButton(ButtonBehavior, Image):
+	"""Image widget that behaves as a button with move-out release tracking.
+
+	on_release is dispatched once per pressed interval: when the grabbed touch
+	slides off the widget, or when it lifts inside, whichever comes first. Sliding
+	back in starts a new press (on_press, then another on_release).
+
+	Attributes
+	----------
+	coord : object or None
+		Arbitrary coordinate value attached to the button (default None).
+	fit_mode : str
+		Image fit mode. Defaults to ``'fill'``.
+	touch_pos : tuple of (int, int)
+		Most recent touch position passed to the button.
+	name : str
+		Stimulus name used when the button is touched or held.
+	_grabbed_touch : kivy.input.MotionEvent or None
+		The touch that initiated the press on this widget.
+	_touch_inside : bool
+		Whether the grabbed touch is currently inside the widget.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the button and its touch-tracking state.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to
+			:class:`kivy.uix.button.ButtonBehavior` and :class:`kivy.uix.image.Image`.
+		"""
 
 		super(ImageButton, self).__init__(**kwargs)
 		self.coord = None
@@ -50,6 +80,22 @@ class ImageButton(ButtonBehavior, Image):
 
 
 	def on_touch_down(self, touch):
+		"""Track a press on this widget and let the base button handle it.
+
+		When the widget is disabled the event is ignored. Touches outside the
+		widget propagate normally; a handled touch that begins inside is stored as
+		the grabbed touch for move/release tracking.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool
+			True if the touch was consumed, False otherwise.
+		"""
 		# Only start tracking if the touch is within this widget and the widget is enabled
 		if self.disabled:
 			return False
@@ -67,6 +113,23 @@ class ImageButton(ButtonBehavior, Image):
 
 
 	def on_touch_move(self, touch):
+		"""Release or re-press the button as the grabbed touch crosses the boundary.
+
+		If the grabbed touch moves outside while the button is down, an on_release
+		is dispatched and the grab is dropped. If it moves back inside while up,
+		the button is grabbed and pressed again. Moves for other touches pass
+		through to the base widget.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool
+			True when the move was consumed, otherwise the base class result.
+		"""
 		# If this move is not for the touch that initiated the press, pass through
 		if touch is not self._grabbed_touch:
 			return super(ImageButton, self).on_touch_move(touch)
@@ -109,6 +172,23 @@ class ImageButton(ButtonBehavior, Image):
 
 
 	def on_touch_up(self, touch):
+		"""Release the grabbed touch and clear the tracking state.
+
+		If the touch is still inside and the button is down, the base class handles
+		the release. Otherwise a release is dispatched directly if the button is
+		still down (e.g. after a move-out release), and the tracking state is
+		reset.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool
+			True when the event was consumed, otherwise the base class result.
+		"""
 		# If this up event is not the one we tracked, pass through
 		if touch is not self._grabbed_touch:
 			return super(ImageButton, self).on_touch_up(touch)
@@ -135,9 +215,57 @@ class ImageButton(ButtonBehavior, Image):
 
 
 class FloatLayoutLog(FloatLayout):
+	"""Float layout that logs touch and stimulus events for protocol task screens.
+
+	Events are queued as rows of ``app.event_columns`` and drained by a background
+	writer thread; each row is also queued to the session event CSV. Tracks active
+	touches to detect multi-touch, during which child touches are blocked.
+
+	Attributes
+	----------
+	app : kivy.app.App
+		The running TouchCog app.
+	width : int
+		Screen width in pixels (from ``screen_resolution``).
+	height : int
+		Screen height in pixels (from ``screen_resolution``).
+	width_min : float
+		Minimum X movement for a move to be logged (``width / 100``).
+	height_min : float
+		Minimum Y movement for a move to be logged (``height / 100``).
+	event_columns : list of str
+		Column names of the event data (Time, Event_Type, Event_Name, Arg1-3 pairs).
+	session_event_data : pandas.DataFrame
+		DataFrame of the logged events.
+	save_path : pathlib.Path or str
+		Path of the session event CSV file.
+	touch_time : float
+		Seconds since ``start_time`` at the last touch (``time.perf_counter``).
+	start_time : float
+		Reference timestamp set by :meth:`set_start_time`.
+	active_touches : set
+		Uids of the currently active touches.
+	multi_touch_active : bool
+		Whether more than one touch is currently active.
+	block_on_move_touch_down : bool
+		Whether touch-downs triggered during moves are suppressed.
+	"""
 	
 	def __init__(self, screen_resolution, **kwargs):
-		
+		"""Initialise the layout, its event queue and its writer thread.
+
+		Sets up the event columns and DataFrame, stops and joins any previous
+		event-writer thread held on the app, then starts a fresh daemon writer
+		thread for this layout's queue.
+
+		Parameters
+		----------
+		screen_resolution : tuple of (int, int)
+			Screen width and height in pixels.
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.floatlayout.FloatLayout`.
+		"""
+
 		super(FloatLayoutLog, self).__init__(**kwargs)
 		self.register_event_type('on_multi_touch')
 		
@@ -186,6 +314,11 @@ class FloatLayoutLog(FloatLayout):
 		self.app.event_writer_thread = self._event_writer_thread
 	
 	def event_writer(self):
+		"""Drain the event queue until the ``None`` sentinel is received.
+
+		Each queued row is appended to ``self.app.event_list`` and passed to
+		:meth:`_append_event_row`. A ``None`` sentinel stops the thread.
+		"""
 		while True:
 			try:
 				event_row = self.event_queue.get()
@@ -197,6 +330,17 @@ class FloatLayoutLog(FloatLayout):
 				continue # Should not happen with blocking get()
 
 	def _append_event_row(self, event_row):
+		"""Queue one event row to the session event CSV, if a path is set.
+
+		Builds a row of cell values from ``self.app.event_columns`` and queues it
+		for writing via ``self.app.queue_csv_row`` to ``self.app.session_event_path``.
+		Does nothing when no session event path is set.
+
+		Parameters
+		----------
+		event_row : dict
+			The event values keyed by event column name.
+		"""
 		if not getattr(self.app, 'session_event_path', ''):
 			return
 
@@ -204,9 +348,29 @@ class FloatLayoutLog(FloatLayout):
 		self.app.queue_csv_row(self.app.session_event_path, row)
 	
 	def on_multi_touch(self, touch, touch_count):
+		"""Handle the custom multi-touch event (default handler; does nothing).
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch that caused the second simultaneous touch.
+		touch_count : int
+			Number of active touches.
+		"""
 		return
 
 	def _track_touch_down(self, touch):
+		"""Record a touch-down and raise the multi-touch event on a second touch.
+
+		Adds the touch uid to ``active_touches``. When a second touch begins, sets
+		``multi_touch_active``, releases any child currently in the down state, and
+		dispatches the ``on_multi_touch`` event.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch that went down.
+		"""
 		touch_uid = getattr(touch, 'uid', None)
 		if touch_uid is None:
 			return
@@ -224,6 +388,13 @@ class FloatLayoutLog(FloatLayout):
 			self.dispatch('on_multi_touch', touch, len(self.active_touches))
 
 	def _track_touch_up(self, touch):
+		"""Remove a touch uid and clear multi-touch when one touch remains.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch that went up.
+		"""
 		touch_uid = getattr(touch, 'uid', None)
 		if touch_uid is not None:
 			self.active_touches.discard(touch_uid)
@@ -234,7 +405,25 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def on_touch_down(self, touch):
-		
+		"""Log a touch press, blocking it during multi-touch.
+
+		Tracks the touch, records its position and a ``time.perf_counter`` timestamp
+		relative to ``start_time``, and forwards the event to children. During
+		multi-touch the press is logged as blocked and consumed; a handled child
+		press is logged using the child's name for an ``ImageButton``.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool or None
+			True when the event was consumed; None when no child handled it (and the
+			layout is not disabled).
+		"""
+
 		self._track_touch_down(touch)
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
@@ -268,7 +457,25 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def on_touch_move(self, touch):
-		
+		"""Log touch moves, re-dispatching down events when sliding into children.
+
+		Records position and relative timestamp, and forwards the move to children,
+		optionally logging a press when a move first enters a child (unless
+		``block_on_move_touch_down``). A ``Touch Move`` event is logged whenever the
+		position has moved at least ``width_min``/``height_min`` since the last
+		recorded position.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool or None
+			True when the event was consumed; None when disabled or no child handled it.
+		"""
+
 		self.touch_pos = touch.pos
 		self.touch_time = time.perf_counter() - self.start_time
 		
@@ -316,6 +523,23 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def on_touch_up(self, touch):
+		"""Log a touch release.
+
+		Tracks the touch up, records its position and relative timestamp, and
+		forwards the event to children. During multi-touch the release is logged as
+		blocked; a handled child release is logged using the child's name for an
+		``ImageButton``.
+
+		Parameters
+		----------
+		touch : kivy.input.MotionEvent
+			The touch event to handle.
+
+		Returns
+		-------
+		bool or None
+			True when the event was consumed; None when disabled or no child handled it.
+		"""
 
 		was_multi_touch = self.multi_touch_active
 		
@@ -355,9 +579,37 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def _log_touch(self, event_name, stimulus_name):
+		"""Queue a screen touch event row with position and stimulus name.
+
+		Parameters
+		----------
+		event_name : str
+			The event name, e.g. ``'Touch Press'``.
+		stimulus_name : str
+			Name of the stimulus or button touched.
+
+		Notes
+		-----
+		Event row: Time is the current ``touch_time`` (seconds since ``start_time``),
+		Event_Type ``'Screen'``, Event_Name the given event name, then the pairs
+		``'X Position'``/x, ``'Y Position'``/y and ``'Stimulus Name'``/name in the
+		Arg1-Arg3 columns.
+		"""
 		self.add_event([self.touch_time, 'Screen', event_name, 'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', stimulus_name])
 
 	def add_event(self, row):
+		"""Queue an event row mapped onto the event columns.
+
+		Builds a dict keyed by ``self.app.event_columns`` from the positional row,
+		casting the Time column to float and all others to str and padding missing
+		columns with empty strings, then puts it on ``self.event_queue`` for the
+		writer thread.
+
+		Parameters
+		----------
+		row : list
+			Positional values aligned with the event columns (Time first).
+		"""
 		new_row = {}
 		
 		for iCol in range(len(self.app.event_columns)):
@@ -375,6 +627,13 @@ class FloatLayoutLog(FloatLayout):
 		self.event_queue.put(new_row)
 
 	def add_stage_event(self, stage_name):
+		"""Queue a stage-change event with the relative time in seconds.
+
+		Parameters
+		----------
+		stage_name : str
+			Name of the stage that began.
+		"""
 		self.add_event([
 			(time.perf_counter() - self.start_time)
 			, 'Stage Change'
@@ -383,6 +642,15 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def add_button_event(self, event_type, button_name):
+		"""Queue a button event with the relative time in seconds.
+
+		Parameters
+		----------
+		event_type : str
+			Action performed, e.g. ``'Displayed'`` or ``'Removed'``.
+		button_name : str
+			Label of the button.
+		"""
 		self.add_event([
 			(time.perf_counter() - self.start_time)
 			, 'Button ' + event_type
@@ -391,6 +659,15 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def add_text_event(self, event_type, text_name):
+		"""Queue a text event with the relative time in seconds.
+
+		Parameters
+		----------
+		event_type : str
+			Action performed, e.g. ``'Displayed'`` or ``'Removed'``.
+		text_name : str
+			Label of the text element.
+		"""
 		self.add_event([
 			(time.perf_counter() - self.start_time)
 			, 'Text ' + event_type
@@ -399,6 +676,31 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def add_variable_event(self, variable_class, variable_name, variable_value, variable_type=None, variable_units=None):
+		"""Queue a variable-change event with optional type and units.
+
+		Parameters
+		----------
+		variable_class : str
+			Class or category of the variable.
+		variable_name : str
+			Name of the variable.
+		variable_value : object
+			Value of the variable.
+		variable_type : str, optional
+			Data type of the variable. Defaults to None.
+		variable_units : str, optional
+			Units of the variable. Defaults to None.
+
+		Notes
+		-----
+		Event row: Time (seconds since ``start_time``), Event_Type
+		``'Variable Change'``, Event_Name ``variable_class``, Arg1_Name
+		``variable_name``. Then, literally: with no type and no units the next cell
+		is ``variable_value``; with a type and no units ``'Type'`` and the type are
+		appended (``variable_value`` is not written); with units given ``'Type'``,
+		the type, ``'Units'`` and the units are appended (``variable_value`` is not
+		written).
+		"""
 		row = [(time.perf_counter() - self.start_time), 'Variable Change', variable_class, variable_name]
 		if variable_type is None and variable_units is None:
 			row.append(variable_value)
@@ -409,6 +711,28 @@ class FloatLayoutLog(FloatLayout):
 		self.add_event(row)
 
 	def add_object_event(self, event_type, object_type, object_name, object_detail, image_name=None):
+		"""Queue an object event, optionally appending an image name.
+
+		Parameters
+		----------
+		event_type : str
+			Action applied to the object, e.g. ``'Display'``.
+		object_type : str
+			Type of the object, e.g. ``'Video'`` or ``'Button'``.
+		object_name : str
+			Name of the object.
+		object_detail : str
+			Detail describing the object.
+		image_name : str, optional
+			Image file name appended as an extra pair. Defaults to None.
+
+		Notes
+		-----
+		Event row: Time (seconds since ``start_time``), Event_Type
+		``'Object <event_type>'``, Event_Name ``object_type``, Arg1_Name
+		``object_name``, Arg1_Value ``object_detail``; ``'Image Name'`` and the
+		name follow in Arg2 only when ``image_name`` is given.
+		"""
 		# Generic object event builder. This will log the standard fields and
 		# append an 'Image Name' pair only when an image_name is provided.
 		row = [
@@ -423,10 +747,25 @@ class FloatLayoutLog(FloatLayout):
 		self.add_event(row)
 	
 	def set_start_time(self, start_time):
+		"""Set the reference time used for event timestamps.
+
+		Parameters
+		----------
+		start_time : float
+			Seconds from :func:`time.perf_counter` used as time zero.
+		"""
 		self.start_time = start_time
 		return
 	
 	def write_data(self):
+		"""Finalise the event queue and sort the session event data.
+
+		Notes
+		-----
+		Finalises the app's event queue, builds a DataFrame from the logged event
+		list, casts Time to float64 and sorts rows by Time, then assigns it to the
+		app and queues a DataFrame write to the session event path when set.
+		"""
 		self.app._finalize_event_queue()
 		self.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
 		if not self.session_event_data.empty:
@@ -439,7 +778,19 @@ class FloatLayoutLog(FloatLayout):
 	
 	
 	def update_path(self, path):
-		
+		"""Set the session event path and queue a CSV header write.
+
+		Parameters
+		----------
+		path : pathlib.Path or str
+			Path of the event CSV file.
+
+		Notes
+		-----
+		Stores the path as ``save_path`` and ``app.session_event_path``, then queues
+		a header row of ``app.event_columns`` to it.
+		"""
+
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
 		self.app.queue_csv_header(self.save_path, self.app.event_columns)
@@ -448,7 +799,41 @@ class FloatLayoutLog(FloatLayout):
 	
 
 class PreloadedVideo(Image):
+	"""Image widget that plays a video file with ffpyplayer on a background thread.
+
+	The player is created paused. Frames are blitted into the widget texture; the
+	``state`` property starts and stops playback.
+
+	Attributes
+	----------
+	player : ffpyplayer.player.MediaPlayer or None
+		The media player (None after :meth:`unload`).
+	loop : bool
+		Whether playback restarts at end of file.
+	duration : float or None
+		Video duration in seconds from the player metadata.
+	video_fps : float
+		Frame rate from the metadata (30.0 when unavailable).
+	"""
 	def __init__(self, source_path, player=None, loop=False, **kwargs):
+		"""Initialise the video widget and its ffpyplayer MediaPlayer.
+
+		Creates a fresh :class:`ffpyplayer.player.MediaPlayer` from ``source_path``
+		(ignoring any ``player`` argument), pauses it immediately, reads its
+		metadata (``duration`` and ``video_fps``) and loads an initial thumbnail
+		frame.
+
+		Parameters
+		----------
+		source_path : str
+			Path of the video file to play.
+		player : object, optional
+			Ignored; accepted only for call compatibility. Defaults to None.
+		loop : bool, optional
+			Whether the video should loop at end of file. Defaults to False.
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.image.Image`.
+		"""
 		# We accept 'player' arg just to keep compatibility with your Protocol.py calls,
 		# BUT we ignore it. We create a fresh one based on source_path.
 		super().__init__(**kwargs)
@@ -490,6 +875,16 @@ class PreloadedVideo(Image):
 
 	@mainthread
 	def _update_texture(self, img):
+		"""Blit the given video frame into the Kivy texture.
+
+		Creates a new RGB texture when none exists or its size differs, flips it
+		vertically, blits the frame buffer and requests a canvas update.
+
+		Parameters
+		----------
+		img : object
+			The decoded frame image to draw onto the texture.
+		"""
 		if not self.texture or self.texture.size != img.get_size():
 			self.texture = Texture.create(size=img.get_size(), colorfmt='rgb')
 			self.texture.flip_vertical()
@@ -498,10 +893,22 @@ class PreloadedVideo(Image):
 
 	@property
 	def state(self):
+		"""Return the current video playback state (``'stop'``, ``'play'`` or ``'pause'``)."""
 		return self._state
 
 	@state.setter
 	def state(self, value):
+		"""Update the playback state, starting or stopping the player.
+
+		When set to ``'play'`` the player is unpaused and the playback thread is
+		started. Any other value pauses and stops the thread; setting ``'stop'``
+		additionally resets the video.
+
+		Parameters
+		----------
+		value : str
+			The new state: ``'play'``, ``'pause'`` or ``'stop'``.
+		"""
 		if value == self._state:
 			return
 		
@@ -517,6 +924,7 @@ class PreloadedVideo(Image):
 				self.reset()
 
 	def _start_thread(self):
+		"""Start the background playback thread if one is not already running."""
 		if self._playback_thread and self._playback_thread.is_alive():
 			return
 		self._stop_event.clear()
@@ -524,11 +932,18 @@ class PreloadedVideo(Image):
 		self._playback_thread.start()
 
 	def _stop_thread(self):
+		"""Signal the playback thread to stop and join it briefly."""
 		self._stop_event.set()
 		if self._playback_thread and self._playback_thread.is_alive():
 			self._playback_thread.join(timeout=0.5)
 
 	def _video_loop(self):
+		"""Drain frames from the player until the stop event is set.
+
+		On end-of-file the video is either restarted (when looping) or the state is
+		switched to ``'stop'`` on the Kivy thread. Paused playback and frame timing
+		are handled with ``time.sleep``.
+		"""
 		while not self._stop_event.is_set():
 			try:
 				frame, val = self.player.get_frame()
@@ -558,8 +973,10 @@ class PreloadedVideo(Image):
 				time.sleep(1.0 / 30.0)
 
 	def unload(self):
-		"""
-		The Nuclear Option: Completely destroy the player.
+		"""Completely destroy the media player.
+
+		Stops playback and the playback thread, then closes the player and releases
+		it. Any failure is ignored.
 		"""
 		self.state = 'stop'
 		self._stop_thread()
@@ -572,6 +989,11 @@ class PreloadedVideo(Image):
 			self.player = None
 			
 	def reload(self):
+		"""Create a fresh paused MediaPlayer for the stored source path.
+
+		Replaces ``self.player`` with a new player created from
+		``self._source_path`` and pauses it. A failure is logged.
+		"""
 		try:
 			self.player = MediaPlayer(
 				self._source_path
@@ -582,6 +1004,11 @@ class PreloadedVideo(Image):
 			Logger.exception('TouchCog: video reload failed')
 
 	def reset(self):
+		"""Stop playback, reset the state and seek back to the start frame.
+
+		Stops the playback thread, sets the state to ``'stop'``, pauses and seeks
+		the player to zero, and schedules a thumbnail update on the Kivy Clock.
+		"""
 		# Stop the playback thread and ensure state is stopped
 		try:
 			self._stop_thread()
@@ -594,6 +1021,7 @@ class PreloadedVideo(Image):
 				self.player.set_pause(True)
 				self.player.seek(0)
 				def _update_thumb(dt):
+					"""Update the thumbnail texture from the current frame, if the player is still valid."""
 					try:
 						# Check if self.player is still valid before trying to get frame
 						if not self.player:
@@ -609,8 +1037,151 @@ class PreloadedVideo(Image):
 			# Best-effort: ignore failures
 			pass
 class ProtocolBase(Screen):
+	"""Base screen for protocol task states, holding shared widgets and flow state.
+
+	Builds the logging layout, data folders and configuration-derived defaults, and
+	creates the shared widgets (hold button, feedback, labels, buttons and
+	tutorial-video controls) used by concrete protocol screens.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'protocolscreen'``.
+	protocol_floatlayout : Classes.Protocol.FloatLayoutLog
+		The logging layout that owns this screen's widgets and event queue.
+	app : kivy.app.App
+		The running TouchCog app.
+	language : str
+		Current language folder name.
+	data_folder : pathlib.Path
+		Root output folder for participant data.
+	protocol_name : str
+		Name of the active protocol.
+	image_folder : str
+		Path of the protocol's image folder (set by :meth:`update_task`).
+	participant_id : str
+		Participant identifier used in output file names.
+	session_data : pandas.DataFrame
+		DataFrame of trial summary rows.
+	data_cols : list of str
+		Column names of the summary data file.
+	metadata_cols : list of str
+		Column names of the metadata output file.
+	block_max_length : int
+		Maximum block duration. Defaults to 600.
+	block_max_count : int
+		Maximum trials per block. Defaults to 120.
+	block_min_rest_duration : int
+		Minimum rest between blocks. Defaults to 1.
+	session_length_max : int
+		Maximum session length. Defaults to 3600.
+	session_trial_max : int
+		Maximum trials per session. Defaults to 1200.
+	iti_length : float
+		Inter-trial interval in seconds. Defaults to 2.00.
+	feedback_length : float
+		Feedback display duration in seconds. Defaults to 1.00.
+	hold_remind_delay : float
+		Delay before the hold reminder. Defaults to 2.0.
+	hold_image : str
+		Image shown for the hold stage.
+	mask_image : str
+		Image used as the hold mask.
+	image_dict : dict
+		Maps image names to loaded Kivy images.
+	file_index : int
+		Index appended to generated file names.
+	stimulus_on_screen : bool
+		Whether a stimulus is currently displayed.
+	video_on_screen : bool
+		Whether a video is currently displayed.
+	iti_active : bool
+		Whether the inter-trial interval is active.
+	block_started : bool
+		Whether the current block rest is running.
+	feedback_on_screen : bool
+		Whether feedback is currently displayed.
+	hold_active : bool
+		Whether holding is currently required.
+	hold_button_pressed : bool
+		Whether the hold button is currently pressed.
+	premature_override : bool
+		Whether premature-response handling is overridden.
+	skip_tutorial_video : bool
+		Whether the tutorial video is skipped.
+	display_video : bool
+		Whether videos are shown.
+	protocol_ended : bool
+		Whether the protocol has ended.
+	output_generated : bool
+		Whether summary output files have been generated.
+	metadata_generated : bool
+		Whether the metadata file has been generated.
+	current_block : int
+		Number of the current block.
+	current_trial : int
+		Number of the current trial.
+	stage_index : int
+		Index of the current stage.
+	start_iti : float
+		``time.perf_counter`` value when the ITI began.
+	start_time : float
+		Reference ``time.perf_counter`` value for event timestamps.
+	block_start : float
+		``time.perf_counter`` value when the current block began.
+	feedback_start_time : float
+		``time.perf_counter`` value when feedback was shown.
+	trial_end_time : float
+		``time.perf_counter`` value when the trial ended.
+	multi_touch_warning_duration : float
+		Seconds to show the multi-touch warning. Defaults to 2.0.
+	hold_remind_event : kivy.clock.ClockEvent or None
+		Pending hold-reminder Clock event.
+	session_clock : kivy.clock.Clock
+		Kivy Clock used to schedule the session monitor.
+	session_event : kivy.clock.ClockEvent
+		Trigger that ends the session after ``session_length_max``.
+	parameters_dict : dict
+		Protocol parameters parsed from configuration.
+	feedback_dict : dict
+		Maps feedback keys to markup-wrapped feedback text.
+	hold_button : Classes.Protocol.ImageButton
+		Image button used for holding.
+	feedback_image : kivy.uix.image.Image
+		Image widget shown for image feedback.
+	tutorial_video : Classes.Protocol.PreloadedVideo or None
+		The current tutorial video widget.
+	instruction_label : kivy.uix.label.Label
+		Label showing the task instructions.
+	block_label : kivy.uix.label.Label
+		Label showing the block break text.
+	end_label : kivy.uix.label.Label
+		Label showing the end-of-session text.
+	feedback_label : kivy.uix.label.Label
+		Label showing feedback text.
+	multi_touch_label : kivy.uix.label.Label
+		Label showing the multi-touch warning.
+	start_button, continue_button, return_button : kivy.uix.button.Button
+		Task, block and return navigation buttons.
+	tutorial_continue_button, tutorial_start_button, tutorial_restart_button, tutorial_video_button : kivy.uix.button.Button
+		Tutorial-video control buttons.
+	"""
 	
 	def __init__(self, screen_resolution, **kwargs):
+		"""Initialise the base protocol screen and its shared state.
+
+		Builds the logging ``FloatLayoutLog``, reads screen dimensions and maxfps
+		from the Kivy graphics config, creates the data-folder structure, initialises
+		long-running state (counters, flags, timing values, dictionaries) and creates
+		all shared widgets and the session Clock trigger.
+
+		Parameters
+		----------
+		screen_resolution : tuple of (int, int)
+			Screen width and height in pixels.
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		
 		super(ProtocolBase, self).__init__(**kwargs)
 		
@@ -817,6 +1388,21 @@ class ProtocolBase(Screen):
 		self.tutorial_video_button.bind(on_press=self.start_tutorial_video)
 
 	def _safe_get_bool(self, key, fallback):
+		"""Return the boolean value for a configuration key, coercing strings.
+
+		Parameters
+		----------
+		key : str
+			Key into ``self.parameters_dict``.
+		fallback : object
+			Value returned when ``key`` is absent.
+
+		Returns
+		-------
+		bool
+			``True`` when the value is the string ``'true'`` (case-insensitive),
+			otherwise the truthiness of the value as a bool.
+		"""
 		val = self.parameters_dict.get(key, fallback)
 		if isinstance(val, str):
 			return val.lower() == 'true'
@@ -824,26 +1410,39 @@ class ProtocolBase(Screen):
 		
 	
 	def update_task(self):
+		"""Set the image folder path for the active protocol."""
 		
 		self.image_folder = self.app.app_root / 'Protocol' / self.protocol_name / 'Image'
 		return	
 
 	def constrained_shuffle(self,seq, max_run=3, attempts=100, rng=None):
-		"""
-		Returns a pseudorandom ordering of a sequence where no value
-		repeats more than `max_run` times consecutively.
+		"""Return a pseudorandom ordering of ``seq`` with no value repeating more than ``max_run`` times consecutively.
 
-		Args:
-			seq (list): The sequence to shuffle.
-			max_run (int): The maximum number of consecutive identical items.
-			attempts (int): The number of times to attempt the shuffle before failing.
-			rng (random.Random, optional): An instance of a random number generator.
+		Attempts to build the shuffle by repeatedly picking weighted-random
+		candidates from the remaining items, forbidding the last item once it has
+		formed a disqualifying run and forcing critical items (those whose count
+		exceeds about 80% of the other items' capacity) to be chosen first.
 
-		Returns:
-			list: A new list with the shuffled sequence.
+		Parameters
+		----------
+		seq : list
+			The sequence to shuffle.
+		max_run : int, optional
+			The maximum number of consecutive identical items allowed. Defaults to 3.
+		attempts : int, optional
+			The number of times to attempt the shuffle before failing. Defaults to 100.
+		rng : random.Random, optional
+			Random number generator instance. Defaults to the ``random`` module.
 
-		Raises:
-			ValueError: If a valid shuffle cannot be found within the given attempts.
+		Returns
+		-------
+		list
+			A new list with the shuffled sequence, or an empty list when ``seq`` is empty.
+
+		Raises
+		------
+		ValueError
+			If a valid shuffle cannot be found within the given ``attempts``.
 		"""
 		if rng is None:
 			rng = random
@@ -923,6 +1522,20 @@ class ProtocolBase(Screen):
 	
 	
 	def load_images(self, image_list):
+		"""Load the given image files asynchronously into ``self.image_dict``.
+
+		Parameters
+		----------
+		image_list : list of str or pathlib.Path
+			Image names or paths to load.
+
+		Notes
+		-----
+		``self.image_dict`` is reset first. Each name is looked up in
+		``self.image_folder``, then with ``.png`` appended there, then as a direct
+		path. Keys are the file stem, except for the ``.png``-appended match, which
+		is keyed by the name as given.
+		"""
 		
 		# Load Images - Async
 		
@@ -953,6 +1566,19 @@ class ProtocolBase(Screen):
 	
 	
 	def set_language(self, language):
+		"""Load the given language's text and build the feedback dictionary.
+
+		Reads ``Start.txt``, ``Break.txt``, ``End.txt`` and ``End_Continue.txt`` and
+		assigns them to the instruction, block and end labels; reads ``Button.ini``
+		for the button texts; and reads ``Feedback.ini`` to populate
+		``self.feedback_dict`` with the keys ``correct``, ``incorrect``, ``wait``,
+		``return``, ``multi_touch``, ``too_slow``, ``miss`` and ``abort``.
+
+		Parameters
+		----------
+		language : str
+			Language folder name to load.
+		"""
 		
 		self.language = language
 		
@@ -1015,6 +1641,7 @@ class ProtocolBase(Screen):
 		self.feedback_dict = {}
 		
 		def _markup(text, colour):
+			"""Wrap the feedback text in colour markup, unless it names a PNG image."""
 			# PNG filenames are image feedback and must not be wrapped in colour markup
 			return text if text.endswith('.png') or not colour else '[color=%s]%s[/color]' % (colour, text)
 
@@ -1036,6 +1663,19 @@ class ProtocolBase(Screen):
 	
 	
 	def generate_output_files(self):
+		"""Determine the output file paths and queue the summary CSV header once.
+
+		Early-returns if ``self.output_generated`` is already set. Sanitises the
+		participant id, creates the participant folder, chooses the first free
+		``<id>_<protocol>_<date>_<n>_Summary_Data.csv`` path, queues its header row
+		from ``self.data_cols``, sets the matching ``_Event_Data.csv`` path and the
+		app-level summary fields, then marks ``self.output_generated`` True.
+
+		Notes
+		-----
+		Files affected: the summary CSV (header row) at ``self.file_path`` and the
+		event-data CSV path passed to the logging layout.
+		"""
 		if self.output_generated:
 			return
 
@@ -1066,6 +1706,14 @@ class ProtocolBase(Screen):
 	
 	
 	def metadata_output_generation(self):
+		"""Queue the metadata CSV file for writing once.
+
+		Early-returns if ``self.metadata_generated`` is already set. Builds a
+		``Parameter``/``Value`` DataFrame from ``self.metadata_cols`` and the
+		corresponding ``self.parameters_dict`` entries, picks the first free
+		path ``<id>_<protocol>_<date>_<file_index>_Metadata.csv`` (later candidates get
+		``_2``, ``_3`` ... before ``_Metadata``), queues it for writing and marks ``self.metadata_generated`` True.
+		"""
 
 		if self.metadata_generated:
 			return
@@ -1090,6 +1738,13 @@ class ProtocolBase(Screen):
 		return
 
 	def trigger_tutorial_screen(self, *args):
+		"""Clear the layout and schedule presentation of the tutorial video.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 
 		# Clear the widgets from the float layout
 		self.protocol_floatlayout.clear_widgets()
@@ -1101,6 +1756,18 @@ class ProtocolBase(Screen):
 		Clock.schedule_once(self.present_tutorial_video, 0.1)
 	
 	def present_tutorial_video(self, *args):
+		"""Display the tutorial video, resolving its duration first.
+
+		Uses a duration of ``0.0`` when skipping is enabled; otherwise reads the
+		duration from the player metadata, re-polling via the Kivy Clock (up to
+		~5 s) while it is still unknown. Records the ``Object Display`` stage event
+		and shows the video and its start button.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 
 		self.tutorial_continue_button.pos_hint = {"center_x": 0.75, "y": 0.01}
 		self.tutorial_restart_button.size_hint = [0.4, 0.15]
@@ -1135,6 +1802,17 @@ class ProtocolBase(Screen):
 	
 
 	def start_tutorial_video(self, *args):
+		"""Play the tutorial video and, on its first play, schedule the start button.
+
+		Unblocks on-move touches, and when this is the first play removes the
+		start button, schedules ``present_tutorial_video_start_button`` after the
+		video duration and records the video-display event.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 
 		self.tutorial_video.state = 'play'
 
@@ -1151,6 +1829,13 @@ class ProtocolBase(Screen):
 
 
 	def present_tutorial_video_start_button(self, *args):
+		"""Show the tutorial continue and restart buttons and record their display events.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 
 		self.protocol_floatlayout.add_widget(self.tutorial_continue_button)
 		self.tutorial_continue_button.disabled = False
@@ -1161,6 +1846,13 @@ class ProtocolBase(Screen):
 		return
 
 	def tutorial_restart(self, *args):
+		"""Restart the tutorial video by stopping, unloading, reloading and playing it.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.tutorial_video.state = 'stop'
 		self.tutorial_video.unload()
 		self.tutorial_video.reload()
@@ -1168,6 +1860,12 @@ class ProtocolBase(Screen):
 		# self.start_tutorial_video()
 	
 	def present_instructions(self):
+		"""Present the task instructions and start button to the participant.
+
+		Generates the output files and metadata, shows the instruction label and
+		start button, and records the instruction-presentation stage, text and
+		button-display events.
+		"""
 		
 		self.generate_output_files()
 		self.metadata_output_generation()
@@ -1186,6 +1884,17 @@ class ProtocolBase(Screen):
 	# Block Staging #
 	
 	def block_screen(self, *args):
+		"""Show the block instruction once, if the block has not yet started.
+
+		Records the block start using ``time.perf_counter`` and schedules
+		``block_rest_end`` after ``self.block_min_rest_duration`` seconds. Does
+		nothing when the block has already started.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		if not self.block_started:
 
@@ -1203,6 +1912,13 @@ class ProtocolBase(Screen):
 		
 
 	def block_rest_end(self, *args):
+		"""Show the Continue button at the end of the block rest period.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (dt).
+		"""
 		self.protocol_floatlayout.add_widget(self.continue_button)
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Continue Button')
@@ -1210,6 +1926,17 @@ class ProtocolBase(Screen):
 	
 	
 	def block_end(self, *args):
+		"""End the current block and return to the hold phase.
+
+		Resets the block state, clears the block and Continue widgets, records
+		the block start and trial end using ``time.perf_counter``, and displays
+		the hold button bound to ``iti_start``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		
 		self.block_started = False
 		self.protocol_floatlayout.clear_widgets()
@@ -1228,6 +1955,7 @@ class ProtocolBase(Screen):
 		return
 
 	def cancel_hold_remind(self):
+		"""Cancel any pending hold reminder event and unschedule the reminder."""
 		if self.hold_remind_event is not None:
 			try:
 				self.hold_remind_event.cancel()
@@ -1238,6 +1966,18 @@ class ProtocolBase(Screen):
 		return
 
 	def schedule_hold_remind(self, delay=None):
+		"""Schedule the hold reminder, replacing any pending one.
+
+		Parameters
+		----------
+		delay : float, optional
+			Seconds to wait before reminding. Defaults to ``self.hold_remind_delay``.
+
+		Returns
+		-------
+		kivy.clock.ClockEvent
+			The scheduled reminder event.
+		"""
 		self.cancel_hold_remind()
 		if delay is None:
 			delay = self.hold_remind_delay
@@ -1249,6 +1989,10 @@ class ProtocolBase(Screen):
 	# End Staging #
 
 	def clear_video_cache(self):
+		"""Stop and unload the tutorial video and run garbage collection.
+
+		Does nothing when ``self.tutorial_video`` is absent or falsy.
+		"""
 		if not hasattr(self, 'tutorial_video') or not self.tutorial_video:
 			return
 		
@@ -1260,6 +2004,19 @@ class ProtocolBase(Screen):
 		return
 	
 	def protocol_end(self, *args):
+		"""Finish the protocol, writing the event and summary output files.
+
+		Runs once: unloads any tutorial video, cancels scheduled events, shows the
+		end label and return button, then finalises the event queue, writes the
+		summary CSV from ``self.app.trial_summary_data`` columns to
+		``self.app.summary_event_path``, rewrites the sorted event file and resets
+		the app's per-session state.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		if self.protocol_ended:
 			return
 
@@ -1312,6 +2069,17 @@ class ProtocolBase(Screen):
 	
 	
 	def return_to_main(self, *args):
+		"""Return to the main menu, advancing the battery run if active.
+
+		Removes the return button, then notifies the app of task completion via
+		``self.app.handle_task_completion``, falling back to the main menu screen
+		if that fails.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		# Safe guard remove the return button immediately to prevent multiple presses
 		self.protocol_floatlayout.remove_widget(self.return_button)
 
@@ -1330,6 +2098,16 @@ class ProtocolBase(Screen):
 	
 	
 	def start_protocol(self, *args):
+		"""Start the task, replacing the instruction screen with the hold button.
+
+		Removes the instruction label and start button, starts the session clock,
+		and displays the hold button bound to ``iti_start``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 
 		self.protocol_floatlayout.add_stage_event('Instruction Presentation')
 
@@ -1352,6 +2130,18 @@ class ProtocolBase(Screen):
 		return
 	
 	def multi_touch_warning(self, *args):
+		"""Display the multi-touch warning and schedule its removal.
+
+		Shows ``self.multi_touch_label`` with the ``multi_touch`` feedback text and
+		schedules ``remove_multi_touch_warning`` after
+		``self.multi_touch_warning_duration`` seconds. Does nothing if the warning
+		is already on screen.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		# Check if multi-touch warning is already on screen to prevent duplicates
 		if self.multi_touch_label in self.protocol_floatlayout.children:
 			return
@@ -1367,11 +2157,29 @@ class ProtocolBase(Screen):
 		return
 	
 	def remove_multi_touch_warning(self, *args):
+		"""Remove the multi-touch warning from screen.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		self.protocol_floatlayout.remove_widget(self.multi_touch_label)
 		self.protocol_floatlayout.add_text_event('Removed', 'Multi-touch Warning')
 		return
 
 	def hold_remind(self, *args):
+		"""Prompt the participant to return to the hold button.
+
+		Does nothing while a stage screen, stimulus, video, block or an
+		unchanged ``return``/``abort``/``wait`` feedback is active; otherwise
+		removes any other feedback and assigns the ``return`` feedback.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		self.hold_remind_event = None
 		# If a stage-specific screen is active or stimulus is on screen, do nothing
 		if hasattr(self, 'stage_screen_started') and getattr(self, 'stage_screen_started'):
@@ -1404,6 +2212,18 @@ class ProtocolBase(Screen):
 	
 	
 	def iti_start(self, *args):	
+		"""Begin the inter-trial interval once, when not already active.
+
+		Cancels the hold reminder, swaps the hold button binding, records the ITI
+		start with ``time.perf_counter`` and schedules ``iti_end`` after
+		``self.iti_length`` seconds and ``remove_feedback`` after
+		``self.feedback_length`` seconds (adjusted for feedback already shown).
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if not self.iti_active:
 			self.cancel_hold_remind()
 			# ensure no pending reminder stage remains and swap bindings
@@ -1430,6 +2250,16 @@ class ProtocolBase(Screen):
 			return
 	
 	def iti_end(self, *args):
+		"""End the inter-trial interval and present the next stimulus.
+
+		Clears the ITI state, unbinds the hold reminder and calls
+		``self.stimulus_presentation``. Does nothing when no ITI is active.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		if self.iti_active:
 				
 			self.iti_active = False
@@ -1445,12 +2275,41 @@ class ProtocolBase(Screen):
 			return
 	
 	def hold_lift_trial(self, *args):
+		"""Set ``hold_button_pressed`` to False (bound to the hold button on_release).
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		#self.hold_button.unbind(on_release=self.hold_lift_trial)
 		self.hold_button_pressed = False
 	def hold_lift_returned(self, *args):
+		"""Set ``hold_button_pressed`` to True (bound to the hold button on_press).
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.hold_button_pressed = True
 
 	def assign_feedback(self, feedback_key=None, override_text=None):
+		"""Display the given feedback, as an image or text label.
+
+		Uses ``override_text`` when provided, otherwise the ``feedback_dict`` value
+		for ``feedback_key``. A feedback string containing ``.png`` is shown as an
+		image from ``self.image_folder``, otherwise as ``self.feedback_label`` text.
+		Logs a warning and returns without assigning anything when neither argument
+		is valid.
+
+		Parameters
+		----------
+		feedback_key : str, optional
+			Key into ``self.feedback_dict`` identifying the feedback. Defaults to None.
+		override_text : str, optional
+			Literal text to display instead of a dictionary lookup. Defaults to None.
+		"""
 		old_feedback = self.feedback
 		if feedback_key not in self.feedback_dict and not (isinstance(override_text, str) and override_text != ''):
 			Logger.warning(f"TouchCog: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
@@ -1493,6 +2352,13 @@ class ProtocolBase(Screen):
 		return
 
 	def remove_feedback(self, *args):
+		"""Remove the on-screen feedback widget if one is displayed.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		if self.feedback_on_screen:
 			self.protocol_floatlayout.remove_widget(self.feedback)
 
@@ -1505,6 +2371,16 @@ class ProtocolBase(Screen):
 			return
 	
 	def write_summary_file(self, data_row):
+		"""Append a trial summary row to the session summary data.
+
+		Also queues the row for writing to the summary CSV at
+		``self.app.summary_event_path`` when that path is set.
+
+		Parameters
+		----------
+		data_row : list of object
+			The summary row, matching ``self.app.trial_summary_cols``.
+		"""
 		self.app.trial_summary_data.append(data_row)
 		if self.app.summary_event_path:
 			self.app.queue_csv_row(self.app.summary_event_path, data_row)
@@ -1513,6 +2389,18 @@ class ProtocolBase(Screen):
 	
 	
 	def start_clock(self, *args):
+		"""Start the session clock.
+
+		Records the start time with ``time.perf_counter``, triggers
+		``self.session_event`` (which fires ``clock_monitor`` after
+		``self.session_length_max`` seconds), and records the start time in the
+		event writer.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch.
+		"""
 		
 		self.start_time = time.perf_counter()
 		self.session_event()
@@ -1523,6 +2411,15 @@ class ProtocolBase(Screen):
 	
 	
 	def clock_monitor(self, *args):
+		"""End the protocol when the session clock trigger fires.
+
+		Cancels the session event and calls ``protocol_end``.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy Clock event dispatch (dt).
+		"""
 		
 		self.session_event.cancel()
 		self.protocol_end()

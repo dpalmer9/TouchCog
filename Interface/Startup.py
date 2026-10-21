@@ -1,3 +1,4 @@
+"""Startup configuration and window setup for the TouchCog Kivy launcher."""
 # Interface.Startup: startup configuration and window setup for the Kivy launcher.
 # Importing this module (before kivy.core.window is imported anywhere else) applies DPI
 # awareness, environment variables and Kivy Config, then sets up the window.
@@ -45,9 +46,17 @@ os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
 
 def get_base_path():
-	"""
-	Determines the correct base path for the executable, whether running
-	in a PyInstaller bundle or in development mode.
+	"""Return the base path for locating app resources.
+
+	In a PyInstaller bundle, ``sys._MEIPASS`` is used when present
+	(onefile builds), otherwise the parent directory of the executable
+	(onedir builds). In development, the repo root (the parent of the
+	``Interface`` package) is returned.
+
+	Returns
+	-------
+	pathlib.Path
+		The resolved base path.
 	"""
 	if getattr(sys, 'frozen', False):
 		# When running as a PyInstaller executable, PyInstaller extracts
@@ -67,14 +76,25 @@ from kivy.config import Config
 # Change current working directory to location of this file
 
 def get_refresh_rate():
-	"""
-	Returns the current display refresh rate as an integer (Hz).
-	Falls back to sensible defaults or None when detection is not possible.
+	"""Return the current display refresh rate in hertz.
+
+	On Windows the rate is read from the current display mode
+	(``EnumDisplaySettingsW``), falling back to 60 Hz if the call fails.
+	On Linux it is parsed from ``xrandr --verbose`` (the ``*``-marked
+	current mode, else a "current ... Hz" line); on macOS from
+	``system_profiler SPDisplaysDataType``. Unrecognized platforms, and
+	Linux or macOS detection failures, return None.
+
+	Returns
+	-------
+	int or None
+		The refresh rate in Hz, or None when it could not be detected.
 	"""
 	if sys.platform.startswith('win'):
 		import ctypes
 		user32 = ctypes.windll.user32
 		class DEVMODE(ctypes.Structure):
+			"""ctypes Structure mirroring the Windows DEVMODE display-mode fields."""
 			_fields_ = [
 				("dmDeviceName", ctypes.c_wchar * 32),
 				("dmSpecVersion", ctypes.c_ushort),
@@ -240,8 +260,33 @@ from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
 
 class LargeVKeyboard(VKeyboard):
-	"""Custom VKeyboard that forces itself to be 66% of the screen width."""
+	"""Virtual keyboard that keeps its width at 66% of the window.
+
+	Overrides the default Kivy sizing so the keyboard spans 66% of the
+	``Window`` width, sits anchored at the bottom with a larger font, and
+	reasserts the target width if Kivy's layout changes it.
+
+	Attributes
+	----------
+	width : int
+		Keyboard width, forced to 66% of ``Window.width``.
+	y : int
+		Vertical position, kept at 0 (bottom of the window).
+	font_size : str
+		Key font size ``'40sp'``.
+	"""
 	def __init__(self, **kwargs):
+		"""Initialise the keyboard at 66% of the window width, anchored at the bottom.
+
+		Disables the vertical size hint, sets the width to 66% of
+		``Window.width``, positions the keyboard at ``y = 0`` and sets the
+		font size to ``'40sp'``.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.vkeyboard.VKeyboard`.
+		"""
 		super().__init__(**kwargs)
 		# Disable the default size hint so Kivy doesn't shrink it
 		self.size_hint_y = None 
@@ -254,6 +299,19 @@ class LargeVKeyboard(VKeyboard):
 		self.font_size = '40sp'
 
 	def on_width(self, instance, value):
+		"""Reassert the 66%-of-window keyboard width and recompute its height.
+
+		If the new width differs from 66% of ``Window.width`` by more than
+		5 pixels, the width is reset to that target. The height is then set
+		to the width divided by 3, the standard keyboard ratio.
+
+		Parameters
+		----------
+		instance : kivy.uix.vkeyboard.VKeyboard
+			The widget the event is bound to (this keyboard).
+		value : float
+			The new width value in pixels.
+		"""
 		# Prevent Kivy's internal layout from resetting the width later
 		target = Window.width * 0.66
 		if abs(value - target) > 5:
@@ -273,6 +331,16 @@ Window.borderless = False
 Window.set_vkeyboard_class(LargeVKeyboard)
 
 def search_protocols():
+		"""Return the names of the protocol folders shipped with the app.
+
+		Scans the ``Protocol`` folder under the base path and collects the
+		stem (name without extension) of every subdirectory, skipping files.
+
+		Returns
+		-------
+		list of str
+			The protocol folder names.
+		"""
 		task_path = app_root / 'Protocol'
 		task_list = list(task_path.glob('*'))
 		output_list = list()

@@ -1,3 +1,4 @@
+"""Entry point that launches the TouchCog Kivy menu application."""
 ##############################################################################
 #                      Kivy Launcher Interface                               #
 #                      by: Daniel Palmer PhD                                 #

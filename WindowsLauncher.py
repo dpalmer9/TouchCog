@@ -1,3 +1,4 @@
+"""Tkinter launcher that edits Config.ini display settings and starts TouchCog."""
 ###############################################################
 #####              Touchscreen Windows Launcher         #######
 #####                   by: Daniel Palmer, PhD          #######
@@ -21,7 +22,29 @@ import configparser
 ## Class Function (Tkinter Launcher) ##
 
 class Windows_Launcher():
+    """Tkinter launcher window with Settings and Launch buttons.
+
+    Creating an instance builds the window and runs the Tk main loop until it
+    is closed or the Kivy app is launched.
+
+    Attributes
+    ----------
+    launcher_window : tkinter.Tk
+        The main launcher window.
+    config_path : str
+        Path of the Config.ini being edited (set by :meth:`settings_menu`).
+    config_file : configparser.ConfigParser
+        Parsed Config.ini (set by :meth:`settings_menu`).
+    fullscreen_var, keyboard_var, mouse_var : tkinter.IntVar
+        Checkbox states for ``Screen/fullscreen``, ``keyboard/virtual_keyboard`` and
+        ``mouse/use_mouse``.
+    x_res_field, y_res_field : tkinter.Entry
+        Entry fields for the ``Screen/x`` and ``Screen/y`` resolution values.
+    configuration_menu_top : tkinter.Toplevel
+        The settings window.
+    """
     def __init__(self):
+        """Build the launcher window and enter the Tk main loop."""
         self.launcher_window = tk.Tk()
         
         self.launcher_title = tk.Label(self.launcher_window,text="TouchCog Windows Launcher v2")
@@ -36,6 +59,14 @@ class Windows_Launcher():
         self.launcher_window.mainloop()
     
     def settings_menu(self):
+        """Open the settings window populated from Config.ini.
+
+        Reads the per-user ``~/Documents/TouchCog/Config.ini``, falling back to the
+        Config.ini next to this file when it does not exist. Loads the ``Screen``
+        ``x``, ``y`` and ``fullscreen``, ``keyboard`` ``virtual_keyboard`` and
+        ``mouse`` ``use_mouse`` values into entry fields and checkboxes, with an
+        Accept button bound to :meth:`close_configuration`.
+        """
         # Same per-user Config.ini that KivyMenuInterface reads; fall back to the packaged copy
         self.config_path = os.path.join(os.path.expanduser('~'), 'Documents', 'TouchCog', 'Config.ini')
         if not os.path.exists(self.config_path):
@@ -92,6 +123,12 @@ class Windows_Launcher():
         self.accept_button.grid(row=6,column=1)
         
     def close_configuration(self):
+        """Write the settings window values to Config.ini and close the window.
+
+        Sets ``Screen`` ``x``, ``y`` and ``fullscreen``, ``keyboard``
+        ``virtual_keyboard`` and ``mouse`` ``use_mouse`` from the widgets, writes the
+        whole configuration to ``self.config_path`` and destroys the settings window.
+        """
         self.config_file['Screen']['x'] = str(self.x_res_field.get())
         self.config_file['Screen']['y'] = str(self.y_res_field.get())
         self.config_file['Screen']['fullscreen'] = str(self.fullscreen_var.get())
@@ -104,6 +141,7 @@ class Windows_Launcher():
         self.configuration_menu_top.destroy()
     
     def launch_app(self):
+        """Close the launcher window and run the Kivy ``MenuApp``."""
         self.launcher_window.destroy()
         from KivyMenuInterface import MenuApp
         app = MenuApp()

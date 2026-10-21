@@ -1,3 +1,4 @@
+"""Base config-selector widgets and the shared menu screen that builds a task settings grid."""
 # Import
 
 import configparser
@@ -31,8 +32,32 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 
 	This widget is intended to be added to a DropDown. When released it will call
 	`dropdown.select(value)` so the parent dropdown receives the selection.
+
+	Attributes
+	----------
+	dropdown : kivy.uix.dropdown.DropDown
+		The parent dropdown that owns this row and receives the selection.
+	value : str
+		The value passed to ``dropdown.select`` on release; defaults to the label text.
 	"""
 	def __init__(self, label_text, image_paths, dropdown, value=None, thumb_size=dp(48), **kwargs):
+		"""Build the label and thumbnail widgets for this row.
+
+		Parameters
+		----------
+		label_text : str
+			Text shown in the left-hand label.
+		image_paths : list of str
+			Paths of the thumbnail images shown on the right.
+		dropdown : kivy.uix.dropdown.DropDown
+			The parent dropdown that will receive the selection.
+		value : str, optional
+			Value passed to ``dropdown.select`` on release. Defaults to ``label_text``.
+		thumb_size : float, optional
+			Side length in pixels of each thumbnail. Defaults to ``dp(48)``.
+		**kwargs : dict
+			Additional keyword arguments passed to the BoxLayout.
+		"""
 		super(ImageSetItem, self).__init__(orientation='horizontal', spacing=8, padding=(8,6), **kwargs)
 		self.dropdown = dropdown
 		self.value = value if value is not None else label_text
@@ -57,6 +82,7 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 		self.add_widget(thumb_container)
 
 	def on_release(self):
+		"""Notify the parent dropdown of the selection when the row is released."""
 		# When the row is clicked, notify the dropdown
 		try:
 			self.dropdown.select(self.value)
@@ -70,8 +96,30 @@ class StyledDropDown(DropDown):
 
 	This draws a background rectangle and border in canvas.before and when
 	opened re-adds itself to the parent window to move to the front.
+
+	Attributes
+	----------
+	bg_color : tuple of 4 float
+		RGBA background colour of the dropdown.
+	border_color : tuple of 4 float
+		RGBA colour of the border line.
+	border_width : float
+		Width in pixels of the border line.
 	"""
 	def __init__(self, bg_color=(0,0,0,1), border_color=(1,1,1,1), border_width=1, **kwargs):
+		"""Initialise the dropdown and draw its background rectangle and border.
+
+		Parameters
+		----------
+		bg_color : tuple of 4 float, optional
+			RGBA background colour. Defaults to ``(0, 0, 0, 1)``.
+		border_color : tuple of 4 float, optional
+			RGBA colour of the border line. Defaults to ``(1, 1, 1, 1)``.
+		border_width : float, optional
+			Width in pixels of the border line. Defaults to 1.
+		**kwargs : dict
+			Additional keyword arguments passed to the DropDown.
+		"""
 		super(StyledDropDown, self).__init__(**kwargs)
 		self.bg_color = bg_color
 		self.border_color = border_color
@@ -87,6 +135,13 @@ class StyledDropDown(DropDown):
 		self.bind(pos=self._update_graphics, size=self._update_graphics)
 
 	def _update_graphics(self, *args):
+		"""Sync the background and border shapes to the current position and size.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy property binding (pos/size change).
+		"""
 		try:
 			self._bg_rect.pos = self.pos
 			self._bg_rect.size = self.size
@@ -96,6 +151,13 @@ class StyledDropDown(DropDown):
 			pass
 
 	def open(self, widget):
+		"""Open the dropdown on the given widget and raise it to the front of the window.
+
+		Parameters
+		----------
+		widget : kivy.uix.widget.Widget
+			The widget the dropdown is opened relative to.
+		"""
 		# Use parent open behavior
 		super(StyledDropDown, self).open(widget)
 		# Ensure we're on top by re-adding to the window if possible
@@ -118,8 +180,36 @@ class ImageSetDropdown(BoxLayout):
 		...
 	]
 	widget = ImageSetDropdown(options)
+
+	Attributes
+	----------
+	options : list of dict
+		Each dict provides ``label``, ``images`` and ``value`` keys for one option.
+	selected_value : str or None
+		The value most recently chosen, or None before any selection.
+	left_label : kivy.uix.label.Label
+		The static descriptive label on the left.
+	button : kivy.uix.button.Button
+		The button that opens the dropdown and shows the current selection.
+	dropdown : StyledDropDown
+		The dropdown holding the ImageSetItem rows.
 	"""
 	def __init__(self, options, left_label='Image Set', default_text='Select...', thumb_size=dp(48), **kwargs):
+		"""Build the label, button and dropdown rows from the given options.
+
+		Parameters
+		----------
+		options : list of dict
+			Each dict provides ``label``, ``images`` and ``value`` keys for one option.
+		left_label : str, optional
+			Text of the static label on the left. Defaults to ``'Image Set'``.
+		default_text : str, optional
+			Initial text of the button before any selection. Defaults to ``'Select...'``.
+		thumb_size : float, optional
+			Side length in pixels of each thumbnail. Defaults to ``dp(48)``.
+		**kwargs : dict
+			Additional keyword arguments passed to the BoxLayout.
+		"""
 		super(ImageSetDropdown, self).__init__(orientation='horizontal', spacing=8, size_hint_y=None, height=thumb_size + dp(16), **kwargs)
 		self.options = options
 		self.selected_value = None
@@ -151,6 +241,15 @@ class ImageSetDropdown(BoxLayout):
 		self.button.bind(on_release=lambda btn: self.dropdown.open(btn))
 
 	def _on_select(self, instance, value):
+		"""Store the selected value and update the button text to its label.
+
+		Parameters
+		----------
+		instance : kivy.uix.dropdown.DropDown
+			The dropdown that emitted the selection.
+		value : str
+			The selected value; used to look up the matching option label.
+		"""
 		# update button text and store selected value
 		self.selected_value = value
 		# try to find the label text for nicer display
@@ -160,18 +259,49 @@ class ImageSetDropdown(BoxLayout):
 				break
 
 	def get_selected(self):
+		"""Return the currently selected value, or None if none is chosen.
+
+		Returns
+		-------
+		str or None
+			The selected option value, or None before any selection.
+		"""
 		return self.selected_value
 
 
 def normalize_field_name(field_name):
-	"""
-	Normalize a field name for comparison with configuration keys.
-	Converts to lowercase and replaces spaces with underscores.
+	"""Normalize a field name for comparison with configuration keys.
+
+	Parameters
+	----------
+	field_name : str
+		The raw field name to normalize.
+
+	Returns
+	-------
+	str
+		The field name lowercased with every space replaced by an underscore.
 	"""
 	return field_name.lower().replace(' ', '_')
 
 
 def load_protocol_module(app_root, protocol, mod_name):
+	"""Load a protocol task module lazily under a unique top-level name.
+
+	Parameters
+	----------
+	app_root : pathlib.Path
+		The TouchCog application root directory.
+	protocol : str
+		Name of the protocol folder under ``Protocol/``.
+	mod_name : str
+		Name of the task module file (``.py``) to load.
+
+	Returns
+	-------
+	module
+		The imported module, registered in ``sys.modules`` under the unique name.
+	"""
 	working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
 	# Unique name so the top-level 'Protocol' package entry is not overwritten
 	unique_mod_name = f'{protocol}.{mod_name}'
@@ -185,7 +315,19 @@ def load_protocol_module(app_root, protocol, mod_name):
 
 
 def read_grid_parameters(grid):
-	"""Read a settings grid as {normalized label: value} from its direct label/value pairs, in add order."""
+	"""Read a settings grid as ``{normalized label: value}`` from its direct label/value pairs, in add order.
+
+	Parameters
+	----------
+	grid : kivy.uix.gridlayout.GridLayout
+		The grid whose children form label/value pairs.
+
+	Returns
+	-------
+	dict
+		Maps each normalized label to the value of the paired widget; a text input
+		value, checkbox active state, ImageSetDropdown selection or button text.
+	"""
 	parameter_dict = {}
 	key = ''
 	for widget in reversed(grid.children):
@@ -203,11 +345,43 @@ def read_grid_parameters(grid):
 
 
 class MenuBase(Screen):
-	
+	"""Shared menu screen that builds a task settings grid and starts protocols.
+
+	Reads the per-language ``menubase.ini`` text, lays out the settings
+	scrollview, the participant ID entry and the back/start buttons, and
+	launches protocols or advances a battery on start.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'menuscreen'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	language : str
+		Language folder name used to locate ``menubase.ini``.
+	menu_config : configparser.ConfigParser
+		Parsed ``menubase.ini`` providing the button and label text.
+	menu_path : pathlib.Path
+		Path of the ``menubase.ini`` file.
+	protocol_name : str
+		Name of the protocol this menu is built for.
+	parameters_config : dict
+		The task parameters loaded from ``Configuration.ini``.
+	is_battery_mode : bool
+		Whether the menu runs within a battery sequence.
+	battery_required_fields : list of str or None
+		Named fields to display in battery mode; None shows all fields.
+	"""
 
 
 	def __init__(self, **kwargs):
+		"""Initialise the menu screen and lay out its title, settings and buttons.
 
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 
 		super(MenuBase, self).__init__(**kwargs)
 		
@@ -272,12 +446,15 @@ class MenuBase(Screen):
 	
 	
 	def update_battery_mode(self, is_battery, required_fields=None):
-		"""
-		Update battery mode and optionally set required fields for filtering.
-		
-		Args:
-			is_battery: Boolean indicating battery mode
-			required_fields: None (show all fields) or list of field names to display
+		"""Update battery mode and optionally set the fields for filtering.
+
+		Parameters
+		----------
+		is_battery : bool
+			Whether the menu is in battery mode.
+		required_fields : list of str or None, optional
+			Field names to display; None shows all fields and restores the
+			participant ID row. Defaults to None.
 		"""
 		if is_battery:
 			self.is_battery_mode = True
@@ -298,12 +475,33 @@ class MenuBase(Screen):
 			self.id_grid.size_hint_y = 0.05
 
 	def _normalize_field_name(self, field_name):
+		"""Normalize a field name via the module-level helper.
+
+		Parameters
+		----------
+		field_name : str
+			The raw field name to normalize.
+
+		Returns
+		-------
+		str
+			The normalized field name.
+		"""
 		return normalize_field_name(field_name)
 
 	def _should_display_field(self, field_name):
-		"""
-		Determine if a field should be displayed given required_fields filtering.
-		Returns True if field should be shown, False otherwise.
+		"""Determine whether a field should be displayed under required-fields filtering.
+
+		Parameters
+		----------
+		field_name : str
+			The raw field name to test.
+
+		Returns
+		-------
+		bool
+			True if no filtering is active or the normalized field is in the
+			required fields; False otherwise.
 		"""
 		# If no filtering, show all fields
 		if self.battery_required_fields is None:
@@ -316,10 +514,10 @@ class MenuBase(Screen):
 		return normalized_field in normalized_required
 
 	def apply_required_fields_filter(self):
-		"""
-		Hide/remove widgets from the grid layout based on required_fields filtering.
-		This is called AFTER menu_constructor to filter already-created widgets.
-		Walks from the end to the start to safely remove widgets without index shifting.
+		"""Remove label/value widget pairs from the grid layout based on required-fields filtering.
+
+		This is called after menu_constructor to filter already-created widgets. It walks
+		from the end to the start so widgets can be removed without index shifting.
 		"""
 		# If no filtering needed, leave all widgets visible
 		if self.battery_required_fields is None or len(self.battery_required_fields) == 0:
@@ -348,8 +546,20 @@ class MenuBase(Screen):
 		self.setting_gridlayout.rows = len(self.setting_gridlayout.children) // 2
 
 	def start_protocol(self, *args):
-		
-		
+		"""Start the chosen protocol or advance to the next battery config.
+
+		Reads parameters from the settings grid, adds ``participant_id`` unless
+		required-fields filtering is active in battery mode, then either loads and
+		presents the protocol task screen or merges ``parameter_dict`` into the
+		battery config and starts the next battery config.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (the pressed button).
+		"""
+
+
 		parameter_dict = read_grid_parameters(self.setting_gridlayout)
 		
 		
@@ -389,16 +599,34 @@ class MenuBase(Screen):
 			self._remove_self_later()
 
 	def _remove_self_later(self):
+		"""Schedule removal of this screen once the manager has moved off it.
+
+		Config screens are never reused, so this one is dropped after 0.5 seconds if
+		the manager is no longer showing it (removing the current screen would switch).
+		"""
 		# Config screens are never reused; drop this one once the manager has moved off it
 		# (Kivy's remove_widget on the current screen would switch screens)
 		manager = self.manager
 		def _remove(dt):
+			"""Remove this screen from the manager if it is no longer the current one."""
 			if manager is not None and self.parent is manager and manager.current != self.name:
 				manager.remove_widget(self)
 		Clock.schedule_once(_remove, 0.5)
 
 
 	def update_parameters_external(self, new_params):
+		"""Replace the parameters config and push its new values into the grid widgets.
+
+		Sets ``parameters_config`` from ``new_params``, converting it to a
+		``TaskParameters`` section if it is not already a SectionProxy, then updates the
+		text of matching TextInput widgets and the active state of CheckBox widgets.
+		Calls ``update_image_widget`` if such a method exists.
+
+		Parameters
+		----------
+		new_params : dict or configparser.SectionProxy
+			The new parameter name/value pairs to apply to the grid.
+		"""
 		# Replace self.parameters_config with new_params and rebuild the menu
 		self.parameters_config = new_params
 		# Convert dictionary to configparser format if needed
@@ -423,6 +651,13 @@ class MenuBase(Screen):
 	
 	
 	def return_menu(self, *args):
+		"""Switch the screen manager back to the protocol menu.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (the pressed button).
+		"""
 		
 		
 		self.manager.current = 'protocolmenu'
@@ -430,6 +665,19 @@ class MenuBase(Screen):
 	
 	
 	def menu_constructor(self, protocol_name):
+		"""Build the settings grid for the given protocol from its configuration file.
+
+		Preserves the current scroll position, loads ``Configuration.ini`` for the
+		protocol (using the ``DebugParameters`` section when debug mode is enabled,
+		otherwise ``TaskParameters``), rebuilds the grid with a label and a CheckBox or
+		TextInput per parameter, then restores the scroll position and applies
+		required-fields filtering.
+
+		Parameters
+		----------
+		protocol_name : str
+			Name of the protocol whose configuration drives the grid.
+		"""
 		# Preserve scroll position
 		prev_scroll_y = self.setting_scrollview.scroll_y if self.setting_scrollview.children else 1.0
 

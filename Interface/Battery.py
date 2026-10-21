@@ -1,3 +1,4 @@
+"""Battery menu screens (preset and manual) for the TouchCog launcher interface."""
 # Part of the TouchCog Kivy launcher interface (split out of KivyMenuInterface.py).
 
 # Interface.Startup must be imported first: it configures Kivy before kivy.core.window loads.
@@ -23,7 +24,41 @@ from Interface.Startup import app_root
 from Interface.Startup import search_protocols
 
 class BatteryMenu(Screen):
+	"""Kivy screen for selecting and starting a preset battery.
+
+	Loads the battery JSON files from the Battery/ directory, displays them in a
+	scrollable list, and builds and starts the configured task/survey sequence for
+	the selected battery.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'batterymenu'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	language : str
+		Language folder name (e.g. ``'English'``) used to load ``batterymenu.ini``.
+	menu_config : configparser.ConfigParser
+		Parsed language configuration from ``batterymenu.ini``.
+	batteries : list of dict
+		Preset batteries, each with ``'name'``, ``'path'`` and ``'data'`` keys.
+	selected_battery : str or None
+		Name of the currently selected battery, or None.
+	battery_buttons : dict
+		Maps battery names to their list Button widgets.
+	"""
 	def __init__(self, **kwargs):
+		"""Initialise the battery menu and build its layout.
+
+		Loads the language configuration and preset batteries, then builds the
+		title, the bordered battery list container and the Start, Manual and Cancel
+		buttons.
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		super(BatteryMenu, self).__init__(**kwargs)
 		self.name = 'batterymenu'
 		self.app = App.get_running_app()
@@ -81,11 +116,30 @@ class BatteryMenu(Screen):
 		self.add_widget(self.Battery_Layout)
 	
 	def update_battery_border(self, instance, value):
-		"""Update the border when the container is resized or moved"""
+		"""Update the white border around the battery list on resize or move.
+
+		Parameters
+		----------
+		instance : kivy.uix.widget.Widget
+			The container widget whose position or size changed.
+		value : object
+			Ignored; supplied by the Kivy property binding.
+		"""
 		self.battery_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
 	
 	def _load_batteries(self):
-		"""Load all battery JSON files from Battery/ directory"""
+		"""Load all battery JSON files from the Battery/ directory.
+
+		Each JSON file is read and appended as a dict with ``'name'`` (from the
+		file's ``name`` field or its stem), ``'path'`` and ``'data'`` keys. An empty
+		list is returned when the directory does not exist. Errors loading a file or
+		reading the directory are logged as warnings.
+
+		Returns
+		-------
+		list of dict
+			The loaded batteries.
+		"""
 		batteries = []
 		battery_path = app_root / 'Battery'
 		
@@ -110,7 +164,11 @@ class BatteryMenu(Screen):
 		return batteries
 	
 	def refresh_battery_list(self):
-		"""Refresh the battery list display"""
+		"""Refresh the battery list display.
+
+		Clears the grid and button map, then shows a 'No batteries found' label
+		when there are none, or one list button per battery.
+		"""
 		self.battery_grid.clear_widgets()
 		self.battery_buttons.clear()
 		
@@ -126,7 +184,19 @@ class BatteryMenu(Screen):
 			self.battery_grid.add_widget(btn)
 	
 	def select_battery(self, battery_name, *args):
-		"""Toggle selection of a battery from the list"""
+		"""Toggle the highlight of a battery in the list.
+
+		Clicking the already-selected battery clears the selection; clicking any
+		other battery deselects the previous one and selects the new one, showing
+		a blue highlight.
+
+		Parameters
+		----------
+		battery_name : str
+			Name of the battery whose button was pressed.
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		# If clicking the same battery, deselect it
 		if self.selected_battery == battery_name:
 			self.battery_buttons[battery_name].background_color = (1, 1, 1, 1)
@@ -142,7 +212,18 @@ class BatteryMenu(Screen):
 				self.battery_buttons[battery_name].background_color = (0.3, 0.6, 0.9, 1)  # Blue highlight
 	
 	def start_battery(self, *args):
-		"""Start the selected battery"""
+		"""Prompt for a participant ID and start the selected battery.
+
+		Logs a warning when no battery is selected. Builds a popup asking for the
+		participant ID; on confirmation it builds the protocol list and configuration
+		dicts for every task in the selected battery and hands off to the first
+		protocol's configuration screen.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if not self.selected_battery:
 			Logger.warning('TouchCog: no battery selected')
 			return
@@ -165,6 +246,7 @@ class BatteryMenu(Screen):
 		content.add_widget(msg_label)
 
 		def on_confirm(instance):
+			"""Store the participant ID, build the battery configs and start the first protocol."""
 			participant_id = input_box.text.strip()
 			if participant_id == '':
 				# keep popup open if empty
@@ -203,6 +285,7 @@ class BatteryMenu(Screen):
 				self.app.start_next_battery_config()
 
 		def on_cancel(instance):
+			"""Dismiss the participant ID popup without starting."""
 			popup.dismiss()
 
 		confirm_button = Button(text='Confirm', size_hint=(0.4, 0.15), pos_hint={'x':0.05,'y':0.05})
@@ -216,10 +299,30 @@ class BatteryMenu(Screen):
 		popup.open()
 	
 	def _build_battery_config(self, task, participant_id):
-		"""Return (task name, type, required field names, parameter dict) for one battery entry.
+		"""Return task name, type, required field names and parameter dict for one battery entry.
 
-		required field names is None (show all fields), [] (skip the configure screen) or a list of
-		names to show; the parameter dict is None for surveys, which get no configuration.
+		For non-task entries (surveys) the parameter dict is None and no configuration is
+		built. For tasks, a flat parameter dict is built from the protocol's
+		Configuration.ini (TaskParameters, or DebugParameters when its ``debug_mode`` is
+		true) and any overrides. A dotted ``section.option`` override is ignored when
+		the protocol has no Configuration.ini.
+
+		Parameters
+		----------
+		task : dict
+			The battery task entry. ``'required'`` maps the parameter names to show to their
+			labels; ``'overrides'`` provides parameter overrides keyed by 'section.option' or
+			plain parameter name.
+		participant_id : str
+			The participant identifier, added to the parameter dict when the task has no
+			required-field filtering.
+
+		Returns
+		-------
+		tuple of (str or None, str, list of str or None, dict or None)
+			Task name, task type, required field names (None to show all fields, [] to skip the
+			configure screen, or a list of names to show), and the parameter dict (None for
+			surveys).
 		"""
 		pname = task.get('task')
 		if not pname:
@@ -274,18 +377,76 @@ class BatteryMenu(Screen):
 		return pname, ttype, required_fields, parameter_dict
 
 	def load_protocol_battery(self, *args):
-		"""Load the manual ProtocolBattery screen"""
+		"""Load the manual ProtocolBattery screen and switch to it.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.protocol_battery_screen = ProtocolBattery()
 		self.app.replace_screen(self.protocol_battery_screen)
 		self.manager.current = 'protocolbattery'
 	
 	def cancel_battery(self, *args):
-		"""Cancel and return to main menu"""
+		"""Return the screen manager to the main menu.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.manager.current = 'mainmenu'
 
 class ProtocolBattery(Screen):
+	"""Kivy screen for building a manual battery from available protocols.
+
+	Shows the available protocols and the currently selected ones in two
+	bordered, scrollable lists, lets the user move protocols between the lists
+	and reorder the selected list, then starts the selected protocols in order.
+
+	Attributes
+	----------
+	name : str
+		Screen name ``'protocolbattery'``.
+	app : kivy.app.App
+		The running TouchCog app.
+	language : str
+		Language folder name (e.g. ``'English'``) used to load ``batterymenu.ini``.
+	menu_config : configparser.ConfigParser
+		Parsed language configuration from ``batterymenu.ini``.
+	menu_path : pathlib.Path
+		Path to the ``batterymenu.ini`` language file.
+	protocol_list : list of str
+		All available protocol names returned by ``search_protocols()``.
+	available_protocols : list of str
+		Protocol names not yet added to the battery.
+	selected_protocols : list of str
+		Protocol names added to the battery, in their battery order.
+	selected_available_items : set of str
+		Protocols currently highlighted in the available list.
+	selected_selected_items : set of str
+		Protocols currently highlighted in the selected list.
+	available_buttons : dict
+		Maps available protocol names to their list Button widgets.
+	selected_buttons : dict
+		Maps selected protocol names to their list Button widgets.
+	"""
 
 	def __init__(self, **kwargs):
+		"""Initialise the manual battery screen and build its layout.
+
+		Loads the available protocols and language configuration, then builds the
+		two bordered protocol lists, the move/reorder control buttons and the Start
+		and Cancel buttons. When no protocols are available, only the ``no_label``
+		text from ``batterymenu.ini`` is shown (the list and selection attributes are
+		not created).
+
+		Parameters
+		----------
+		**kwargs : dict
+			Additional keyword arguments passed to :class:`kivy.uix.screenmanager.Screen`.
+		"""
 		super(ProtocolBattery, self).__init__(**kwargs)
 
 		self.app = App.get_running_app()
@@ -390,15 +551,35 @@ class ProtocolBattery(Screen):
 		self.add_widget(self.protocol_battery_layout)
 
 	def update_available_border(self, instance, value):
-		"""Update the border when the container is resized or moved"""
+		"""Update the available-list border when its container is resized or moved.
+
+		Parameters
+		----------
+		instance : kivy.uix.widget.Widget
+			The container widget whose position or size changed.
+		value : object
+			Ignored; supplied by the Kivy property binding.
+		"""
 		self.available_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
 	
 	def update_selected_border(self, instance, value):
-		"""Update the border when the container is resized or moved"""
+		"""Update the selected-list border when its container is resized or moved.
+
+		Parameters
+		----------
+		instance : kivy.uix.widget.Widget
+			The container widget whose position or size changed.
+		value : object
+			Ignored; supplied by the Kivy property binding.
+		"""
 		self.selected_border.rectangle = (instance.x, instance.y, instance.width, instance.height)
 
 	def refresh_lists(self):
-		"""Refresh both protocol lists"""
+		"""Rebuild the buttons in both the available and selected protocol lists.
+
+		Clears both grids and button maps, then creates one button per protocol in
+		each list, restoring the blue highlight for any protocol that was selected.
+		"""
 		self.available_grid.clear_widgets()
 		self.selected_grid.clear_widgets()
 		self.available_buttons.clear()
@@ -429,7 +610,18 @@ class ProtocolBattery(Screen):
 			self.selected_grid.add_widget(btn)
 
 	def toggle_available_item(self, protocol, *args):
-		"""Toggle selection of an item in the available list"""
+		"""Toggle the highlight of a protocol in the available list.
+
+		Selecting an item highlights it blue and deselects everything in the
+		selected list; deselecting an item restores its default colour.
+
+		Parameters
+		----------
+		protocol : str
+			Name of the available protocol whose button was pressed.
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if protocol in self.selected_available_items:
 			self.selected_available_items.remove(protocol)
 			if protocol in self.available_buttons:
@@ -445,7 +637,18 @@ class ProtocolBattery(Screen):
 			btn.background_color = (1, 1, 1, 1)
 
 	def toggle_selected_item(self, protocol, *args):
-		"""Toggle selection of an item in the selected list"""
+		"""Toggle the highlight of a protocol in the selected list.
+
+		Selecting an item highlights it blue and deselects everything in the
+		available list; deselecting an item restores its default colour.
+
+		Parameters
+		----------
+		protocol : str
+			Name of the selected protocol whose button was pressed.
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if protocol in self.selected_selected_items:
 			self.selected_selected_items.remove(protocol)
 			if protocol in self.selected_buttons:
@@ -461,7 +664,17 @@ class ProtocolBattery(Screen):
 			btn.background_color = (1, 1, 1, 1)
 
 	def move_to_selected(self, *args):
-		"""Move selected protocols from available to selected list"""
+		"""Move the highlighted available protocols into the selected list.
+
+		Removes each selected protocol from ``available_protocols`` in sorted
+		order and appends it to ``selected_protocols``, then clears the available
+		highlights and refreshes both lists.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.selected_available_items:
 			# Convert to list and sort to maintain consistent order
 			items_to_move = sorted(list(self.selected_available_items))
@@ -474,7 +687,17 @@ class ProtocolBattery(Screen):
 			self.refresh_lists()
 
 	def move_to_available(self, *args):
-		"""Move selected protocols from selected to available list"""
+		"""Move the highlighted selected protocols back to the available list.
+
+		Removes each selected protocol from ``selected_protocols`` and appends it
+		to ``available_protocols``, then clears the selected highlights and
+		refreshes both lists.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if self.selected_selected_items:
 			# Convert to list to process
 			items_to_move = list(self.selected_selected_items)
@@ -487,7 +710,17 @@ class ProtocolBattery(Screen):
 			self.refresh_lists()
 
 	def move_up(self, *args):
-		"""Move selected protocols up in the selected list"""
+		"""Move the highlighted selected protocols up in the selected list.
+
+		Swaps each selected protocol with the item above it unless the item above
+		is itself selected or the protocol is already first, then refreshes the
+		lists.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if not self.selected_selected_items:
 			return
 		
@@ -504,7 +737,17 @@ class ProtocolBattery(Screen):
 		self.refresh_lists()
 
 	def move_down(self, *args):
-		"""Move selected protocols down in the selected list"""
+		"""Move the highlighted selected protocols down in the selected list.
+
+		Swaps each selected protocol with the item below it unless the item below
+		is itself selected or the protocol is already last, then refreshes the
+		lists.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		if not self.selected_selected_items:
 			return
 		
@@ -521,10 +764,29 @@ class ProtocolBattery(Screen):
 		self.refresh_lists()
 
 	def cancel_battery(self, *args):
+		"""Return the screen manager to the main menu without starting a battery.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		self.manager.current = 'mainmenu'
 
 	def start_battery(self, *args):
-		"""Start battery with protocols in the order they appear in selected list"""
+		"""Start the battery with the selected protocols in their chosen order.
+
+		Stores the selected protocols and clears the previous battery state, then
+		classifies each protocol as a ``'task'`` when ``Protocol/<name>/Task/Menu.py``
+		exists or a ``'survey'`` otherwise (``battery_required_fields`` is None for all),
+		then calls ``app.start_next_battery_config``. With no protocols selected the
+		screen returns to the main menu instead.
+
+		Parameters
+		----------
+		*args : tuple
+			Ignored; supplied by Kivy event dispatch (e.g. the button instance).
+		"""
 		# Use the selected_protocols list which maintains order
 		self.app.battery_protocols = self.selected_protocols.copy()
 		self.app.battery_active = len(self.selected_protocols) > 0
