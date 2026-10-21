@@ -40,7 +40,7 @@ import pathlib
 import subprocess
 import re
 
-TOUCHCOG_VERSION = "2.0.1"
+TOUCHCOG_VERSION = "2.1.0"
 
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 os.environ['KIVY_AUDIO'] = 'ffpyplayer'
