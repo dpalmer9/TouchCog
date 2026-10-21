@@ -10,6 +10,26 @@
 import os
 import sys
 
+# Per-monitor DPI awareness (must run before any kivy import) so input matches the drawn UI
+if sys.platform == 'win32':
+	import ctypes
+	_user32 = ctypes.windll.user32
+	for _set_dpi in (
+		lambda: _user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)),  # PER_MONITOR_AWARE_V2
+		lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2),
+		lambda: _user32.SetProcessDPIAware(),
+	):
+		try:
+			if _set_dpi():
+				break
+		except Exception:
+			pass
+	if 'KIVY_METRICS_DENSITY' not in os.environ:
+		try:
+			os.environ['KIVY_METRICS_DENSITY'] = str(_user32.GetDpiForSystem() / 96)
+		except Exception:
+			pass
+
 os.environ['PYTHONUTF8'] = '1'
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
@@ -234,6 +254,7 @@ from ffpyplayer.player import MediaPlayer
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
+from kivy.logger import Logger
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
 from kivy.uix.behaviors import ButtonBehavior
@@ -284,7 +305,7 @@ class LargeVKeyboard(VKeyboard):
 # Window.borderless = True
 
 Window.size = (int(x_dim), int(y_dim))
-Window.borderless = '0'
+Window.borderless = False
 Window.set_vkeyboard_class(LargeVKeyboard)
 
 def search_protocols():
@@ -422,7 +443,7 @@ class LanguageMenu(Screen):
 		if self.app.language == 'Select Language' or not self.app.language:
 			self.app.language = self.config['language']['language']
 			self.main_menu = MainMenu()
-			self.manager.add_widget(self.main_menu)
+			self.app.replace_screen(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
 
@@ -432,7 +453,7 @@ class LanguageMenu(Screen):
 			# Couldn't load manifest; proceed to main menu
 			self.app.language = self.config['language']['language']
 			self.main_menu = MainMenu()
-			self.manager.add_widget(self.main_menu)
+			self.app.replace_screen(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
 
@@ -504,7 +525,7 @@ class LanguageMenu(Screen):
 		if not items_to_download:
 			# Nothing to download
 			self.main_menu = MainMenu()
-			self.manager.add_widget(self.main_menu)
+			self.app.replace_screen(self.main_menu)
 			self.manager.current = 'mainmenu'
 			return
 
@@ -631,7 +652,11 @@ class LanguageMenu(Screen):
 					Clock.schedule_once(lambda dt, n=name: setattr(self._download_label, 'text', f'Extracting: {n}'))
 					try:
 						with zipfile.ZipFile(local_file, 'r') as zip_ref:
-							zip_ref.extractall(app_root)
+							root = pathlib.Path(app_root).resolve()
+							if all((root / m).resolve().is_relative_to(root) for m in zip_ref.namelist()):
+								zip_ref.extractall(app_root)
+							else:
+								print(f"WARNING: Skipping {name}: archive contains paths outside the app directory")
 					except Exception as e:
 						print(f"Failed to extract {name}: {e}")
 
@@ -656,7 +681,7 @@ class LanguageMenu(Screen):
 	def _open_main_menu(self, *args):
 		self.app.language = self.config['language']['language']
 		self.main_menu = MainMenu()
-		self.manager.add_widget(self.main_menu)
+		self.app.replace_screen(self.main_menu)
 		self.manager.current = 'mainmenu'
 
 
@@ -699,7 +724,7 @@ class MainMenu(Screen):
 		
 		else:
 			self.protocol_window = ProtocolMenu()
-			self.manager.add_widget(self.protocol_window)
+			self.app.replace_screen(self.protocol_window)
 			self.manager.current = 'protocolmenu'
 	
 	def load_battery_menu(self, *args):
@@ -709,7 +734,7 @@ class MainMenu(Screen):
 		
 		else:
 			self.protocol_window = BatteryMenu()
-			self.manager.add_widget(self.protocol_window)
+			self.app.replace_screen(self.protocol_window)
 			self.manager.current = 'batterymenu'
 	
 	def exit_program(self, *args):
@@ -777,7 +802,7 @@ class ProtocolMenu(Screen):
 			self.Protocol_Configure_Screen = task_module.SurveyProtocol()
 
 		self.Protocol_Configure_Screen.size = Window.size
-		self.manager.add_widget(self.Protocol_Configure_Screen)
+		self.app.replace_screen(self.Protocol_Configure_Screen)
 		if isinstance(self.Protocol_Configure_Screen, SurveyBase):
 			self.app.present_task_screen(self.Protocol_Configure_Screen.name)
 		else:
@@ -1066,7 +1091,7 @@ class BatteryMenu(Screen):
 	def load_protocol_battery(self, *args):
 		"""Load the manual ProtocolBattery screen"""
 		self.protocol_battery_screen = ProtocolBattery()
-		self.manager.add_widget(self.protocol_battery_screen)
+		self.app.replace_screen(self.protocol_battery_screen)
 		self.manager.current = 'protocolbattery'
 	
 	def cancel_battery(self, *args):
@@ -1571,6 +1596,7 @@ class MenuApp(App):
 		self.file_io_thread.start()
 
 		self.battery_active = False
+		self._pending_completions = set()
 		self.battery_protocols = list()
 		self.battery_index = 0
 		self.battery_configs = {}
@@ -1588,9 +1614,9 @@ class MenuApp(App):
 			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
 		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
-		self.s_manager.add_widget(self.language_menu)
+		self.replace_screen(self.language_menu)
 		self.general_video_screen = VideoScreen()
-		self.s_manager.add_widget(self.general_video_screen)
+		self.replace_screen(self.general_video_screen)
 		self.active_screen = self.language_menu.name
 		self._register_shutdown_handlers()
 		
@@ -1740,7 +1766,7 @@ class MenuApp(App):
 	def show_general_video(self, video_key, on_complete=None, destination_screen=None):
 		if not hasattr(self, 'general_video_screen') or self.general_video_screen is None:
 			self.general_video_screen = VideoScreen()
-			self.s_manager.add_widget(self.general_video_screen)
+			self.replace_screen(self.general_video_screen)
 
 		self.general_video_screen.size = Window.size
 		prepared = self.general_video_screen.prepare_video(
@@ -1765,6 +1791,17 @@ class MenuApp(App):
 		else:
 			self._set_current_screen(screen_name)
 
+	def replace_screen(self, screen):
+		# ScreenManager resolves names to the FIRST match, so never keep two screens with one name
+		for old in [x for x in self.s_manager.screens if x.name == screen.name and x is not screen]:
+			if hasattr(old, 'clear_video_cache'):
+				try:
+					old.clear_video_cache()
+				except Exception:
+					pass
+			self.s_manager.remove_widget(old)
+		self.s_manager.add_widget(screen)
+
 	def cleanup_task_screen(self, screen_name):
 		if not screen_name or not self.s_manager.has_screen(screen_name):
 			return
@@ -1779,6 +1816,10 @@ class MenuApp(App):
 		self.s_manager.remove_widget(screen)
 
 	def handle_task_completion(self, completed_screen_name=None):
+		# Ignore repeat calls (double tap): the screen is already gone or its transition is pending
+		if completed_screen_name and (not self.s_manager.has_screen(completed_screen_name)
+				or completed_screen_name in self._pending_completions):
+			return
 		if getattr(self, 'battery_active', False):
 			self.battery_task_finished(completed_screen_name)
 			return
@@ -1818,7 +1859,7 @@ class MenuApp(App):
 			# Update the config_screen parameters based on self.battery_configs[protocol_name] if available
 			if protocol_name in self.battery_configs:
 				config_screen.update_parameters_external(self.battery_configs[protocol_name])
-			self.s_manager.add_widget(config_screen)
+			self.replace_screen(config_screen)
 			self.s_manager.current = config_screen.name
 		else:
 			self.battery_index = 0
@@ -1840,15 +1881,20 @@ class MenuApp(App):
 			else:
 				task_module = protocol_constructor(protocol_name, 'Protocol')
 				protocol_task_screen = task_module.SurveyProtocol()
-			self.s_manager.add_widget(protocol_task_screen)
+			self.replace_screen(protocol_task_screen)
 			# Provide parameters to the task only for 'task' types (not surveys)
 			try:
 				task_type = self.battery_task_types.get(protocol_name, 'task') if hasattr(self, 'battery_task_types') else 'task'
 				if task_type == 'task' and hasattr(protocol_task_screen, 'load_parameters'):
 					protocol_task_screen.load_parameters(parameter_dict)
-			except Exception:
-				# Some protocols may expect different parameter shapes; still continue
-				pass
+			except Exception as e:
+				# A half-initialised task would silently produce bad data: abort the battery
+				Logger.exception(f"Battery: failed to load parameters for {protocol_name}")
+				self.cleanup_task_screen(protocol_task_screen.name)
+				self.battery_active = False
+				Popup(title='Task failed to load', content=Label(text=f"{protocol_name}: {e}"), size_hint=(0.6, 0.4)).open()
+				self.open_main_menu()
+				return
 			self.present_task_screen(protocol_task_screen.name)
 		else:
 			# No more tasks in battery
@@ -1863,9 +1909,11 @@ class MenuApp(App):
 		if not getattr(self, 'battery_active', False):
 			return
 		
+		self._pending_completions.add(completed_screen_name)
 		Clock.schedule_once(lambda dt: self._perform_battery_transition(completed_screen_name), 0.2)
 
 	def _perform_battery_transition(self, completed_screen_name, *args):
+		self._pending_completions.discard(completed_screen_name)
 		self.cleanup_task_screen(completed_screen_name)
 		self.battery_index = int(self.battery_index) + 1
 		if self.battery_index < len(self.battery_protocols):
@@ -1877,7 +1925,7 @@ class MenuApp(App):
 	
 	def add_screen(self, screen):
 		
-		self.s_manager.add_widget(screen)
+		self.replace_screen(screen)
 	
 	def on_stop(self):
 		self._write_pending_output_data()

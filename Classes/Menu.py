@@ -18,6 +18,7 @@ from kivy.effects.scroll import ScrollEffect
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors import ButtonBehavior
@@ -258,14 +259,12 @@ class MenuBase(Screen):
 				self.id_grid.size_hint_y = 0
 				self.apply_required_fields_filter()
 			else:
-				#self.id_grid.height = None
 				self.id_grid.size_hint_y = 0.05
 		else:
 			self.is_battery_mode = False
 			self.battery_required_fields = None
 			self.start_button.text = self.menu_config['Text']['start_button_regular']
 			# Show participant ID
-			self.id_grid.height = None
 			self.id_grid.size_hint_y = 0.05
 
 	def _normalize_field_name(self, field_name):
@@ -383,10 +382,9 @@ class MenuBase(Screen):
 		# (when using required fields, participant_id should have been collected upfront and stored elsewhere)
 		if not (self.is_battery_mode and self.battery_required_fields is not None and len(self.battery_required_fields) > 0):
 			parameter_dict['participant_id'] = self.id_entry.text
-		else:
-			# In required-fields battery mode, use the app-level participant_id
-			if hasattr(self.app, 'participant_id') and self.app.participant_id:
-				parameter_dict['participant_id'] = self.app.participant_id
+		# An ID entered in the battery popup (self.app.participant_id) wins over the id_entry default
+		if self.is_battery_mode and getattr(self.app, 'participant_id', None):
+			parameter_dict['participant_id'] = self.app.participant_id
 
 		
 		# Start or protocol or continue battery
@@ -394,18 +392,8 @@ class MenuBase(Screen):
 			task_module = lazy_import(self.protocol)
 			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=self.size)
 		
-			try:
-			
-				# Check if screen already exists (e.g. from previous run) and remove it before adding new one
-				if self.manager.has_screen(protocol_task_screen.name):
-					self.manager.remove_widget(self.manager.get_screen(protocol_task_screen.name))
-				self.manager.add_widget(protocol_task_screen)
-		
-		
-			except ScreenManagerException:
-			
-			
-				self.manager.add_widget(protocol_task_screen)
+			# Remove any stale screen with the same name before adding the new one
+			self.app.replace_screen(protocol_task_screen)
 		
 			protocol_task_screen.load_parameters(parameter_dict)
 		
@@ -414,24 +402,28 @@ class MenuBase(Screen):
 				self.app.present_task_screen(protocol_task_screen.name)
 			else:
 				self.manager.current = protocol_task_screen.name
+			self._remove_self_later()
 		
 		else:
 			protocol_name = self.app.battery_protocols[self.app.battery_index]
 			
 			# If in battery mode with required fields filtering, update only the required field values
 			# in the pre-loaded config (merge the filled-in values into the existing config)
-			if self.battery_required_fields is not None and len(self.battery_required_fields) > 0:
-				# Merge new values into existing config for this protocol
-				if protocol_name in self.app.battery_configs:
-					self.app.battery_configs[protocol_name].update(parameter_dict)
-				else:
-					self.app.battery_configs[protocol_name] = parameter_dict
-			else:
-				# No required fields: replace entire config (normal battery mode)
-				self.app.battery_configs[protocol_name] = parameter_dict
+			# Always merge so JSON-supplied overrides not shown in the menu are kept
+			self.app.battery_configs.setdefault(protocol_name, {}).update(parameter_dict)
 			
 			self.app.battery_index += 1
 			self.app.start_next_battery_config()
+			self._remove_self_later()
+
+	def _remove_self_later(self):
+		# Config screens are never reused; drop this one once the manager has moved off it
+		# (Kivy's remove_widget on the current screen would switch screens)
+		manager = self.manager
+		def _remove(dt):
+			if manager is not None and self.parent is manager and manager.current != self.name:
+				manager.remove_widget(self)
+		Clock.schedule_once(_remove, 0.5)
 
 
 	def update_parameters_external(self, new_params):
@@ -442,6 +434,17 @@ class MenuBase(Screen):
 			config = configparser.ConfigParser()
 			config['TaskParameters'] = self.parameters_config
 			self.parameters_config = config['TaskParameters']
+		# Push the new values into the already-built grid widgets
+		new_values = {self._normalize_field_name(str(k)): v for k, v in self.parameters_config.items()}
+		label_name = None
+		for widget in reversed(self.setting_gridlayout.children):
+			if isinstance(widget, Label) and not isinstance(widget, Button):
+				label_name = self._normalize_field_name(widget.text)
+			elif label_name in new_values:
+				if isinstance(widget, TextInput):
+					widget.text = str(new_values[label_name])
+				elif isinstance(widget, CheckBox):
+					widget.active = str(new_values[label_name]).lower() == 'true'
 		# Check if method update_image_widget exists, if so, execute
 		if hasattr(self, 'update_image_widget') and callable(getattr(self, 'update_image_widget')):
 			self.update_image_widget()
