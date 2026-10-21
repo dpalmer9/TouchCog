@@ -7,19 +7,15 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.slider import Slider
 from kivy.uix.widget import Widget
 from kivy.uix.scrollview import ScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Line, Color, Ellipse
-from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.logger import Logger
-import re
+from Classes.DataFiles import DATA_FOLDER, next_free_path, sanitize_participant_id
 import datetime
 import pandas as pd
-import json
 import configparser
 import pathlib
 
@@ -191,8 +187,7 @@ class SurveyBase(Screen):
         self.question_metadata_list = []
         self.question_index = 0
 
-        documents_path = pathlib.Path.home() / 'Documents'
-        self.data_folder = documents_path / 'TouchCog' / 'Data'
+        self.data_folder = DATA_FOLDER
         self.data_folder.mkdir(parents=True, exist_ok=True)
 
     def _configure_multiline_label(self, label, min_height=dp(60), horizontal_padding=dp(20)):
@@ -235,7 +230,7 @@ class SurveyBase(Screen):
             new_row = [question_text, "" if response is None else str(response)]
             self.app.survey_data_list.append(new_row)
         except Exception:
-            pass
+            Logger.exception('TouchCog: survey response not recorded')
 
     def _should_question_be_visible(self, question_metadata):
         """
@@ -304,12 +299,10 @@ class SurveyBase(Screen):
         self.end_survey_button.unbind(on_press=self._return_to_main_menu)
         self.end_survey_button.disabled = True
         self.app.survey_data = pd.DataFrame(self.app.survey_data_list, columns=['question', 'response'])
-        if hasattr(self.app, 'queue_dataframe_write'):
-            self.app.queue_dataframe_write(self.app.survey_data_path, self.app.survey_data, index=False)
+        self.app.queue_dataframe_write(self.app.survey_data_path, self.app.survey_data, index=False)
         try:
-            if hasattr(self.app, 'handle_task_completion'):
-                self.app.handle_task_completion(self.name)
-                return
+            self.app.handle_task_completion(self.name)
+            return
         except Exception:
             Logger.exception('Survey: handle_task_completion failed')
 
@@ -579,9 +572,6 @@ class SurveyBase(Screen):
         """
         Create a survey question with given text and options.
         """
-        # Create outer container with scroll view
-        outer_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
-
         question_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10), size_hint_y=None)
         question_layout.bind(minimum_height=question_layout.setter('height'))
         
@@ -689,15 +679,11 @@ class SurveyBase(Screen):
         # Entry is only on screen when no battery participant ID was available
         if self.participant_id_entry.parent is not None:
             self.participant_id = self.participant_id_entry.text if self.participant_id_entry.text else 'Default'
-        self.participant_id = re.sub(r'[^\w\-]', '_', self.participant_id.strip()) or 'Default'
+        self.participant_id = sanitize_participant_id(self.participant_id)
         folder_path = pathlib.Path(self.data_folder, self.participant_id)
         folder_path.mkdir(parents=True, exist_ok=True)
         # Date + index like task files so repeat sessions do not overwrite earlier responses
-        file_index = 1
-        survey_path = folder_path / f"{self.participant_id}_{self.name}_{datetime.date.today()}_{file_index}.csv"
-        while survey_path.exists():
-            file_index += 1
-            survey_path = folder_path / f"{self.participant_id}_{self.name}_{datetime.date.today()}_{file_index}.csv"
+        _, survey_path = next_free_path(lambda i: folder_path / f"{self.participant_id}_{self.name}_{datetime.date.today()}_{i}.csv")
         self.app.survey_data_path = str(survey_path)
         self.main_layout.clear_widgets()
         

@@ -2,14 +2,11 @@
 
 import configparser
 import datetime
-import os
 import pandas as pd
 import pathlib
-import sys
 import time
 import threading
 import queue
-import re
 import random
 import gc
 import math
@@ -21,12 +18,14 @@ from kivy.clock import Clock, mainthread
 from kivy.loader import Loader
 from kivy.uix.button import ButtonBehavior, Button
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.image import Image, AsyncImage
+from kivy.uix.image import Image
 from kivy.graphics.texture import Texture
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.config import Config
 from kivy.logger import Logger
+
+from Classes.DataFiles import DATA_FOLDER, next_free_path, sanitize_participant_id
 
 
 
@@ -82,8 +81,7 @@ class ImageButton(ButtonBehavior, Image):
 				try:
 					self.dispatch('on_release')
 				except Exception:
-					# best-effort: continue even if dispatch fails
-					pass
+					Logger.exception('TouchCog: ImageButton on_release failed')
 				# ensure visual/state is normal
 				self.state = 'normal'
 			# drop the grab so ButtonBehavior cannot dispatch a second on_release at lift
@@ -101,7 +99,7 @@ class ImageButton(ButtonBehavior, Image):
 				try:
 					self.dispatch('on_press')
 				except Exception:
-					pass
+					Logger.exception('TouchCog: ImageButton on_press failed')
 			self._touch_inside = True
 			# consume the move event
 			return True
@@ -124,7 +122,7 @@ class ImageButton(ButtonBehavior, Image):
 				try:
 					self.dispatch('on_release')
 				except Exception:
-					pass
+					Logger.exception('TouchCog: ImageButton on_release failed')
 				self.state = 'normal'
 			res = True
 
@@ -165,12 +163,8 @@ class FloatLayoutLog(FloatLayout):
 			, 'Arg3_Value'
 			]
 		
-		self.event_dataframe = pd.DataFrame(columns=self.app.event_columns)
-		self.event_dataframe.Time = self.event_dataframe.Time.astype('float64')
-		self.app.session_event_data = self.event_dataframe
-		self.event_index = 0
+		self.app.session_event_data = pd.DataFrame(columns=self.app.event_columns)
 		self.save_path = ''
-		self.elapsed_time = 0
 		self.touch_time = 0
 		self.start_time = 0
 		self.active_touches = set()
@@ -206,14 +200,9 @@ class FloatLayoutLog(FloatLayout):
 		if not getattr(self.app, 'session_event_path', ''):
 			return
 
-		if hasattr(self.app, 'queue_csv_row'):
-			row = [event_row.get(column, '') for column in self.app.event_columns]
-			self.app.queue_csv_row(self.app.session_event_path, row)
+		row = [event_row.get(column, '') for column in self.app.event_columns]
+		self.app.queue_csv_row(self.app.session_event_path, row)
 	
-	def filter_children(self, string):
-		
-		return
-
 	def on_multi_touch(self, touch, touch_count):
 		return
 
@@ -255,8 +244,7 @@ class FloatLayoutLog(FloatLayout):
 		
 		if self.multi_touch_active:
 			self.held_name = ''
-			self.add_event([self.touch_time, 'Screen', 'Touch Press (Blocked)',
-			'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
+			self._log_touch('Touch Press (Blocked)', 'Multi-Touch')
 			return True
 		
 		for child in self.children[:]:
@@ -269,32 +257,13 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					self.held_name = ''
 				
-				self.add_event([self.touch_time
-						, 'Screen'
-						, 'Touch Press'
-						, 'X Position'
-						, self.touch_pos[0]
-						, 'Y Position'
-						, self.touch_pos[1]
-						, 'Stimulus Name'
-						, self.held_name])
+				self._log_touch('Touch Press', self.held_name)
 				
 				return True
 		
 		self.held_name = ''
 
-		self.add_event([
-			self.touch_time
-			, 'Screen'
-			, 'Touch Press'
-			, 'X Position'
-			, self.touch_pos[0]
-			, 'Y Position'
-			, self.touch_pos[1]
-			, 'Stimulus Name'
-			, self.held_name
-			]
-			)
+		self._log_touch('Touch Press', self.held_name)
 	
 	
 	
@@ -315,15 +284,7 @@ class FloatLayoutLog(FloatLayout):
 				if child.collide_point(*touch.pos):
 					if child.dispatch('on_touch_down', touch):
 						# a press that started by sliding in
-						self.add_event([self.touch_time
-								, 'Screen'
-								, 'Touch Press'
-								, 'X Position'
-								, self.touch_pos[0]
-								, 'Y Position'
-								, self.touch_pos[1]
-								, 'Stimulus Name'
-								, child.name if isinstance(child, ImageButton) else ''])
+						self._log_touch('Touch Press', child.name if isinstance(child, ImageButton) else '')
 
 			if child.dispatch('on_touch_move', touch):
 				
@@ -339,18 +300,7 @@ class FloatLayoutLog(FloatLayout):
 					
 					self.last_recorded_pos = self.touch_pos
 
-					self.add_event([
-						self.touch_time
-						, 'Screen'
-						, 'Touch Move'
-						, 'X Position'
-						, self.touch_pos[0]
-						, 'Y Position'
-						, self.touch_pos[1]
-						, 'Stimulus Name'
-						, self.held_name
-						]
-						)
+					self._log_touch('Touch Move', self.held_name)
 				
 				return True
 		
@@ -361,16 +311,7 @@ class FloatLayoutLog(FloatLayout):
 			
 			self.last_recorded_pos = self.touch_pos
 
-			self.add_event([
-				self.touch_time,
-				'Screen',
-				'Touch Move',
-				'X Position',
-				self.touch_pos[0],
-				'Y Position',
-				self.touch_pos[1],
-				'Stimulus Name',
-				self.held_name])
+			self._log_touch('Touch Move', self.held_name)
 
 	
 	
@@ -387,8 +328,7 @@ class FloatLayoutLog(FloatLayout):
 		
 		if was_multi_touch:
 			self.held_name = ''
-			self.add_event([self.touch_time, 'Screen', 'Touch Release (Blocked)', 
-				   'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', 'Multi-Touch'])
+			self._log_touch('Touch Release (Blocked)', 'Multi-Touch')
 			return True
 		
 		for child in self.children[:]:
@@ -401,40 +341,22 @@ class FloatLayoutLog(FloatLayout):
 				else:
 					self.held_name = ''
 
-				self.add_event([
-					self.touch_time
-					, 'Screen'
-					, 'Touch Release'
-					, 'X Position'
-					, self.touch_pos[0]
-					, 'Y Position'
-					, self.touch_pos[1]
-					, 'Stimulus Name'
-					, self.held_name
-					]
-					)
+				self._log_touch('Touch Release', self.held_name)
 
 				return True
 		
 		self.held_name = ''
 
-		self.add_event([
-			self.touch_time
-			, 'Screen'
-			, 'Touch Release'
-			, 'X Position'
-			, self.touch_pos[0]
-			, 'Y Position'
-			, self.touch_pos[1]
-			, 'Stimulus Name'
-			, self.held_name
-			])
+		self._log_touch('Touch Release', self.held_name)
 		
 		if self.held_name != '':
 			self.held_name = ''
 	
 	
 	
+	def _log_touch(self, event_name, stimulus_name):
+		self.add_event([self.touch_time, 'Screen', event_name, 'X Position', self.touch_pos[0], 'Y Position', self.touch_pos[1], 'Stimulus Name', stimulus_name])
+
 	def add_event(self, row):
 		new_row = {}
 		
@@ -477,34 +399,15 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def add_variable_event(self, variable_class, variable_name, variable_value, variable_type=None, variable_units=None):
+		row = [(time.perf_counter() - self.start_time), 'Variable Change', variable_class, variable_name]
 		if variable_type is None and variable_units is None:
-			self.add_event([
-				(time.perf_counter() - self.start_time),
-			 	'Variable Change',
-				variable_class,
-				variable_name,
-				variable_value])
-			
-		elif variable_type is not None and variable_units is None:
-			self.add_event([
-				(time.perf_counter() - self.start_time),
-			 	'Variable Change',
-				variable_class,
-				variable_name,
-				'Type',
-				variable_type])
-		
+			row.append(variable_value)
+		elif variable_units is None:
+			row.extend(['Type', variable_type])
 		else:
-			self.add_event([
-				(time.perf_counter() - self.start_time),
-			 	'Variable Change',
-				variable_class,
-				variable_name,
-				'Type',
-				variable_type,
-				'Units',
-				variable_units])
-			
+			row.extend(['Type', variable_type, 'Units', variable_units])
+		self.add_event(row)
+
 	def add_object_event(self, event_type, object_type, object_name, object_detail, image_name=None):
 		# Generic object event builder. This will log the standard fields and
 		# append an 'Image Name' pair only when an image_name is provided.
@@ -524,14 +427,13 @@ class FloatLayoutLog(FloatLayout):
 		return
 	
 	def write_data(self):
-		if hasattr(self.app, '_finalize_event_queue'):
-			self.app._finalize_event_queue()
+		self.app._finalize_event_queue()
 		self.session_event_data = pd.DataFrame(self.app.event_list, columns=self.app.event_columns)
 		if not self.session_event_data.empty:
 			self.session_event_data.Time = self.session_event_data.Time.astype('float64')
 			self.session_event_data = self.session_event_data.sort_values(by=['Time'])
 		self.app.session_event_data = self.session_event_data
-		if self.app.session_event_path and hasattr(self.app, 'queue_dataframe_write'):
+		if self.app.session_event_path:
 			self.app.queue_dataframe_write(self.app.session_event_path, self.app.session_event_data, index=False)
 	
 	
@@ -540,8 +442,7 @@ class FloatLayoutLog(FloatLayout):
 		
 		self.save_path = pathlib.Path(path)
 		self.app.session_event_path = self.save_path
-		if hasattr(self.app, 'queue_csv_header'):
-			self.app.queue_csv_header(self.save_path, self.app.event_columns)
+		self.app.queue_csv_header(self.save_path, self.app.event_columns)
 
 	# Add new bind option to FloatLayoutLog for when multi-touch is detected (i.e., a second touch occurs while one is already active)
 	
@@ -568,12 +469,7 @@ class PreloadedVideo(Image):
 		self.player.set_pause(True)
 		
 		# --- Metadata Logic ---
-		# We wait briefly for metadata to be available (sometimes takes a ms)
-		timeout = 0
-		while self.player.get_metadata()['duration'] is None and timeout < 5:
-			time.sleep(0.01)
-			timeout += 1
-
+		# Duration may still be None if metadata has not loaded yet; callers handle that.
 		metadata = self.player.get_metadata()
 		fr = metadata.get('frame_rate', (30, 1))
 		self.duration = metadata.get('duration', 0)
@@ -590,14 +486,14 @@ class PreloadedVideo(Image):
 			if frame:
 				self._update_texture(frame[0])
 		except Exception:
-			pass
+			pass # thumbnail is best-effort
 
 	@mainthread
 	def _update_texture(self, img):
 		if not self.texture or self.texture.size != img.get_size():
 			self.texture = Texture.create(size=img.get_size(), colorfmt='rgb')
 			self.texture.flip_vertical()
-		self.texture.blit_buffer(img.to_bytearray()[0], colorfmt='rgb', bufferfmt='ubyte')
+		self.texture.blit_buffer(img.to_memoryview()[0], colorfmt='rgb', bufferfmt='ubyte')
 		self.canvas.ask_update()
 
 	@property
@@ -683,15 +579,14 @@ class PreloadedVideo(Image):
 			# Ensure newly created player is paused by default
 			self.player.set_pause(True)
 		except Exception:
-			# Best-effort: ignore failures
-			pass
+			Logger.exception('TouchCog: video reload failed')
 
 	def reset(self):
 		# Stop the playback thread and ensure state is stopped
 		try:
 			self._stop_thread()
 		except Exception:
-			pass
+			pass # thread may be stopped already
 
 		self._state = 'stop'
 		try:
@@ -707,7 +602,7 @@ class PreloadedVideo(Image):
 						if f:
 							self._update_texture(f[0])
 					except Exception:
-						pass
+						pass # player may be closed
 
 				Clock.schedule_once(_update_thumb, 0.1)
 		except Exception:
@@ -754,16 +649,10 @@ class ProtocolBase(Screen):
 
 		# Folder
 
-		documents_path = pathlib.Path.home() / 'Documents'
-			
-		# Define a dedicated folder for your app's data within Documents
-		self.data_folder = documents_path / 'TouchCog' / 'Data'
-			
+		self.data_folder = DATA_FOLDER
 		# Create the directory structure if it doesn't exist
 		self.data_folder.mkdir(parents=True, exist_ok=True)
 
-		# Trial Store
-		self.app.trial_summary_list = list()
 		
 		
 		# Define Folders
@@ -777,7 +666,6 @@ class ProtocolBase(Screen):
 		
 		# Define Datafile
 		
-		self.meta_data = pd.DataFrame()
 		self.session_data = pd.DataFrame()
 		self.data_cols = []
 		self.metadata_cols = []
@@ -803,16 +691,6 @@ class ProtocolBase(Screen):
 		# Define Language
 		
 		self.language = 'English'
-		self.start_label_str = ''
-		self.break_label_str = ''
-		self.end_label_str = ''
-		self.start_button_label_str = ''
-		self.continue_button_label_str = ''
-		self.return_button_label_str = ''
-		self.stim_feedback_correct_str = ''
-		self.stim_feedback_incorrect_str = ''
-		self.hold_feedback_wait_str = ''
-		self.hold_feedback_return_str = ''
 		
 		
 		# Define Variables - Boolean
@@ -844,7 +722,6 @@ class ProtocolBase(Screen):
 		self.start_iti = 0
 		self.start_time = 0
 		self.block_start = 0
-		self.elapsed_time = 0
 		self.feedback_start_time = 0
 		self.trial_end_time = 0
 		self.multi_touch_warning_duration = 2.0
@@ -852,13 +729,9 @@ class ProtocolBase(Screen):
 		
 		# Define Class - Clock
 
-		# hold_remind is managed manually with Clock.schedule_once; use a stage flag
-		# stage: 0 = initial (will schedule delayed), 1 = delayed (perform check)
-		self.hold_remind_stage = 0
 		self.hold_remind_event = None
 
 		self.session_clock = Clock
-		self.session_clock.interupt_next_only = False
 		self.session_event = self.session_clock.create_trigger(self.clock_monitor, self.session_length_max, interval=False)
 		
 		
@@ -1059,7 +932,7 @@ class ProtocolBase(Screen):
 			try:
 				image_file = pathlib.Path(image_file)
 			except Exception:
-				pass
+				pass # keep non-path value as-is
 			if pathlib.Path(self.image_folder / image_file).exists():
 				load_image = Loader.image(str(self.image_folder / image_file))
 				image_name = str(image_file.stem)
@@ -1166,7 +1039,7 @@ class ProtocolBase(Screen):
 		if self.output_generated:
 			return
 
-		self.participant_id = re.sub(r'[^\w\-]', '_', str(self.participant_id).strip()) or 'Default'
+		self.participant_id = sanitize_participant_id(self.participant_id)
 
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		self.protocol_ended = False
@@ -1174,17 +1047,11 @@ class ProtocolBase(Screen):
 		if not folder_path.is_dir():
 			folder_path.mkdir()
 		
-		self.file_index = 1
-		temp_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
-		self.file_path = pathlib.Path(folder_path, temp_filename + '_Summary_Data.csv')
+		stem = lambda i: '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(i)])
+		self.file_index, self.file_path = next_free_path(lambda i: folder_path / (stem(i) + '_Summary_Data.csv'))
+		temp_filename = stem(self.file_index)
 		
-		while self.file_path.exists():
-			self.file_index += 1
-			temp_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
-			self.file_path = pathlib.Path(folder_path, temp_filename + '_Summary_Data.csv')
-		
-		if hasattr(self.app, 'queue_csv_header'):
-			self.app.queue_csv_header(self.file_path, self.data_cols)
+		self.app.queue_csv_header(self.file_path, self.data_cols)
 		
 		event_path = pathlib.Path(folder_path, temp_filename + '_Event_Data.csv')
 		
@@ -1213,18 +1080,12 @@ class ProtocolBase(Screen):
 			row_list.append(str(self.parameters_dict[meta_row]))
 			meta_list.append(row_list)
 		
-		alt_index = 1
-		meta_output_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
-		meta_output_path = pathlib.Path(folder_path, meta_output_filename + '_Metadata.csv')
+		meta_stem = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
+		# First file has no suffix; later ones get _2, _3, ...
+		_, meta_output_path = next_free_path(lambda i: folder_path / (meta_stem + ('' if i == 1 else '_' + str(i)) + '_Metadata.csv'))
 		
-		while meta_output_path.exists():
-			alt_index += 1
-			meta_output_filename = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index), str(alt_index)])
-			meta_output_path = pathlib.Path(folder_path, meta_output_filename + '_Metadata.csv')
-		
-		self.meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
-		if hasattr(self.app, 'queue_dataframe_write'):
-			self.app.queue_dataframe_write(meta_output_path, self.meta_data, index=False)
+		meta_data = pd.DataFrame(meta_list, columns=['Parameter', 'Value'])
+		self.app.queue_dataframe_write(meta_output_path, meta_data, index=False)
 		self.metadata_generated = True
 		return
 
@@ -1332,9 +1193,6 @@ class ProtocolBase(Screen):
 			
 			self.protocol_floatlayout.add_text_event('Displayed', 'Block Instruction')
 
-			# reset any pending hold_remind stage
-			self.hold_remind_stage = 0
-			
 			self.block_start = time.perf_counter()
 			self.block_started = True
 		
@@ -1374,7 +1232,7 @@ class ProtocolBase(Screen):
 			try:
 				self.hold_remind_event.cancel()
 			except Exception:
-				pass
+				pass # event may be unscheduled
 			self.hold_remind_event = None
 		Clock.unschedule(self.hold_remind)
 		return
@@ -1414,12 +1272,9 @@ class ProtocolBase(Screen):
 				self.tutorial_video.unload()
 				self.tutorial_video = None
 			except Exception:
-				pass
+				pass # video teardown is best-effort
 
 			gc.collect()
-		# reset any pending hold_remind stage
-		self.hold_remind_stage = 0
-
 		# Check if the self.session_event is scheduled and unschedule if so
 		if self.session_event.is_triggered:
 			self.session_event.cancel()
@@ -1439,13 +1294,11 @@ class ProtocolBase(Screen):
 
 		self.protocol_floatlayout.add_button_event('Displayed', 'Return Button')
 
-		if hasattr(self.app, '_finalize_event_queue'):
-			self.app._finalize_event_queue()
+		self.app._finalize_event_queue()
 
 		if self.app.summary_event_path:
 			self.app.summary_event_data = pd.DataFrame(self.app.trial_summary_data, columns=self.app.trial_summary_cols)
-			if hasattr(self.app, 'queue_dataframe_write'):
-				self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
+			self.app.queue_dataframe_write(self.app.summary_event_path, self.app.summary_event_data, index=False)
 		# write_data() rewrites the sorted event file once
 		self.protocol_floatlayout.write_data()
 		self.app.trial_summary_data = list()
@@ -1464,12 +1317,7 @@ class ProtocolBase(Screen):
 
 		# If a battery run is active, notify the app so it can advance to next task
 		try:
-			if hasattr(self.app, 'handle_task_completion'):
-				self.app.handle_task_completion(self.name)
-			else:
-				self.manager.current = 'mainmenu'
-				self.current_widget = self.manager.get_screen(self.name)
-				self.manager.remove_widget(self.current_widget)	
+			self.app.handle_task_completion(self.name)
 		except Exception:
 			Logger.exception('ProtocolBase: return_to_main failed')
 			try:
@@ -1605,7 +1453,7 @@ class ProtocolBase(Screen):
 	def assign_feedback(self, feedback_key=None, override_text=None):
 		old_feedback = self.feedback
 		if feedback_key not in self.feedback_dict and not (isinstance(override_text, str) and override_text != ''):
-			print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+			Logger.warning(f"TouchCog: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
 			return
 		# Check if override contains value, use as feedback
 		if override_text is not None and type(override_text) == str and override_text != '':
@@ -1616,7 +1464,7 @@ class ProtocolBase(Screen):
 			feedback_str = self.feedback_dict.get(feedback_key, '') or ''
 		# Handle error case where neither argument is valid
 		else:
-			print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+			Logger.warning(f"TouchCog: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
 			return
 		
 		# Check if feedback_str contains a png file extension. If so, set feedback_image source to that file and display the image instead of text.
@@ -1658,7 +1506,7 @@ class ProtocolBase(Screen):
 	
 	def write_summary_file(self, data_row):
 		self.app.trial_summary_data.append(data_row)
-		if self.app.summary_event_path and hasattr(self.app, 'queue_csv_row'):
+		if self.app.summary_event_path:
 			self.app.queue_csv_row(self.app.summary_event_path, data_row)
 		return
 	
