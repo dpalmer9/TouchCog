@@ -350,6 +350,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
+		self.pending_feedback_key = ''
 		self.stimulus_mask_on_screen = False
 		self.training_complete = False
 		self.premature_override = True
@@ -685,7 +686,7 @@ class ProtocolScreen(ProtocolBase):
 		self.trial_list_max_run = self.trial_list_max_run_base
 		self.trial_list = self.constrained_shuffle(self.trial_list_base, max_run=self.trial_list_max_run)
 		
-		if (any(['TarProb', 'SART']) in xStage for xStage in self.stage_list):
+		if any(k in s for s in self.stage_list for k in ('TarProb', 'SART')):
 			self.trial_list_hilo = list()
 			self.target_prob_hilo = sorted([float(iProb) for iProb in self.target_prob_hilo_import])
 		
@@ -1607,7 +1608,7 @@ class ProtocolScreen(ProtocolBase):
 	
 	# Contingency Stages #
 	# Tracks contingencies and outcomes based on removal of hold from hold_button
-	def stimulus_response(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display)
+	def stimulus_response(self, *args): # Trial Outcomes: 1-Hit,3-False Alarm,5-Hit, no center press,6-False Alarm, no center press,7-Trial abort (lift and press hold button during stimulus display),8-CJB Neutral (also for release without press)
 		"""Record the hold release during stimulus display and set the response outcome.
 
 		Returns early when a response was already made or the protocol has ended.
@@ -1619,11 +1620,14 @@ class ProtocolScreen(ProtocolBase):
 		-----
 		Contingency 2 means the hold was released but the stimulus was not (yet)
 		pressed; the response latency is the seconds from ``stimulus_start_time`` to
-		the release. For ``SART_Fixed_Probe``: contingency 2 and outcome 5 when the center image is
-		in the nontarget list, otherwise outcome 6. Otherwise contingency 2 and
-		outcome 5 when the center image is the target image, otherwise outcome 6 (the
-		``'too_slow'`` label chosen for ``LimHold_Staircase_Difficulty`` is stored in an unused
-		local variable and is not displayed). There is no CJB-specific branch here.
+		the release. For ``SART_Fixed_Probe`` (not CJB): contingency 2 and outcome
+		5 when the center image is in the nontarget list, otherwise outcome 6. For
+		CJB: ``cjb_target_image`` gives contingency 2 and outcome 5;
+		``cjb_nontarget_image`` gives contingency 2 and outcome 6; any other CJB
+		image (neutral) gives contingency 2 and outcome 8. Otherwise contingency 2
+		and outcome 5 when the center image is the target image, otherwise outcome 6
+		(the ``'too_slow'`` label chosen for ``LimHold_Staircase_Difficulty`` is
+		stored in ``pending_feedback_key`` and presented as feedback by :meth:`center_notpressed`).
 		Logs the response, contingency, outcome and latency variable events, then
 		rebinds the hold press to :meth:`response_cancelled`.
 
@@ -1646,7 +1650,7 @@ class ProtocolScreen(ProtocolBase):
 		
 		self.response = 1
 
-		outcome_label = ''
+		self.pending_feedback_key = ''
 		
 		if (self.current_stage == 'SART_Fixed_Probe'):
 
@@ -1658,6 +1662,21 @@ class ProtocolScreen(ProtocolBase):
 				self.contingency = 2
 				self.trial_outcome = 6
 
+		elif self.cjb_task:
+
+			if (self.center_image == self.cjb_target_image):
+				self.contingency = 2
+				self.trial_outcome = 5
+
+			elif (self.center_image == self.cjb_nontarget_image):
+				self.contingency = 2
+				self.trial_outcome = 6
+
+			else:
+				# Any other CJB image is a neutral
+				self.contingency = 2
+				self.trial_outcome = 8
+
 		else:
 
 			if (self.center_image == self.target_image):
@@ -1665,7 +1684,7 @@ class ProtocolScreen(ProtocolBase):
 				self.trial_outcome = 5
 				
 				if self.current_stage == 'LimHold_Staircase_Difficulty':
-					outcome_label = self.feedback_dict['too_slow']
+					self.pending_feedback_key = 'too_slow'
 				
 			else:
 				self.contingency = 2
@@ -1776,6 +1795,7 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = False
 		self.limhold_started = False
 		self.response_made = False
+		self.pending_feedback_key = ''
 
 		outcome_feedback = ''
 		
@@ -1900,7 +1920,9 @@ class ProtocolScreen(ProtocolBase):
 		Otherwise: target gives contingency 0, outcome 2 and ``'miss'`` (``Training``
 		only); nontarget gives contingency 1, outcome 4. The hold release
 		:meth:`stimulus_response` is unbound when no response was made,
-		:meth:`response_cancelled` otherwise, and ``response_made`` is reset to False.
+		:meth:`response_cancelled` otherwise. When ``pending_feedback_key`` is set (from
+		:meth:`stimulus_response` or :meth:`response_cancelled`) its feedback is presented
+		and the key cleared, then ``response_made`` is reset to False.
 
 		Parameters
 		----------
@@ -2019,6 +2041,10 @@ class ProtocolScreen(ProtocolBase):
 
 		else:
 			self.hold_button.unbind(on_press=self.response_cancelled)
+
+			if self.pending_feedback_key:
+				self.assign_feedback(self.pending_feedback_key)
+				self.pending_feedback_key = ''
 			
 
 		if outcome_feedback != '' \
@@ -2028,6 +2054,7 @@ class ProtocolScreen(ProtocolBase):
 
 
 		self.response_made = False
+		self.pending_feedback_key = ''
 
 		self.write_trial()
 
@@ -2054,9 +2081,11 @@ class ProtocolScreen(ProtocolBase):
 
 		Notes
 		-----
-		The chosen feedback string is assigned to the local ``outcome_feedback`` and is
-		not displayed; the outcome is set to 7 (Trial abort) while the contingency set
-		by :meth:`stimulus_response` (2) is left unchanged.
+		The chosen feedback key is stored in ``pending_feedback_key`` (``'miss'`` when
+		``trial_outcome == 5``, else ``'abort'``) and presented by
+		:meth:`center_notpressed`. The outcome is set to 7 (Trial abort) and logged as
+		the ``Outcome`` / ``Trial Outcome`` variable event while the contingency set by
+		:meth:`stimulus_response` (2) is left unchanged.
 
 		Parameters
 		----------
@@ -2067,15 +2096,17 @@ class ProtocolScreen(ProtocolBase):
 			return
 		
 		if self.trial_outcome == 5:
-			outcome_feedback = self.feedback_dict['miss']
+			self.pending_feedback_key = 'miss'
 
 		else:
-			outcome_feedback = self.feedback_dict['abort']
+			self.pending_feedback_key = 'abort'
 
 		Clock.unschedule(self.stimulus_end)
 		Clock.unschedule(self.center_notpressed)
 
 		self.trial_outcome = 7
+
+		self.protocol_floatlayout.add_variable_event('Outcome','Trial Outcome', str(self.trial_outcome))
 
 		self.hold_button_pressed = True
 		
@@ -2246,6 +2277,13 @@ class ProtocolScreen(ProtocolBase):
 		``total_false_alarm_tracking``, and both record the nontarget's index in
 		``nontarget_images`` in ``staircase_index_tracking`` (``len + 1`` for a CJB task).
 		Updates the CJB discrimination history for the ``CJB_Discrimination`` stage.
+
+		Returns
+		-------
+		bool
+			Only meaningful for the ``CJB_Discrimination`` stage: True when the CJB
+			discrimination 3x-failure path ended the stage by showing the stage screen.
+			Otherwise False.
 		"""
 
 		if self.trial_outcome == 1:
@@ -2275,7 +2313,9 @@ class ProtocolScreen(ProtocolBase):
 			self.total_false_alarm_tracking.append(0)
 
 		if self.current_stage == 'CJB_Discrimination':
-			self._update_cjb_discrimination_history()
+			return bool(self._update_cjb_discrimination_history())
+
+		return False
 
 
 	def _update_cjb_discrimination_history(self):
@@ -2288,6 +2328,12 @@ class ProtocolScreen(ProtocolBase):
 		trial as ``('Nontarget', 1 if outcome 3 else 0)`` (other trial types are ignored),
 		the window is trimmed to ``cjb_discrimination_trials`` entries and the count is
 		incremented.
+
+		Returns
+		-------
+		bool
+			True when the 3x-failure criterion is met (the stage screen has been shown
+			and the stage ended); otherwise False.
 		"""
 
 		if (self.trial_index < 0) or (self.trial_index >= len(self.trial_list)):
@@ -2304,7 +2350,7 @@ class ProtocolScreen(ProtocolBase):
 				self.stage_list.remove('CJB_Probe')
 			self.current_block += 1
 			self.start_stage_screen()
-			return
+			return True
 
 		trial_type = self.trial_list[self.trial_index]
 
@@ -2910,7 +2956,9 @@ class ProtocolScreen(ProtocolBase):
 		limit, block limit). Otherwise it records ``trial_end_time`` with
 		``time.perf_counter`` and, if the block is running, starts the ITI when the hold
 		button is pressed, returns while the stage screen is showing, or schedules the hold
-		reminder after 2.0 seconds.
+		reminder after 2.0 seconds. Returns here without advancing when the CJB
+		discrimination 3x-failure path (from the hit/false-alarm tracking) already ended
+		the stage by showing the stage screen.
 
 		Parameters
 		----------
@@ -2931,8 +2979,7 @@ class ProtocolScreen(ProtocolBase):
 		try:
 			if self.current_block_trial != 0:
 				self._encode_last_response()
-				self._update_hit_false_alarm_tracking()
-				if self._run_staircase():
+				if self._update_hit_false_alarm_tracking() or self._run_staircase():
 					return
 
 			self._advance_trial_counters_and_iti()
@@ -2996,6 +3043,7 @@ class ProtocolScreen(ProtocolBase):
 		self.feedback_on_screen = False
 		self.hold_button_pressed = False
 		self.response_made = False
+		self.pending_feedback_key = ''
 		self.stage_screen_started = True
 		self.block_started = True
 		self.protocol_floatlayout.block_on_move_touch_down = True

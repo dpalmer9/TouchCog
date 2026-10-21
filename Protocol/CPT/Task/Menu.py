@@ -222,6 +222,7 @@ class ConfigureScreen(MenuBase):
         to ``'Select...'``.
         """
          # Try to find the similarity_difficulty checkbox that was created by menu_constructor if not in battery mode
+        sim_config = False
         if not self.app.battery_active:
             sim_checkbox = None
             children = list(self.setting_gridlayout.children)
