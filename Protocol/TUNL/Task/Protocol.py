@@ -1698,8 +1698,9 @@ class ProtocolScreen(ProtocolBase):
 		-----
 		Row columns (``self.data_cols``): TrialNo, Stage, Block, BlockTrial,
 		Separation (``current_sep``), Delay (``current_delay``), Cue_X, Cue_Y,
-		Target_X, Target_Y (the stored ``trial_coord`` values, each written with 1
-		added), VideoTime (``video_position``, cumulative seconds of distractor
+		Target_X, Target_Y (the stored ``trial_coord`` values, each a screen
+		fraction 0-1 giving the pos_hint centre, matching the event file), VideoTime
+		(``video_position``, cumulative seconds of distractor
 		video shown), Contingency, Outcome (``trial_outcome``), LastResponse and
 		ResponseLatency (seconds from target onset to the press; NaN for misses and
 		aborts).
@@ -1717,10 +1718,10 @@ class ProtocolScreen(ProtocolBase):
 			, self.current_block_trial
 			, self.current_sep
 			, self.current_delay
-			, (cue_x + 1)
-			, (cue_y + 1)
-			, (target_x + 1)
-			, (target_y + 1)
+			, cue_x
+			, cue_y
+			, target_x
+			, target_y
 			, self.video_position
 			, self.contingency
 			, self.trial_outcome
@@ -1757,8 +1758,8 @@ class ProtocolScreen(ProtocolBase):
 		updates that stage's tracked limit and sets the next value to the (rounded)
 		midpoint of the limits while they are further apart than the resolution; once
 		within the resolution it re-tests the untested limit, and the block ends on
-		the results screen when the limits have been tested (for Delay, when either
-		limit has been tested) or ``block_duration`` elapses.
+		the results screen when the limits have been tested (for Delay, when both
+		limits have been tested) or ``block_duration`` elapses.
 		Otherwise the next trial is prepared: counters are incremented, the ITI is
 		chosen from ``iti_range``, and cue/target positions are regenerated via
 		:meth:`generate_trial_pos_sep`.
@@ -1914,7 +1915,7 @@ class ProtocolScreen(ProtocolBase):
 
 								# Else, if minimum and maximum separations exist, proceed
 								elif (self.delay_probe_sep_limit_dict['min'] in self.delay_probe_sep_tracking) \
-										or (self.delay_probe_sep_limit_dict['max'] in self.delay_probe_sep_tracking):
+										and (self.delay_probe_sep_limit_dict['max'] in self.delay_probe_sep_tracking):
 
 									# Move to results screen
 									self.current_block += 1
