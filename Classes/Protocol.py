@@ -1706,7 +1706,8 @@ class ProtocolBase(Screen):
 
 		Early-returns if ``self.metadata_generated`` is already set. Builds a
 		``Parameter``/``Value`` DataFrame from ``self.metadata_cols`` and the
-		corresponding ``self.parameters_dict`` entries, picks the first free
+		corresponding ``self.parameters_dict`` entries (falling back to the attribute
+		of the same name, then ``''``, when a key is absent), picks the first free
 		path ``<id>_<protocol>_<date>_<file_index>_Metadata.csv`` (later candidates get
 		``_2``, ``_3`` ... before ``_Metadata``), queues it for writing and marks ``self.metadata_generated`` True.
 		"""
@@ -1721,7 +1722,8 @@ class ProtocolBase(Screen):
 		for meta_row in self.metadata_cols:
 			row_list = list()
 			row_list.append(meta_row)
-			row_list.append(str(self.parameters_dict[meta_row]))
+			# Fall back to the resolved attribute for keys the menu/config did not supply (task defaults)
+			row_list.append(str(self.parameters_dict.get(meta_row, getattr(self, meta_row, ''))))
 			meta_list.append(row_list)
 		
 		meta_stem = '_'.join([self.participant_id, self.protocol_name, str(datetime.date.today()), str(self.file_index)])
