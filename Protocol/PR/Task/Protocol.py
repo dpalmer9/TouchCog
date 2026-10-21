@@ -187,6 +187,8 @@ class ProtocolScreen(ProtocolBase):
 
 		self.current_block = -1
 
+		self.current_trial = 1
+
 
 		# Define Variables - Time
 		
@@ -413,7 +415,9 @@ class ProtocolScreen(ProtocolBase):
 		Runs the parameter, state, session-stage, image-widget, language and
 		video/instruction setup steps, then starts the clock. When a
 		``Tutorial_Video`` folder exists the layout is cleared and the tutorial screen
-		is triggered; otherwise the instructions are presented.
+		is triggered; otherwise the instructions are presented and the start button is
+		unbound from :meth:`start_protocol` and bound to
+		:meth:`start_protocol_from_tutorial` so that the contingency runs.
 
 		Parameters
 		----------
@@ -437,6 +441,8 @@ class ProtocolScreen(ProtocolBase):
 		
 		else:
 			self.present_instructions()
+			self.start_button.unbind(on_press=self.start_protocol)
+			self.start_button.bind(on_press=self.start_protocol_from_tutorial)
 
 
 
@@ -745,6 +751,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Hold Button')
 		else:
 			self.protocol_floatlayout.remove_widget(self.stimulus_button)
+			self.protocol_floatlayout.remove_widget(self.stimulus_button_pressed)
 			self.protocol_floatlayout.add_widget(self.stimulus_button_pressed)
 
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', str(self.stimulus_button.pos_hint))
@@ -770,11 +777,16 @@ class ProtocolScreen(ProtocolBase):
 
 		Notes
 		-----
-		Builds a row of ``current_trial``, ``current_block``,
-		``current_block_trial``, ``total_hit_count``, ``response_level``, the
-		stimulus button ``pos_hint`` x and y, and ``response_latency``, then passes
-		it to :meth:`write_summary_file`.
+		Builds a row of ``current_trial`` (the 1-based, block-unique trial number),
+		``current_block``, ``current_block_trial``, ``total_hit_count``,
+		``response_level``, the target button ``pos_hint`` x and y, and
+		``response_latency``, then passes it to :meth:`write_summary_file`. On a
+		confirmation trial (``current_block_trial`` even and ``use_confirmation``) the
+		target is the hold button, otherwise the stimulus button.
 		"""
+
+		target = self.hold_button if (self.current_block_trial % 2) != 1 \
+			and self.use_confirmation else self.stimulus_button
 
 		trial_data = [
 			self.current_trial
@@ -782,8 +794,8 @@ class ProtocolScreen(ProtocolBase):
 			, self.current_block_trial
 			, self.total_hit_count
 			, self.response_level
-			, self.stimulus_button.pos_hint['center_x']
-			, self.stimulus_button.pos_hint['center_y']
+			, target.pos_hint['center_x']
+			, target.pos_hint['center_y']
 			, self.response_latency
 			]
 		
@@ -796,15 +808,18 @@ class ProtocolScreen(ProtocolBase):
 	def trial_contingency(self):
 		"""Advance the block or trial and start the next presentation.
 
-		When ``current_block_trial`` reaches ``self.hit_target`` the block ends:
-		unschedules ``iti_end``, increments ``current_block`` and ``response_level``,
-		sets ``hit_target = 2 ** response_level`` and ``block_end_time``, logs
-		``'Block End'`` with the response level and hit target, and calls
-		:meth:`block_contingency`. Otherwise, increments ``current_trial`` and
-		``current_block_trial`` and logs both; on confirmation trials no stimulus
-		position is chosen, else a position is generated via
-		:meth:`generate_stimulus_pos`, applied to both stimulus buttons and logged as
-		``'Target Location'``. Finally calls :meth:`stimulus_presentation`.
+		Increments ``current_trial`` at the start of every trial, giving a 1-based
+		number that stays unique across blocks (the block-ending trial advances it
+		too). When ``current_block_trial`` reaches ``self.hit_target`` the block
+		ends: unschedules ``iti_end``, increments ``current_block`` and
+		``response_level``, sets ``hit_target = 2 ** response_level`` and
+		``block_end_time``, logs ``'Block End'`` with the response level and hit
+		target, and calls :meth:`block_contingency`. Otherwise, increments
+		``current_block_trial`` and logs both ``current_trial`` and
+		``current_block_trial``; on confirmation trials no stimulus position is
+		chosen, else a position is generated via :meth:`generate_stimulus_pos`,
+		applied to both stimulus buttons and logged as ``'Target Location'``.
+		Finally calls :meth:`stimulus_presentation`.
 
 		Notes
 		-----
@@ -813,6 +828,9 @@ class ProtocolScreen(ProtocolBase):
 		"""
 		
 		try:
+
+			self.current_trial += 1
+
 			if self.current_block_trial >= self.hit_target:
 				Clock.unschedule(self.iti_end)
 
@@ -833,7 +851,6 @@ class ProtocolScreen(ProtocolBase):
 			
 
 			else:
-				self.current_trial += 1
 				self.current_block_trial += 1
 				
 				self.protocol_floatlayout.add_variable_event('Parameter', 'Current Trial', str(self.current_trial))
