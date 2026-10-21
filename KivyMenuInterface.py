@@ -38,8 +38,6 @@ os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 import configparser
 import csv
-import importlib
-import importlib.util
 import atexit
 import shutil
 import pathlib
@@ -252,13 +250,10 @@ if use_mouse == 0:
 
 
 # Imports - Kivy once config is done #
-import kivy
 
-from Classes.Menu import MenuBase
+from Classes.Menu import MenuBase, load_protocol_module, normalize_field_name
 from Classes.Survey import SurveyBase
 from Classes.Protocol import ProtocolBase, PreloadedVideo
-
-from ffpyplayer.player import MediaPlayer
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -266,18 +261,13 @@ from kivy.config import Config
 from kivy.logger import Logger
 from kivy.core.window import Window
 from kivy.uix.vkeyboard import VKeyboard
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.textinput import TextInput
-from kivy.uix.vkeyboard import VKeyboard
-from kivy.uix.widget import Widget
-from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, Line
 from kivy.uix.dropdown import DropDown
@@ -331,47 +321,6 @@ def search_protocols():
 		
 		return output_list
 
-def protocol_constructor(protocol, mod_name):
-		
-		def lazy_import(protocol, mod_name):
-			working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
-			unique_mod_name = f"{protocol}.{mod_name}"
-			mod_spec = importlib.util.spec_from_file_location(unique_mod_name, working)
-			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
-			mod_spec.loader = mod_loader
-			module = importlib.util.module_from_spec(mod_spec)
-			sys.modules[unique_mod_name] = module
-			mod_loader.exec_module(module)
-			
-			return module
-		
-		task_module = lazy_import(protocol, mod_name)
-
-		return task_module
-
-
-# Class Objects #
-
-class ImageButton(ButtonBehavior, Image):
-	
-	def __init__(self, **kwargs):
-		
-		super(ImageButton, self).__init__(**kwargs)
-
-
-
-
-# Class Screen Manager #
-
-class ScreenManager(ScreenManager):
-	
-	def __init__(self, **kwargs):
-		
-		super(ScreenManager, self).__init__(**kwargs)
-
-
-
-
 # Class Task Selection #
 
 class LanguageMenu(Screen):
@@ -382,13 +331,7 @@ class LanguageMenu(Screen):
 		self.name = 'languagemenu'
 		self.app = App.get_running_app()
 		self.app.active_screen = self.name
-		self.config = configparser.ConfigParser()
-		# Load user-local Config.ini located in the user's home directory
-		try:
-			self.config.read(str(user_config_path), encoding='utf-8')
-		except Exception:
-			# Fallback: try to read from app_root
-			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
+		self.config = config_file
 		self.Language_Layout = FloatLayout()
 		self.add_widget(self.Language_Layout)
 
@@ -397,42 +340,19 @@ class LanguageMenu(Screen):
 		self.language_list = list()
 		self._manifest = None
 
-		# Prefer to load the available language names from the manifest first
-		# (manifest format contains a list of dicts under key 'languages').
-		# Fall back to scanning the local Language/ directory when the
-		# manifest is unavailable or doesn't supply any languages.
-		try:
-			manifest = self._fetch_manifest()
-			self._manifest = manifest
-			if isinstance(manifest, dict):
-				for lang_block in manifest.get('languages', []):
-					if isinstance(lang_block, dict):
-						# Each block maps a language name to its entries, e.g.
-						# { "English": [{...}] }
-						for lang_name in lang_block.keys():
-							# guard against accidental duplicates
-							if lang_name not in self.language_list:
-								self.language_list.append(lang_name)
-		except Exception:
-			# Any failure while reading manifest should simply fall through
-			# to the filesystem-scanning fallback below.
-			pass
-
-		# Fallback: scan the Language/ directory for available languages
-		if not self.language_list:
-			with os.scandir(app_root / 'Language') as entries:
-				for entry in entries:
-					if entry.is_dir():
-						self.language_list.append(entry.name)
+		# Build the dropdown from the local Language/ directory now; the remote
+		# manifest is fetched off the main thread and may add more languages later.
+		with os.scandir(app_root / 'Language') as entries:
+			for entry in entries:
+				if entry.is_dir():
+					self.language_list.append(entry.name)
 		self.language_dropdown = DropDown()
 		self.language_drop_button = Button(text='Select Language')
 		# Position dropdown near top middle
 		self.language_drop_button.size_hint = (0.4, 0.08)
 		self.language_drop_button.pos_hint = {'x': 0.3, 'y': 0.5}
 		for language in self.language_list:
-			btn = Button(text=language, size_hint_y=None, height=44)
-			btn.bind(on_release=lambda btn: self.language_dropdown.select(btn.text))
-			self.language_dropdown.add_widget(btn)
+			self._add_language_button(language)
 
 		self.language_dropdown.bind(on_select=lambda instance, x: setattr(self.language_drop_button, 'text', x))
 		self.language_drop_button.bind(on_release=self.language_dropdown.open)
@@ -443,9 +363,34 @@ class LanguageMenu(Screen):
 		self.start_button.size_hint = (0.3, 0.12)
 		self.start_button.pos_hint = {'x': 0.35, 'y': 0.08}
 		self.start_button.bind(on_press=self.start_touchcog)
+		# Enabled once the manifest fetch has finished (success or failure)
+		self.start_button.disabled = True
 
 		self.Language_Layout.add_widget(self.start_button)
-	
+
+		threading.Thread(target=self._load_manifest_async, daemon=True).start()
+
+	def _add_language_button(self, language):
+		btn = Button(text=language, size_hint_y=None, height=44)
+		btn.bind(on_release=lambda btn: self.language_dropdown.select(btn.text))
+		self.language_dropdown.add_widget(btn)
+
+	def _load_manifest_async(self):
+		manifest = self._fetch_manifest()
+		Clock.schedule_once(lambda dt: self._apply_manifest(manifest))
+
+	def _apply_manifest(self, manifest):
+		self._manifest = manifest
+		# Manifest format: a list of dicts under 'languages', each mapping a language name to its entries
+		if isinstance(manifest, dict):
+			for lang_block in manifest.get('languages', []):
+				if isinstance(lang_block, dict):
+					for lang_name in lang_block.keys():
+						if lang_name not in self.language_list:
+							self.language_list.append(lang_name)
+							self._add_language_button(lang_name)
+		self.start_button.disabled = False
+
 	def start_touchcog(self, *args):
 		self.app.language = self.language_drop_button.text
 		# If no language selected, just go to main menu
@@ -456,8 +401,7 @@ class LanguageMenu(Screen):
 			self.manager.current = 'mainmenu'
 			return
 
-		# Reuse the manifest fetched in __init__; only re-fetch if that failed
-		manifest = self._manifest if self._manifest is not None else self._fetch_manifest()
+		manifest = self._manifest
 		if manifest is None:
 			# Couldn't load manifest; proceed to main menu
 			self.app.language = self.config['language']['language']
@@ -472,7 +416,7 @@ class LanguageMenu(Screen):
 			with open(str(user_config_path), 'w', encoding='utf-8') as f:
 				self.config.write(f)
 		except Exception as e:
-			print('WARNING: Could not write Config.ini to user home:', e)
+			Logger.warning(f'TouchCog: could not write Config.ini: {e}')
 
 		# Ensure bin folder exists
 		self._ensure_destination(None)
@@ -489,7 +433,7 @@ class LanguageMenu(Screen):
 					download_candidates.append(entry)
 					break
 		except Exception:
-			pass
+			Logger.exception('TouchCog: could not read language entry from manifest')
 
 		# 2. Videos
 		for entry in manifest.get('Videos', []):
@@ -525,8 +469,7 @@ class LanguageMenu(Screen):
 						if local_mtime < manifest_date:
 							needs_download = True
 					except Exception as e:
-						print(f"Date comparison failed for {filename}: {e}")
-						pass
+						Logger.warning(f'TouchCog: date comparison failed for {filename}: {e}')
 			
 			if needs_download:
 				items_to_download.append(entry)
@@ -564,12 +507,12 @@ class LanguageMenu(Screen):
 				try:
 					return json.loads(data)
 				except json.JSONDecodeError:
-					print('WARNING: Remote manifest JSON failed strict parsing; attempting sanitize')
+					Logger.warning('TouchCog: remote manifest JSON failed strict parsing; attempting sanitize')
 					sanitized = self._sanitize_json_text(data)
 					try:
 						return json.loads(sanitized)
 					except Exception as e:
-						print('WARNING: Sanitized remote manifest JSON still failed parsing:', e)
+						Logger.warning(f'TouchCog: sanitized remote manifest JSON still failed parsing: {e}')
 						raise
 		except Exception:
 			# Fallback to local file in project root
@@ -580,12 +523,12 @@ class LanguageMenu(Screen):
 					try:
 						return json.loads(local_text)
 					except json.JSONDecodeError:
-						print('WARNING: Local manifest JSON failed strict parsing; attempting sanitize')
+						Logger.warning('TouchCog: local manifest JSON failed strict parsing; attempting sanitize')
 						sanitized = self._sanitize_json_text(local_text)
 						try:
 							return json.loads(sanitized)
 						except Exception as e:
-							print('WARNING: Sanitized local manifest JSON still failed parsing:', e)
+							Logger.warning(f'TouchCog: sanitized local manifest JSON still failed parsing: {e}')
 							return None
 			except Exception:
 				return None
@@ -665,17 +608,18 @@ class LanguageMenu(Screen):
 							if all((root / m).resolve().is_relative_to(root) for m in zip_ref.namelist()):
 								zip_ref.extractall(app_root)
 							else:
-								print(f"WARNING: Skipping {name}: archive contains paths outside the app directory")
-					except Exception as e:
-						print(f"Failed to extract {name}: {e}")
+								Logger.warning(f'TouchCog: skipping {name}: archive contains paths outside the app directory')
+					except Exception:
+						Logger.exception(f'TouchCog: failed to extract {name}')
 
-			except Exception as e:
-				print(f"Failed to download {name}: {e}")
+			except Exception:
+				Logger.exception(f'TouchCog: failed to download {name}')
 				# On failure, ensure file doesn't exist
 				try:
 					if local_file.exists():
 						local_file.unlink()
 				except Exception:
+					# partial file cleanup
 					pass
 			# Mark completed
 			completed += 1
@@ -804,10 +748,10 @@ class ProtocolMenu(Screen):
 			self.manager.remove_widget(self.Protocol_Configure_Screen)
 
 		if (app_root / 'Protocol' / label / 'Task' / 'Menu.py').is_file():
-			task_module = protocol_constructor(label, 'Menu')
+			task_module = load_protocol_module(app_root, label, 'Menu')
 			self.Protocol_Configure_Screen = task_module.ConfigureScreen()
 		else:
-			task_module = protocol_constructor(label, 'Protocol')
+			task_module = load_protocol_module(app_root, label, 'Protocol')
 			self.Protocol_Configure_Screen = task_module.SurveyProtocol()
 
 		self.Protocol_Configure_Screen.size = Window.size
@@ -906,9 +850,9 @@ class BatteryMenu(Screen):
 							'data': battery_data
 						})
 				except Exception as e:
-					print(f"Error loading battery file {json_file}: {e}")
+					Logger.warning(f'TouchCog: error loading battery file {json_file}: {e}')
 		except Exception as e:
-			print(f"Error accessing Battery directory: {e}")
+			Logger.warning(f'TouchCog: error accessing Battery directory: {e}')
 		
 		return batteries
 	
@@ -947,7 +891,7 @@ class BatteryMenu(Screen):
 	def start_battery(self, *args):
 		"""Start the selected battery"""
 		if not self.selected_battery:
-			print("No battery selected")
+			Logger.warning('TouchCog: no battery selected')
 			return
 		
 		# Find the selected battery data
@@ -986,96 +930,17 @@ class BatteryMenu(Screen):
 			self.app.battery_task_types = {}
 
 			for task in battery_data.get('tasks', []):
-				pname = task.get('task')
+				pname, ttype, required_fields, parameter_dict = self._build_battery_config(task, participant_id)
 				if not pname:
-					print("Warning: Skipping malformed battery entry with missing 'task' field:", task)
+					Logger.warning(f"TouchCog: skipping battery entry with missing 'task' field: {task}")
 					continue
-				ttype = task.get('type', 'task')
 				self.app.battery_task_types[pname] = ttype
-				
-				# Extract required fields if they exist (for filtering in battery mode)
-				required_fields = task.get('required')
-				if required_fields and isinstance(required_fields, dict):
-					# required is a dict like {'image_set': 'Image Set', 'dspal_image_set': 'dsPAL Image Set', ...}
-					# Extract just the keys (parameter names to show)
-					self.app.battery_required_fields[pname] = list(required_fields.keys())
-				elif required_fields is not None and isinstance(required_fields, dict):
-					# Empty dict '{}' means preloaded battery with no filtering (use all fields)
-					# Set to empty list to signal "skip configure screen"
-					self.app.battery_required_fields[pname] = []
-				else:
-					# 'required' key not present at all - shouldn't happen in valid JSON
-					# Treat as None (will be set by manual battery code if needed)
-					self.app.battery_required_fields[pname] = None
-				
-				# Only build a configuration dict for actual 'task' types; surveys get no config
-				if ttype == 'task':
-					overrides = task.get('overrides', {}) or {}
-					# Build a flat parameter dict (like MenuBase.start_protocol produces)
-					parameter_dict = {}
-					conf_path = app_root / 'Protocol' / pname / 'Configuration.ini'
-					if conf_path.is_file():
-						cfg = configparser.ConfigParser()
-						cfg.read(conf_path, encoding='utf-8')
-						# choose which section to use for UI parameters
-						use_section = 'TaskParameters'
-						if 'DebugParameters' in cfg and cfg.getboolean('DebugParameters', 'debug_mode', fallback=False):
-							use_section = 'DebugParameters'
-						if use_section in cfg:
-							for opt in cfg[use_section]:
-								val = cfg.get(use_section, opt)
-								# try to coerce numeric/bool types
-								try:
-									if isinstance(val, str) and val.lower() in ('true', 'false'):
-										parsed = cfg.getboolean(use_section, opt)
-									else:
-										parsed = val
-								except Exception:
-									parsed = val
-								# normalize key the same way MenuBase.start_protocol does
-								key_norm = opt.lower().replace(' ', '_')
-								parameter_dict[key_norm] = parsed
-					else:
-						# no config file: start with empty dict and allow overrides + participant id
-						parameter_dict = {}
-
-					# Apply overrides: support 'section.option' or match to normalized parameter names
-					for k, v in overrides.items():
-						if isinstance(v, str) and v.lower() in ('true', 'false'):
-							if v.strip().lower() == 'false':
-								v = False
-							else:
-								v = True
-						if isinstance(k, str) and '.' in k:
-							sec, opt = k.split('.', 1)
-							# try to map section.option to parameter name if possible
-							if conf_path.is_file():
-								cfg_try = configparser.ConfigParser()
-								cfg_try.read(conf_path, encoding='utf-8')
-								if sec in cfg_try and opt in cfg_try[sec]:
-									key_norm = opt.lower().replace(' ', '_')
-									parameter_dict[key_norm] = v
-								else:
-									# fallback: store under normalized combined key
-									parameter_dict[k.lower().replace(' ', '_')] = v
-						else:
-							# try to match plain override key to existing normalized keys
-							norm = k.lower().replace(' ', '_')
-							if norm in parameter_dict:
-								parameter_dict[norm] = v
-							else:
-								# fallback: store override as-is (normalized)
-								parameter_dict[norm] = v
-
-					# Only add participant_id if this task doesn't have required_fields filtering
-					# (when required_fields are present, participant_id should be collected separately)
-					if not self.app.battery_required_fields.get(pname):
-						parameter_dict['participant_id'] = participant_id
-
-					battery_configs[pname] = parameter_dict
-				else:
+				self.app.battery_required_fields[pname] = required_fields
+				if parameter_dict is None:
 					# survey: do not build/present a configuration to the survey task
 					battery_configs.pop(pname, None)
+				else:
+					battery_configs[pname] = parameter_dict
 
 			self.app.battery_configs = battery_configs
 			popup.dismiss()
@@ -1097,6 +962,64 @@ class BatteryMenu(Screen):
 		popup = Popup(title='Participant ID', content=content, size_hint=(0.6, 0.4))
 		popup.open()
 	
+	def _build_battery_config(self, task, participant_id):
+		"""Return (task name, type, required field names, parameter dict) for one battery entry.
+
+		required field names is None (show all fields), [] (skip the configure screen) or a list of
+		names to show; the parameter dict is None for surveys, which get no configuration.
+		"""
+		pname = task.get('task')
+		if not pname:
+			return None, None, None, None
+		ttype = task.get('type', 'task')
+
+		# 'required' is a dict like {'image_set': 'Image Set', ...}; its keys are the parameters to show.
+		# An empty dict means a preloaded battery with nothing to ask for.
+		required = task.get('required')
+		required_fields = list(required.keys()) if isinstance(required, dict) else None
+		if ttype != 'task':
+			return pname, ttype, required_fields, None
+
+		# Build a flat parameter dict (like MenuBase.start_protocol produces)
+		parameter_dict = {}
+		cfg = configparser.ConfigParser()
+		conf_path = app_root / 'Protocol' / pname / 'Configuration.ini'
+		has_conf = conf_path.is_file()
+		if has_conf:
+			cfg.read(conf_path, encoding='utf-8')
+			# choose which section to use for UI parameters
+			use_section = 'TaskParameters'
+			if 'DebugParameters' in cfg and cfg.getboolean('DebugParameters', 'debug_mode', fallback=False):
+				use_section = 'DebugParameters'
+			if use_section in cfg:
+				for opt in cfg[use_section]:
+					val = cfg.get(use_section, opt)
+					# coerce booleans
+					parsed = cfg.getboolean(use_section, opt) if val.lower() in ('true', 'false') else val
+					parameter_dict[normalize_field_name(opt)] = parsed
+
+		# Apply overrides: support 'section.option' or plain parameter names
+		for k, v in (task.get('overrides') or {}).items():
+			if isinstance(v, str) and v.lower() in ('true', 'false'):
+				v = v.lower() == 'true'
+			if '.' in k:
+				sec, opt = k.split('.', 1)
+				# try to map section.option to parameter name if possible
+				if has_conf:
+					if sec in cfg and opt in cfg[sec]:
+						parameter_dict[normalize_field_name(opt)] = v
+					else:
+						# fallback: store under normalized combined key
+						parameter_dict[normalize_field_name(k)] = v
+			else:
+				parameter_dict[normalize_field_name(k)] = v
+
+		# Only add participant_id if this task doesn't have required_fields filtering
+		# (when required_fields are present, participant_id should be collected separately)
+		if not required_fields:
+			parameter_dict['participant_id'] = participant_id
+		return pname, ttype, required_fields, parameter_dict
+
 	def load_protocol_battery(self, *args):
 		"""Load the manual ProtocolBattery screen"""
 		self.protocol_battery_screen = ProtocolBattery()
@@ -1380,9 +1303,6 @@ class ProtocolBattery(Screen):
 			# No protocols selected, return to main menu
 			self.manager.current = 'mainmenu'
 
-	def start_battery_task(self, *args):
-		return
-	
 
 class VideoScreen(Screen):
 
@@ -1427,6 +1347,7 @@ class VideoScreen(Screen):
 			try:
 				self.video_finish_event.cancel()
 			except Exception:
+				# already stopped
 				pass
 			self.video_finish_event = None
 
@@ -1436,10 +1357,12 @@ class VideoScreen(Screen):
 			try:
 				self.current_video.state = 'stop'
 			except Exception:
+				# stale video, harmless
 				pass
 			try:
 				self.current_video.unload()
 			except Exception:
+				# already stopped
 				pass
 		self.current_video = None
 		self.current_video_duration = 0.0
@@ -1540,11 +1463,13 @@ class VideoScreen(Screen):
 		try:
 			self.current_video.state = 'stop'
 		except Exception:
+			# stale video, harmless
 			pass
 		try:
 			self.current_video.unload()
 			self.current_video.reload()
 		except Exception:
+			# already stopped
 			pass
 		self.current_video.state = 'play'
 		if self.skip_video_enabled:
@@ -1571,13 +1496,6 @@ class VideoScreen(Screen):
 	def _go_to_destination(self, destination_screen):
 		if self.manager is not None and self.manager.has_screen(destination_screen):
 			self.manager.current = destination_screen
-	
-	def exit_tutorial(self, *args):
-		if self.destination_screen:
-			self.manager.current = self.destination_screen
-		else:
-			self.manager.current = 'mainmenu'
-
 
 
 # Class App Builder #
@@ -1615,12 +1533,7 @@ class MenuApp(App):
 
 		self.s_manager = ScreenManager()
 		self.active_screen = ''
-		self.config = configparser.ConfigParser()
-		# Load Config.ini from user's home; fallback to app_root if needed
-		try:
-			self.config.read(str(user_config_path), encoding='utf-8')
-		except Exception:
-			self.config.read(str(app_root / 'Config.ini'), encoding='utf-8')
+		self.config = config_file
 		self.language = self.config.get('language', 'language', fallback='English')
 		self.language_menu = LanguageMenu()
 		self.replace_screen(self.language_menu)
@@ -1648,6 +1561,7 @@ class MenuApp(App):
 		try:
 			self.stop()
 		except Exception:
+			# shutdown, best effort
 			pass
 
 	def _run_file_job(self, job, path):
@@ -1685,13 +1599,13 @@ class MenuApp(App):
 				if last_error is not None:
 					original_path = pathlib.Path(job['path'])
 					fallback_path = original_path.with_name(original_path.stem + '_unsaved' + original_path.suffix)
-					print(f"WARNING: Could not write {original_path} ({last_error}); writing to {fallback_path}")
+					Logger.warning(f'TouchCog: could not write {original_path} ({last_error}); writing to {fallback_path}')
 					try:
 						self._run_file_job(job, fallback_path)
 					except OSError as e:
-						print(f"ERROR: Could not write fallback file {fallback_path}: {e}")
-			except Exception as e:
-				print(f"ERROR: File write job failed: {e}")
+						Logger.error(f'TouchCog: could not write fallback file {fallback_path}: {e}')
+			except Exception:
+				Logger.exception('TouchCog: file write job failed')
 			finally:
 				self.file_io_queue.task_done()
 
@@ -1719,7 +1633,7 @@ class MenuApp(App):
 		self.file_io_queue.put({
 			'action': 'write_dataframe',
 			'path': str(path),
-			'dataframe': dataframe.copy(deep=True),
+			'dataframe': dataframe,
 			'index': index,
 		})
 
@@ -1807,7 +1721,7 @@ class MenuApp(App):
 				try:
 					old.clear_video_cache()
 				except Exception:
-					pass
+					Logger.warning('TouchCog: clear_video_cache failed')
 			self.s_manager.remove_widget(old)
 		self.s_manager.add_widget(screen)
 
@@ -1820,7 +1734,7 @@ class MenuApp(App):
 			try:
 				screen.clear_video_cache()
 			except Exception:
-				pass
+				Logger.warning('TouchCog: clear_video_cache failed')
 
 		self.s_manager.remove_widget(screen)
 
@@ -1861,7 +1775,7 @@ class MenuApp(App):
 				return
 			
 			# Show configure screen (either manual battery or preloaded with required fields)
-			protocol_module = protocol_constructor(protocol_name, 'Menu')
+			protocol_module = load_protocol_module(app_root, protocol_name, 'Menu')
 			config_screen = protocol_module.ConfigureScreen()
 			config_screen.update_battery_mode(True, required_fields)
 			config_screen.size = Window.size
@@ -1885,10 +1799,10 @@ class MenuApp(App):
 			protocol_name = self.battery_protocols[self.battery_index]
 			parameter_dict = self.battery_configs[protocol_name] if protocol_name in self.battery_configs else {}
 			if (app_root / 'Protocol' / protocol_name / 'Task' / 'Menu.py').is_file():
-				task_module = protocol_constructor(protocol_name, 'Protocol')
+				task_module = load_protocol_module(app_root, protocol_name, 'Protocol')
 				protocol_task_screen = task_module.ProtocolScreen(screen_resolution=Window.size)
 			else:
-				task_module = protocol_constructor(protocol_name, 'Protocol')
+				task_module = load_protocol_module(app_root, protocol_name, 'Protocol')
 				protocol_task_screen = task_module.SurveyProtocol()
 			self.replace_screen(protocol_task_screen)
 			# Provide parameters to the task only for 'task' types (not surveys)
@@ -1931,10 +1845,6 @@ class MenuApp(App):
 			# Finished all battery tasks
 			self.battery_active = False
 			self.show_general_video('end_session', on_complete=self.open_main_menu)
-	
-	def add_screen(self, screen):
-		
-		self.replace_screen(screen)
 	
 	def on_stop(self):
 		self._write_pending_output_data()

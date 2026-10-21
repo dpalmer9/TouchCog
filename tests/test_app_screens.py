@@ -29,4 +29,18 @@ app.handle_task_completion('task')
 for fn in scheduled:
 	fn(0)
 assert app.battery_index == 1, app.battery_index
+
+# settings grid: direct Label/value pairs, incl. a compound ImageSetDropdown, give the expected parameters
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.checkbox import CheckBox
+from Classes.Menu import ImageSetDropdown, read_grid_parameters
+grid = GridLayout(cols=2)
+dropdown = ImageSetDropdown([{'label': 'Set 1', 'images': [], 'value': 'set1'}])
+dropdown._on_select(None, 'set1')
+for widget in (Label(text='Trial Count'), TextInput(text='5'), Label(text='Use Cue'), CheckBox(active=True),
+		Label(text='CJB Image Set'), dropdown):
+	grid.add_widget(widget)
+assert read_grid_parameters(grid) == {'trial_count': '5', 'use_cue': True, 'cjb_image_set': 'set1'}
 print('ok')

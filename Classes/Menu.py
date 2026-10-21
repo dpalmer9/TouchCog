@@ -3,8 +3,6 @@
 import configparser
 import importlib
 import importlib.util
-import os
-import pathlib
 import sys
 
 from kivy.uix.button import Button
@@ -12,7 +10,7 @@ from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
-from kivy.uix.screenmanager import Screen, ScreenManagerException
+from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 from kivy.effects.scroll import ScrollEffect
 from kivy.uix.textinput import TextInput
@@ -25,6 +23,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle, Line
+from kivy.logger import Logger
 
 
 class ImageSetItem(ButtonBehavior, BoxLayout):
@@ -51,6 +50,7 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 				img = Image(source=src, size_hint=(None, None), size=(thumb_size, thumb_size), allow_stretch=True, keep_ratio=True)
 				thumb_container.add_widget(img)
 			except Exception:
+				Logger.warning(f'TouchCog: could not load thumbnail {p}')
 				# If image fails to load, add an empty label placeholder (white text on black bg)
 				thumb_container.add_widget(Label(text='?', size_hint=(None, None), size=(thumb_size, thumb_size), color=(1,1,1,1)))
 
@@ -61,7 +61,7 @@ class ImageSetItem(ButtonBehavior, BoxLayout):
 		try:
 			self.dropdown.select(self.value)
 		except Exception:
-			pass
+			Logger.exception('TouchCog: dropdown select failed')
 
 
 class StyledDropDown(DropDown):
@@ -92,6 +92,7 @@ class StyledDropDown(DropDown):
 			self._bg_rect.size = self.size
 			self._border_line.rectangle = (self.x, self.y, self.width, self.height)
 		except Exception:
+			# graphics not ready yet
 			pass
 
 	def open(self, widget):
@@ -105,8 +106,7 @@ class StyledDropDown(DropDown):
 				win.remove_widget(self)
 			win.add_widget(self)
 		except Exception:
-			# Fallback: do nothing if window manipulation fails
-			pass
+			Logger.warning('TouchCog: could not raise dropdown to front')
 
 
 class ImageSetDropdown(BoxLayout):
@@ -162,14 +162,44 @@ class ImageSetDropdown(BoxLayout):
 	def get_selected(self):
 		return self.selected_value
 
-	def set_selected_by_value(self, value):
-		# programmatically set selection (will update button text if found)
-		for opt in self.options:
-			if opt.get('value', opt.get('label')) == value:
-				self.selected_value = value
-				self.button.text = opt.get('label', str(value))
-				return True
-		return False
+
+def normalize_field_name(field_name):
+	"""
+	Normalize a field name for comparison with configuration keys.
+	Converts to lowercase and replaces spaces with underscores.
+	"""
+	return field_name.lower().replace(' ', '_')
+
+
+def load_protocol_module(app_root, protocol, mod_name):
+	working = app_root / 'Protocol' / protocol / 'Task' / f'{mod_name}.py'
+	# Unique name so the top-level 'Protocol' package entry is not overwritten
+	unique_mod_name = f'{protocol}.{mod_name}'
+	mod_spec = importlib.util.spec_from_file_location(unique_mod_name, working)
+	mod_loader = importlib.util.LazyLoader(mod_spec.loader)
+	mod_spec.loader = mod_loader
+	module = importlib.util.module_from_spec(mod_spec)
+	sys.modules[unique_mod_name] = module
+	mod_loader.exec_module(module)
+	return module
+
+
+def read_grid_parameters(grid):
+	"""Read a settings grid as {normalized label: value} from its direct label/value pairs, in add order."""
+	parameter_dict = {}
+	key = ''
+	for widget in reversed(grid.children):
+		if isinstance(widget, Label) and not isinstance(widget, Button):
+			key = normalize_field_name(widget.text)
+		elif isinstance(widget, ImageSetDropdown):
+			parameter_dict[key] = widget.get_selected()
+		elif isinstance(widget, TextInput):
+			parameter_dict[key] = widget.text
+		elif isinstance(widget, CheckBox):
+			parameter_dict[key] = widget.active
+		elif isinstance(widget, Button):
+			parameter_dict[key] = widget.text
+	return parameter_dict
 
 
 class MenuBase(Screen):
@@ -268,11 +298,7 @@ class MenuBase(Screen):
 			self.id_grid.size_hint_y = 0.05
 
 	def _normalize_field_name(self, field_name):
-		"""
-		Normalize a field name for comparison with configuration keys.
-		Converts to lowercase and replaces spaces with underscores.
-		"""
-		return field_name.lower().replace(' ', '_')
+		return normalize_field_name(field_name)
 
 	def _should_display_field(self, field_name):
 		"""
@@ -324,58 +350,7 @@ class MenuBase(Screen):
 	def start_protocol(self, *args):
 		
 		
-		def lazy_import(protocol):
-			working = self.app.app_root / 'Protocol' / protocol / 'Task' / 'Protocol.py'
-			# Unique name so the top-level 'Protocol' package entry is not overwritten
-			mod_name = f'{protocol}.Protocol'
-			mod_spec = importlib.util.spec_from_file_location(mod_name, working)
-			mod_loader = importlib.util.LazyLoader(mod_spec.loader)
-			mod_spec.loader = mod_loader
-			module = importlib.util.module_from_spec(mod_spec)
-			sys.modules[mod_name] = module
-			mod_loader.exec_module(module)
-			
-			return module
-		
-		key = ''
-		value = ''
-		parameter_dict = {}
-		
-		for widget in self.setting_gridlayout.walk():
-			
-			
-			if isinstance(widget, Label) and not isinstance(widget, Button):
-				
-				
-				key = widget.text
-				key = key.lower()
-				key = key.replace(' ', '_')
-			
-			
-			elif isinstance(widget, TextInput):
-				value = widget.text
-				parameter_dict[key] = value
-			
-			
-			elif isinstance(widget, Button):
-				# Ignore buttons that belong to an ImageSetDropdown; the
-				# ImageSetDropdown itself is handled separately (it provides
-				# the selected value via get_selected()). This prevents the
-				# internal dropdown button from overwriting the parameter.
-				parent = getattr(widget, 'parent', None)
-				if isinstance(parent, ImageSetDropdown):
-					# skip the internal button
-					continue
-				value = widget.text
-				parameter_dict[key] = value
-			
-			elif isinstance(widget, ImageSetDropdown):
-				value = widget.get_selected()
-				parameter_dict[key] = value
-
-			elif isinstance(widget, CheckBox):
-				value = widget.active
-				parameter_dict[key] = value
+		parameter_dict = read_grid_parameters(self.setting_gridlayout)
 		
 		
 		# Only add participant_id if not using required_fields filtering in battery mode
@@ -389,7 +364,7 @@ class MenuBase(Screen):
 		
 		# Start or protocol or continue battery
 		if not self.is_battery_mode:
-			task_module = lazy_import(self.protocol)
+			task_module = load_protocol_module(self.app.app_root, self.protocol, 'Protocol')
 			protocol_task_screen = task_module.ProtocolScreen(screen_resolution=self.size)
 		
 			# Remove any stale screen with the same name before adding the new one
@@ -398,10 +373,7 @@ class MenuBase(Screen):
 			protocol_task_screen.load_parameters(parameter_dict)
 		
 			self.app.active_screen = protocol_task_screen.name
-			if hasattr(self.app, 'present_task_screen'):
-				self.app.present_task_screen(protocol_task_screen.name)
-			else:
-				self.manager.current = protocol_task_screen.name
+			self.app.present_task_screen(protocol_task_screen.name)
 			self._remove_self_later()
 		
 		else:
@@ -471,10 +443,8 @@ class MenuBase(Screen):
 		if ('DebugParameters' in config_file) \
 			and (config_file.getboolean('DebugParameters', 'debug_mode', fallback=False)):
 			self.parameters_config = config_file['DebugParameters']
-			self.debug_mode = True
 		else:
 			self.parameters_config = config_file['TaskParameters']
-			self.debug_mode = False
 
 		num_parameters = len(self.parameters_config)
 
