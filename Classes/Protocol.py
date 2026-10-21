@@ -9,6 +9,7 @@ import sys
 import time
 import threading
 import queue
+import re
 import random
 import gc
 import math
@@ -25,6 +26,7 @@ from kivy.graphics.texture import Texture
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.config import Config
+from kivy.logger import Logger
 
 
 
@@ -84,6 +86,8 @@ class ImageButton(ButtonBehavior, Image):
 					pass
 				# ensure visual/state is normal
 				self.state = 'normal'
+			# drop the grab so ButtonBehavior cannot dispatch a second on_release at lift
+			touch.ungrab(self)
 			self._touch_inside = False
 			# consume the move event
 			return True
@@ -91,11 +95,13 @@ class ImageButton(ButtonBehavior, Image):
 		# If moved back inside, press it again
 		if inside and not self._touch_inside:
 			if getattr(self, 'state', None) != 'down':
+				# re-grab so ButtonBehavior dispatches the single on_release at lift
+				touch.grab(self)
+				self._do_press()
 				try:
 					self.dispatch('on_press')
 				except Exception:
 					pass
-				self.state = 'down'
 			self._touch_inside = True
 			# consume the move event
 			return True
@@ -162,7 +168,6 @@ class FloatLayoutLog(FloatLayout):
 		self.event_dataframe = pd.DataFrame(columns=self.app.event_columns)
 		self.event_dataframe.Time = self.event_dataframe.Time.astype('float64')
 		self.app.session_event_data = self.event_dataframe
-		self.app.event_list = list()
 		self.event_index = 0
 		self.save_path = ''
 		self.elapsed_time = 0
@@ -177,6 +182,8 @@ class FloatLayoutLog(FloatLayout):
 		if previous_thread is not None and previous_thread.is_alive():
 			self.app.event_queue.put(None)
 			previous_thread.join(timeout=1.0)
+		# Reset only after the previous writer has stopped, so its queued events cannot land here.
+		self.app.event_list = list()
 		self.event_queue = queue.Queue()
 		self.app.event_queue = self.event_queue
 
@@ -223,7 +230,6 @@ class FloatLayoutLog(FloatLayout):
 				if getattr(child, 'state', None) == 'down':
 					child.state = 'normal'
 					if hasattr(child, '_touch_inside'):
-						child._touch_inside = False
 						child._touch_inside = False
 
 			self.dispatch('on_multi_touch', touch, len(self.active_touches))
@@ -307,7 +313,17 @@ class FloatLayoutLog(FloatLayout):
 			
 			if not self.block_on_move_touch_down:
 				if child.collide_point(*touch.pos):
-					child.dispatch('on_touch_down', touch)
+					if child.dispatch('on_touch_down', touch):
+						# a press that started by sliding in
+						self.add_event([self.touch_time
+								, 'Screen'
+								, 'Touch Press'
+								, 'X Position'
+								, self.touch_pos[0]
+								, 'Y Position'
+								, self.touch_pos[1]
+								, 'Stimulus Name'
+								, child.name if isinstance(child, ImageButton) else ''])
 
 			if child.dispatch('on_touch_move', touch):
 				
@@ -654,7 +670,6 @@ class PreloadedVideo(Image):
 		
 		if self.player:
 			try:
-				self.player.toggle_pause() # Ensure player is not running
 				self.player.close_player()
 			except Exception:
 				pass # Best-effort: ignore failures
@@ -1126,84 +1141,22 @@ class ProtocolBase(Screen):
 		
 		self.feedback_dict = {}
 		
-		stim_feedback_correct_str = feedback_lang_config['Stimulus']['correct']
-		stim_feedback_correct_color = feedback_lang_config['Stimulus']['correct_colour']
-		
-		# Check if stim_feedback_correct_str is a png file by looking for .png extension
-		if not stim_feedback_correct_str.endswith('.png'):
-			if stim_feedback_correct_color != '':
-				color_text = '[color=%s]' % stim_feedback_correct_color
-				stim_feedback_correct_str = color_text + stim_feedback_correct_str + '[/color]'
-		
-		self.feedback_dict['correct'] = stim_feedback_correct_str
-		
-		stim_feedback_incorrect_str = feedback_lang_config['Stimulus']['incorrect']
-		stim_feedback_incorrect_color = feedback_lang_config['Stimulus']['incorrect_colour']
-		
-		if not stim_feedback_incorrect_str.endswith('.png'):
-			if stim_feedback_incorrect_color != '':
-				color_text = '[color=%s]' % stim_feedback_incorrect_color
-				stim_feedback_incorrect_str = color_text + stim_feedback_incorrect_str + '[/color]'
-		
-		self.feedback_dict['incorrect'] = stim_feedback_incorrect_str
-		
-		hold_feedback_wait_str = feedback_lang_config['Hold']['wait']
-		hold_feedback_wait_color = feedback_lang_config['Hold']['wait_colour']
-		
-		if hold_feedback_wait_color != '':
-			color_text = '[color=%s]' % hold_feedback_wait_color
-			hold_feedback_wait_str = color_text + hold_feedback_wait_str + '[/color]'
-		
-		self.feedback_dict['wait'] = hold_feedback_wait_str
-		
-		hold_feedback_return_str = feedback_lang_config['Hold']['return']
-		hold_feedback_return_color = feedback_lang_config['Hold']['return_colour']
-		
-		if hold_feedback_return_color != '':
-			color_text = '[color=%s]' % hold_feedback_return_color
-			hold_feedback_return_str = color_text + hold_feedback_return_str + '[/color]'
-		
-		self.feedback_dict['return'] = hold_feedback_return_str
+		def _markup(text, colour):
+			# PNG filenames are image feedback and must not be wrapped in colour markup
+			return text if text.endswith('.png') or not colour else '[color=%s]%s[/color]' % (colour, text)
 
-		hold_feedback_multi_touch_str = feedback_lang_config.get('Hold', 'multi_touch', fallback='PLEASE REMOVE EXTRA FINGER AND RETURN TO WHITE SQUARE')
-		hold_feedback_multi_touch_color = feedback_lang_config.get('Hold', 'multi_touch_colour', fallback=hold_feedback_return_color)
-
-		if hold_feedback_multi_touch_color != '':
-			color_text = '[color=%s]' % hold_feedback_multi_touch_color
-			hold_feedback_multi_touch_str = color_text + hold_feedback_multi_touch_str + '[/color]'
-
-		self.feedback_dict['multi_touch'] = hold_feedback_multi_touch_str
-
-
-		stim_feedback_too_slow_str = feedback_lang_config['Stimulus']['too_slow']
-		stim_feedback_too_slow_color = feedback_lang_config['Stimulus']['too_slow_colour']
-		
-		if stim_feedback_too_slow_color != '':
-			color_text = '[color=%s]' % stim_feedback_too_slow_color
-			stim_feedback_too_slow_str = color_text + stim_feedback_too_slow_str + '[/color]'
-		
-		self.feedback_dict['too_slow'] = stim_feedback_too_slow_str
-
-		
-		stim_feedback_miss_str = feedback_lang_config['Stimulus']['miss']
-		stim_feedback_miss_color = feedback_lang_config['Stimulus']['miss_colour']
-		
-		if not stim_feedback_miss_str.endswith('.png'):
-			if stim_feedback_miss_color != '':
-				color_text = '[color=%s]' % stim_feedback_miss_color
-				stim_feedback_miss_str = color_text + stim_feedback_miss_str + '[/color]'
-		
-		self.feedback_dict['miss'] = stim_feedback_miss_str
-
-		
-		stim_feedback_abort_str = feedback_lang_config['Stimulus']['abort']
-		stim_feedback_abort_color = feedback_lang_config['Stimulus']['abort_colour']
-		
-		if stim_feedback_abort_color != '':
-			color_text = '[color=%s]' % stim_feedback_abort_color
-			stim_feedback_abort_str = color_text + stim_feedback_abort_str + '[/color]'
-		
-		self.feedback_dict['abort'] = stim_feedback_abort_str
+		stim = feedback_lang_config['Stimulus']
+		hold = feedback_lang_config['Hold']
+		self.feedback_dict['correct'] = _markup(stim['correct'], stim['correct_colour'])
+		self.feedback_dict['incorrect'] = _markup(stim['incorrect'], stim['incorrect_colour'])
+		self.feedback_dict['wait'] = _markup(hold['wait'], hold['wait_colour'])
+		self.feedback_dict['return'] = _markup(hold['return'], hold['return_colour'])
+		self.feedback_dict['multi_touch'] = _markup(
+			feedback_lang_config.get('Hold', 'multi_touch', fallback='PLEASE REMOVE EXTRA FINGER AND RETURN TO WHITE SQUARE')
+			, feedback_lang_config.get('Hold', 'multi_touch_colour', fallback=hold['return_colour']))
+		self.feedback_dict['too_slow'] = _markup(stim['too_slow'], stim['too_slow_colour'])
+		self.feedback_dict['miss'] = _markup(stim['miss'], stim['miss_colour'])
+		self.feedback_dict['abort'] = _markup(stim['abort'], stim['abort_colour'])
 		
 		return
 	
@@ -1212,6 +1165,8 @@ class ProtocolBase(Screen):
 	def generate_output_files(self):
 		if self.output_generated:
 			return
+
+		self.participant_id = re.sub(r'[^\w\-]', '_', str(self.participant_id).strip()) or 'Default'
 
 		folder_path = pathlib.Path(self.data_folder, self.participant_id)
 		self.protocol_ended = False
@@ -1291,25 +1246,24 @@ class ProtocolBase(Screen):
 		self.tutorial_restart_button.pos_hint = {"center_x": 0.25, "y": 0.01}
 		self.tutorial_video_button.size_hint = (1, 1)
 		self.tutorial_video_button.pos_hint = {'center_x': 0.5, 'center_y': 0.5}
-			
-		self.protocol_floatlayout.add_stage_event('Object Display')
 
-		
 		self.tutorial_video.state = 'stop'
 		if self.skip_tutorial_video:
 			self.tutorial_video_duration = 0.0
 		else:
-			# Check if duration is already available (it should be, since we preloaded), otherwise wait briefly
+			# Re-read metadata; duration is only set once in PreloadedVideo.__init__
 			if self.tutorial_video.duration is None:
-				# Re-read metadata; duration is only set once in PreloadedVideo.__init__
 				if self.tutorial_video.player is not None:
 					self.tutorial_video.duration = self.tutorial_video.player.get_metadata().get('duration')
-				# Wait briefly to allow the video to load and update its duration
+			# Wait briefly (max ~5 s) for the video to load, then proceed with duration 0.0
+			if self.tutorial_video.duration is None and getattr(self, '_tutorial_duration_polls', 0) < 50:
+				self._tutorial_duration_polls = getattr(self, '_tutorial_duration_polls', 0) + 1
 				Clock.schedule_once(self.present_tutorial_video, 0.1)
 				return
-			else:
-				self.tutorial_video_duration = self.tutorial_video.duration
+			self._tutorial_duration_polls = 0
+			self.tutorial_video_duration = self.tutorial_video.duration or 0.0
 
+		self.protocol_floatlayout.add_stage_event('Object Display')
 		self.protocol_floatlayout.add_widget(self.tutorial_video)
 		self.protocol_floatlayout.add_widget(self.tutorial_video_button)
 
@@ -1517,8 +1471,11 @@ class ProtocolBase(Screen):
 				self.current_widget = self.manager.get_screen(self.name)
 				self.manager.remove_widget(self.current_widget)	
 		except Exception:
-			# best-effort: ignore failures here
-			pass
+			Logger.exception('ProtocolBase: return_to_main failed')
+			try:
+				self.manager.current = 'mainmenu'
+			except Exception:
+				Logger.exception('ProtocolBase: fallback to mainmenu failed')
 
 		return
 	
@@ -1646,29 +1603,36 @@ class ProtocolBase(Screen):
 		self.hold_button_pressed = True
 
 	def assign_feedback(self, feedback_key=None, override_text=None):
-		if feedback_key in self.feedback_dict:
-			# Check if override contains value, use as feedback
-			if override_text is not None and type(override_text) == str and override_text != '':
-				feedback_str = override_text
-			# Else use feedback_dict value for feedback_key
-			elif feedback_key in self.feedback_dict:
-				# Extract string value from feedback_dict, which may contain markup. Default to empty string if key is missing or value is None.
-				feedback_str = self.feedback_dict.get(feedback_key, '') or ''
-			# Handle error case where neither argument is valid
-			else:
-				print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
-				return
-			
-			# Check if feedback_str contains a png file extension. If so, set feedback_image source to that file and display the image instead of text.
-			if '.png' in feedback_str:
-				self.feedback_image.source = str(self.image_folder / feedback_str)
-				# Assign feedback_image to feedback
-				self.feedback = self.feedback_image
-			# Else if text entry
-			else:
-				self.feedback_label.text = feedback_str
-				# Assign feedback_label to feedback
-				self.feedback = self.feedback_label
+		old_feedback = self.feedback
+		if feedback_key not in self.feedback_dict and not (isinstance(override_text, str) and override_text != ''):
+			print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+			return
+		# Check if override contains value, use as feedback
+		if override_text is not None and type(override_text) == str and override_text != '':
+			feedback_str = override_text
+		# Else use feedback_dict value for feedback_key
+		elif feedback_key in self.feedback_dict:
+			# Extract string value from feedback_dict, which may contain markup. Default to empty string if key is missing or value is None.
+			feedback_str = self.feedback_dict.get(feedback_key, '') or ''
+		# Handle error case where neither argument is valid
+		else:
+			print(f"Warning: Invalid feedback_key '{feedback_key}' and no valid override_text provided. No feedback will be assigned.")
+			return
+		
+		# Check if feedback_str contains a png file extension. If so, set feedback_image source to that file and display the image instead of text.
+		if '.png' in feedback_str:
+			self.feedback_image.source = str(self.image_folder / feedback_str)
+			# Assign feedback_image to feedback
+			self.feedback = self.feedback_image
+		# Else if text entry
+		else:
+			self.feedback_label.text = feedback_str
+			# Assign feedback_label to feedback
+			self.feedback = self.feedback_label
+		# Replace on-screen feedback if the widget changed (it is otherwise left in place)
+		if self.feedback_on_screen and (old_feedback is not self.feedback or feedback_key != getattr(self, '_feedback_key', None)):
+			self.protocol_floatlayout.remove_widget(old_feedback)
+			self.feedback_on_screen = False
 		# Add feedback to screen if not already present
 		if not self.feedback_on_screen:
 			self.protocol_floatlayout.add_widget(self.feedback)
@@ -1677,6 +1641,7 @@ class ProtocolBase(Screen):
 
 			self.feedback_start_time = time.perf_counter()
 			self.feedback_on_screen = True
+			self._feedback_key = feedback_key
 		return
 
 	def remove_feedback(self, *args):
