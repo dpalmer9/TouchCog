@@ -42,4 +42,15 @@ class Stub:
 s = Stub()
 FloatLayoutLog._log_touch(s, 'Touch Press (Blocked)', 'Multi-Touch')
 assert s.rows == [[1.5, 'Screen', 'Touch Press (Blocked)', 'X Position', 10, 'Y Position', 20, 'Stimulus Name', 'Multi-Touch']]
+
+# add_variable_event always logs the value; Type/Units pairs follow it (fills the 9 event columns in name/value order)
+s.rows, s.start_time = [], 0.0
+FloatLayoutLog.add_variable_event(s, 'Parameter', 'Stimulus Duration', 12)
+FloatLayoutLog.add_variable_event(s, 'Parameter', 'Stimulus Duration', 12, 'Staircasing')
+FloatLayoutLog.add_variable_event(s, 'Parameter', 'Stimulus Duration', 12, 'Staircasing', 'Frames')
+assert [r[1:] for r in s.rows] == [
+	['Variable Change', 'Parameter', 'Stimulus Duration', 12],
+	['Variable Change', 'Parameter', 'Stimulus Duration', 12, 'Type', 'Staircasing'],
+	['Variable Change', 'Parameter', 'Stimulus Duration', 12, 'Type', 'Staircasing', 'Units', 'Frames']], s.rows
+assert len(s.rows[-1]) == 9
 print('ok')

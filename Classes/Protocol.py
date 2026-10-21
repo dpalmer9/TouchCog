@@ -695,19 +695,15 @@ class FloatLayoutLog(FloatLayout):
 		-----
 		Event row: Time (seconds since ``start_time``), Event_Type
 		``'Variable Change'``, Event_Name ``variable_class``, Arg1_Name
-		``variable_name``. Then, literally: with no type and no units the next cell
-		is ``variable_value``; with a type and no units ``'Type'`` and the type are
-		appended (``variable_value`` is not written); with units given ``'Type'``,
-		the type, ``'Units'`` and the units are appended (``variable_value`` is not
-		written).
+		``variable_name``, Arg1_Value ``variable_value``. When a type or units is
+		given, Arg2 is ``'Type'`` / the type; when units are given, Arg3 is
+		``'Units'`` / the units.
 		"""
-		row = [(time.perf_counter() - self.start_time), 'Variable Change', variable_class, variable_name]
-		if variable_type is None and variable_units is None:
-			row.append(variable_value)
-		elif variable_units is None:
+		row = [(time.perf_counter() - self.start_time), 'Variable Change', variable_class, variable_name, variable_value]
+		if variable_type is not None or variable_units is not None:
 			row.extend(['Type', variable_type])
-		else:
-			row.extend(['Type', variable_type, 'Units', variable_units])
+		if variable_units is not None:
+			row.extend(['Units', variable_units])
 		self.add_event(row)
 
 	def add_object_event(self, event_type, object_type, object_name, object_detail, image_name=None):
