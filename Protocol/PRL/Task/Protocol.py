@@ -639,6 +639,12 @@ class ProtocolScreen(ProtocolBase):
 		"""Present the target and nontarget stimuli and record onset time.
 
 		Disables the response flags, sets the hold-button and choice callbacks,
+		sets the left and right stimulus image sources to match the logged
+		target/nontarget images (Training uses the training image paths; otherwise,
+		only when more than one target image is configured, the paths are built from
+		``self.target_image``/``self.nontarget_image`` for this image_set; in
+		single-image non-Training mode both stimuli are set to the single
+		``stimulus_image_source``, restoring it after a Training stage), then
 		swaps the hold button for the two stimulus widgets, records
 		``self.stimulus_start_time`` with ``time.perf_counter`` and logs the
 		``Object Display`` stage event plus both stimulus display events.
@@ -652,6 +658,28 @@ class ProtocolScreen(ProtocolBase):
 		self.stimulus_on_screen = True
 		self._set_hold_button_callbacks()
 		self._set_choice_callbacks(True)
+
+		if self.current_stage == 'Training':
+			target_source = self.training_target_image_path
+			nontarget_source = self.training_nontarget_image_path
+
+		elif len(self.target_image_list) > 1:
+			target_source = str(self.image_dir_path / 'Targets' / self.image_set / (self.target_image + '.png'))
+			nontarget_source = str(self.image_dir_path / 'Targets' / self.image_set / (self.nontarget_image + '.png'))
+
+		else:
+			# Single image: restore it explicitly (a preceding Training stage changed the sources)
+			target_source = self.stimulus_image_source
+			nontarget_source = self.stimulus_image_source
+
+		if target_source is not None:
+			if self.target_loc == 'Left':
+				self.left_stimulus.source = str(target_source)
+				self.right_stimulus.source = str(nontarget_source)
+
+			else:
+				self.left_stimulus.source = str(nontarget_source)
+				self.right_stimulus.source = str(target_source)
 
 		self.protocol_floatlayout.remove_widget(self.hold_button)
 		self.protocol_floatlayout.add_widget(self.left_stimulus)
@@ -934,11 +962,11 @@ class ProtocolScreen(ProtocolBase):
 		taken from ``trial_reward_list`` (reshuffled with ``constrained_shuffle``
 		``max_run=5``). A reversal swaps the target/nontarget location indices
 		once ``current_hits`` (consecutive target choices) reaches
-		``reversal_threshold``; if that pushes ``current_reversal`` past
-		``max_reversals`` the block is advanced through ``block_contingency``
-		instead. The block ends on ``block_duration`` seconds, ``block_trial_max``
-		trials, or (Training only) when the number of target choices reaches
-		``training_block_max_correct``.
+		``reversal_threshold``; if that pushes ``current_reversal`` (per block, reset
+		by ``block_contingency``) past ``max_reversals`` (per block) the block is
+		advanced through ``block_contingency`` instead. The block ends on
+		``block_duration`` seconds, ``block_trial_max`` trials, or (Training only)
+		when the number of target choices reaches ``training_block_max_correct``.
 
 		Parameters
 		----------
@@ -1066,11 +1094,13 @@ class ProtocolScreen(ProtocolBase):
 		``current_block``; when it exceeds ``block_multiplier`` (or is 0) the stage
 		index advances and ``current_block`` is reset to 1. If all stages are complete it cancels the session event
 		and shows the final results screen; otherwise it sets ``current_stage``,
-		resets the next block's counters, chooses the images and logs the
-		block/stage/parameter events. Training uses the training target and
-		nontarget images; with a single-image list both stimuli use that image and
-		the location indices shift; otherwise the image indices advance and the
-		reward list is reshuffled and its first entry sets which side is rewarded.
+		resets the next block's counters (including ``current_hits`` and
+		``current_reversal``, so ``ReversalNo`` and ``max_reversals`` are per block),
+		chooses the images and logs the block/stage/parameter events. Training uses
+		the training target and nontarget images; with a single-image list both
+		stimuli use that image and the location indices shift; otherwise the image
+		indices advance and the reward list is reshuffled, with the rewarded side
+		set by ``trial_contingency`` as it advances the reward-list index.
 		For the first block of a stage it configures the instruction text
 		and calls ``self.section_start``; otherwise it calls ``self.block_screen``.
 		Finally it calls ``self.trial_contingency`` to continue the flow.
@@ -1136,6 +1166,8 @@ class ProtocolScreen(ProtocolBase):
 			self.contingency = 0
 			self.trial_outcome = 0
 			self.current_block_trial = 0
+			self.current_hits = 0
+			self.current_reversal = 0
 
 			if self.current_stage == 'Training':
 				self.target_image = self.training_target_image
@@ -1171,15 +1203,7 @@ class ProtocolScreen(ProtocolBase):
 				self.nontarget_image = self.target_image_list[self.nontarget_image_index]
 
 				self.trial_reward_list = self.constrained_shuffle(self.trial_reward_list, max_run=5)
-				self.trial_reward_list_index = 0
-				
-				if self.trial_reward_list[self.trial_reward_list_index] == 'Target':
-					self.target_rewarded = True
-					self.nontarget_rewarded = False
-				
-				else:
-					self.target_rewarded = False
-					self.nontarget_rewarded = True
+				self.trial_reward_list_index = -1
 			
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Reversal', self.current_reversal)
 			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Hits', self.current_hits)
