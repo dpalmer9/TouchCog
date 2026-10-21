@@ -5,10 +5,11 @@ os.environ.setdefault('KIVY_NO_CONSOLELOG', '1')
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import KivyMenuInterface as kmi
-from kivy.uix.screenmanager import Screen
+from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.clock import Clock
 
 app = kmi.MenuApp()
-app.s_manager = kmi.ScreenManager()
+app.s_manager = ScreenManager()
 app._pending_completions = set()
 app.show_general_video = lambda *a, **k: None
 
@@ -21,7 +22,7 @@ assert app.s_manager.get_screen('CPT_configscreen') is new
 
 # double tap on a battery finish button must advance battery_index once
 scheduled = []
-kmi.Clock.schedule_once = lambda fn, t=0: scheduled.append(fn)
+Clock.schedule_once = lambda fn, t=0: scheduled.append(fn)
 app.replace_screen(Screen(name='task'))
 app.battery_active, app.battery_protocols, app.battery_index = True, ['A', 'B', 'C'], 0
 app.handle_task_completion('task')
