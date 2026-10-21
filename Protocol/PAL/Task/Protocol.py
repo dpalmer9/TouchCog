@@ -78,6 +78,7 @@ class ProtocolScreen(ProtocolBase):
 			, 'NontargetLoc'
 			, 'Correct'
 			, 'ResponseLat'
+			, 'RecallImage'
 			]
 
 		self.metadata_cols = [
@@ -104,6 +105,9 @@ class ProtocolScreen(ProtocolBase):
 			, 'num_stimuli_pa'
 			, 'num_rows'
 			, 'training_image'
+			, 'image_set_dspal'
+			, 'image_set_recall'
+			, 'recall_target_present_duration'
 			]
 
 
@@ -1099,7 +1103,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Nontarget', self.nontarget_loc, image_name=self.nontarget_image)
 
 		elif self.current_stage == 'Recall':
-			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Target', 'Recall Location', image_name=self.target_image)
+			self.protocol_floatlayout.add_object_event('Display', 'Stimulus', 'Target', 'Recall Location', image_name=self.recall_image)
 
 
 	# Hold released too early
@@ -1180,7 +1184,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Nontarget', self.nontarget_loc, image_name=self.nontarget_image)
 
 		elif self.current_stage == 'Recall':
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.target_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.recall_image)
 
 		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
@@ -1236,7 +1240,7 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Nontarget', self.nontarget_loc, image_name=self.nontarget_image)
 
 		elif self.current_stage == 'Recall':
-			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.target_image)
+			self.protocol_floatlayout.add_object_event('Remove', 'Stimulus', 'Target', 'Recall Location', image_name=self.recall_image)
 
 		self._set_hold_button_callbacks(on_press=self.iti_start, on_release=self.premature_response)
 
@@ -1269,8 +1273,9 @@ class ProtocolScreen(ProtocolBase):
 		Row columns (``self.data_cols``): TrialNo, CurrentStage,
 		CurrentBlock, BlockTrial, CorrectionTrial, TargetImage, TargetLoc,
 		NontargetImage, NontargetLoc, Correct (``last_response``: 1 target pressed, 0
-		nontarget pressed) and ResponseLat (``response_latency``, seconds from
-		stimulus onset to the press). ``CorrectionTrial`` is
+		nontarget pressed), ResponseLat (``response_latency``, seconds from
+		stimulus onset to the press) and RecallImage (``recall_image`` in ``Recall``,
+		else empty). ``CorrectionTrial`` is
 		``current_correction_trial`` (1 on a repeated dPAL trial). In ``Recall``
 		``TargetImage`` is ``target_image``, which is the outline image name (the
 		remembered image is ``recall_image``).
@@ -1296,6 +1301,7 @@ class ProtocolScreen(ProtocolBase):
 			, self.nontarget_loc_string
 			, self.last_response
 			, self.response_latency
+			, self.recall_image if self.current_stage == 'Recall' else ''
 			]
 		
 		self.write_summary_file(trial_data)
@@ -1523,8 +1529,8 @@ class ProtocolScreen(ProtocolBase):
 		plus a ``Current Block`` variable event, advances the block, then either
 		ends the task when the last stage is done, shows the sPAL or Recall
 		tutorial video on its first presentation, or configures the next stage's
-		stimulus set and trial lists and calls :meth:`trial_contingency` and,
-		except for ``Recall``, :meth:`section_start`.
+		stimulus set and trial lists and calls :meth:`trial_contingency` and
+		then :meth:`section_start`, except for ``Recall`` on block 1.
 
 		Parameters
 		----------
@@ -1535,10 +1541,16 @@ class ProtocolScreen(ProtocolBase):
 		-----
 		The block index is incremented, and ``stage_index`` is advanced with
 		``current_block`` reset to 0 when ``current_block >= block_multiplier`` or
-		equals -1 before the increment. Variable events logged with ``Parameter``
+		equals -1 before the increment. When the sPAL or Recall tutorial video is
+		first shown, the stage index is stepped back and ``current_block`` is set to
+		``block_multiplier`` so the next call advances the stage and resets the
+		block. Variable events logged with ``Parameter``
 		category: ``Current Block``, ``Current Stage``, ``Stimulus Number``,
-		``Target Image List``, ``Trial List`` and ``Block Trial Max`` (the last
-		four with ``current_stage`` as their value). When all stages are done, the
+		``Target Image List``, ``Trial List`` and ``Block Trial Max``.
+		``Current Block`` is logged after the block index is incremented.
+		``Stimulus Number`` logs ``num_stimuli`` for the stage, ``Target Image
+		List`` and ``Trial List`` log their lists as comma-separated strings and
+		``Block Trial Max`` logs the stage's trial limit. When all stages are done, the
 		``Task End`` stage event is logged, the session Clock event is cancelled and
 		:meth:`protocol_end` is called. On ``KeyboardInterrupt`` or any other
 		exception the error is printed and :meth:`protocol_end` is called;
@@ -1571,13 +1583,13 @@ class ProtocolScreen(ProtocolBase):
 			self.protocol_floatlayout.add_stage_event('Screen Cleared')
 			
 			self.protocol_floatlayout.add_stage_event('Block Change')
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Block', self.current_block)
 
 			if (self.current_block >= self.block_multiplier) or (self.current_block == -1):
 				self.stage_index += 1
 				self.current_block = 0
 
 			self.current_block += 1
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Current Block', self.current_block)
 
 			if self.stage_index >= len(self.stage_list):
 				self.protocol_floatlayout.add_stage_event('Task End')
@@ -1590,7 +1602,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.clear_widgets()
 				self.current_stage = self.stage_list[self.stage_index]
 				self.stage_index -= 1
-				self.current_block = 1
+				self.current_block = self.block_multiplier
 				self.spal_video_presented = True
 				self.tutorial_video.state = 'stop'
 				self.tutorial_video.unload()
@@ -1611,7 +1623,7 @@ class ProtocolScreen(ProtocolBase):
 				self.protocol_floatlayout.clear_widgets()
 				self.current_stage = self.stage_list[self.stage_index]
 				self.stage_index -= 1
-				self.current_block = 1
+				self.current_block = self.block_multiplier
 				self.recall_video_presented = True
 				self.tutorial_video.state = 'stop'
 				self.tutorial_video.unload()
@@ -1649,13 +1661,13 @@ class ProtocolScreen(ProtocolBase):
 				self.trial_list = self.trial_list_pa
 				self.block_trial_max = self.recall_trial_max
 				
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Number', self.current_stage)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Stimulus Number', self.num_stimuli)
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Image List', self.current_stage)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Target Image List', ','.join(map(str, self.target_image_list)))
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', self.current_stage)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Trial List', ','.join(map(str, self.trial_list)))
 
-			self.protocol_floatlayout.add_variable_event('Parameter', 'Block Trial Max', self.current_stage)
+			self.protocol_floatlayout.add_variable_event('Parameter', 'Block Trial Max', self.block_trial_max)
 			
 			self.stimulus_x_loc = np.linspace(min(self.stimulus_x_boundaries), max(self.stimulus_x_boundaries), int(self.num_stimuli)).tolist()
 
@@ -1705,7 +1717,7 @@ class ProtocolScreen(ProtocolBase):
 					self.protocol_floatlayout.add_object_event('Display', 'Button', 'Block', 'Instructions - Continue')
 
 			self.trial_contingency()
-			if self.current_stage != 'Recall':
+			if self.current_stage != 'Recall' or self.current_block > 1:
 				self.section_start()
 		
 		except KeyboardInterrupt:

@@ -29,11 +29,11 @@ class ConfigureScreen(MenuBase):
     def __init__(self,**kwargs):
         """Build the PAL settings grid plus the dsPAL and Recall image-set dropdowns.
 
-        Defines ``image_set_dspal`` (options set1 and rand) and ``image_set_recall``
-        (options set1, set2, set3 and rand) as lists of ``{'label', 'images', 'value'}``
-        dicts, builds the standard grid with ``menu_constructor``, then appends two
-        label/dropdown pairs to ``setting_gridlayout`` (two extra rows). The ``rand``
-        options carry no images.
+        Defines ``image_set_dspal`` (options set1, set2, set3 and rand) and
+        ``image_set_recall`` (options set1, set2, set3 and rand) as lists of
+        ``{'label', 'images', 'value'}`` dicts, builds the standard grid with
+        ``menu_constructor``, then appends two label/dropdown pairs to
+        ``setting_gridlayout`` (two extra rows). The ``rand`` options carry no images.
 
         Parameters
         ----------
@@ -56,6 +56,12 @@ class ConfigureScreen(MenuBase):
         self.image_set_dspal = [{'label': 'Image Set 1',
                                  'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/zigzags.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/shapes.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ghost.png'],
                                  'value': 'set1'},
+                                  {'label': 'Image Set 2',
+                                   'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/camera.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ghost.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/ovals.png'],
+                                   'value': 'set2'},
+                                  {'label': 'Image Set 3',
+                                   'images': [f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/lines.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/shapes.png',f'{self.app.app_root}/Protocol/PAL/Image/PAL-Targets/zigzags.png'],
+                                   'value': 'set3'},
                                   {'label': 'Random',
                                    'images': [],
                                    'value': 'rand'}]
