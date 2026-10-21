@@ -24,11 +24,14 @@ if sys.platform == 'win32':
 				break
 		except Exception:
 			pass
-	if 'KIVY_METRICS_DENSITY' not in os.environ:
-		try:
-			os.environ['KIVY_METRICS_DENSITY'] = str(_user32.GetDpiForSystem() / 96)
-		except Exception:
-			pass
+
+# Kivy/SDL on Windows size the window in DPI-scaled points, not physical pixels
+dpi_scale = 1.0
+if sys.platform == 'win32':
+	try:
+		dpi_scale = _user32.GetDpiForSystem() / 96
+	except Exception:
+		pass
 
 os.environ['PYTHONUTF8'] = '1'
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -192,10 +195,15 @@ print("Read Config files:", read_files)
 default_config_file = configparser.ConfigParser()
 default_config_file.read(str(app_root / 'Config.ini'), encoding='utf-8')
 
-x_dim = config_file['Screen']['x']
-y_dim = config_file['Screen']['y']
-
 fullscreen = int(config_file['Screen']['fullscreen'])
+
+# Config.ini holds physical pixels; convert so mouse/touch input maps onto the drawn UI at any scaling
+x_px, y_px = int(config_file['Screen']['x']), int(config_file['Screen']['y'])
+if fullscreen == 1 and sys.platform == 'win32':
+	# Fullscreen always covers the primary monitor, whatever Config.ini says
+	x_px, y_px = _user32.GetSystemMetrics(0), _user32.GetSystemMetrics(1)
+x_dim = round(x_px / dpi_scale)
+y_dim = round(y_px / dpi_scale)
 virtual_keyboard = int(config_file['keyboard']['virtual_keyboard'])
 use_mouse = int(config_file['mouse']['use_mouse'])
 skip_video = config_file.getboolean(
@@ -225,7 +233,8 @@ elif fullscreen == 1:
 	Config.set('graphics', 'position', 'custom')
 	Config.set('graphics', 'top', 0)
 	Config.set('graphics', 'left', 0)
-	Config.set('graphics', 'fullscreen', True)
+	# 'auto' = borderless fullscreen at desktop resolution; True switches the display mode and breaks input mapping on scaled displays
+	Config.set('graphics', 'fullscreen', 'auto')
 
 
 if virtual_keyboard == 0:
