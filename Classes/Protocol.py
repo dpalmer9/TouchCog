@@ -850,7 +850,13 @@ class PreloadedVideo(Image):
 		self.player.set_pause(True)
 		
 		# --- Metadata Logic ---
-		# Duration may still be None if metadata has not loaded yet; callers handle that.
+		# Wait briefly for the stream to open: seek()/get_frame() on a player that has not
+		# opened yet crashes ffpyplayer (access violation). Duration may still be None after.
+		timeout = 0
+		while self.player.get_metadata()['duration'] is None and timeout < 5:
+			time.sleep(0.01)
+			timeout += 1
+
 		metadata = self.player.get_metadata()
 		fr = metadata.get('frame_rate', (30, 1))
 		self.duration = metadata.get('duration', 0)
@@ -859,7 +865,9 @@ class PreloadedVideo(Image):
 		else:
 			self.video_fps = 30.0
 			
-		# Initial Frame Load (Thumbnail)
+		# Initial Frame Load (Thumbnail) - only once the stream is open (see above)
+		if self.duration is None:
+			return
 		try:
 			# We explicitly seek to 0 to ensure we are at start
 			self.player.seek(0)
